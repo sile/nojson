@@ -1,19 +1,33 @@
 pub trait WriteJson {
-    // TOD: type Error;
-    fn write_json<T: ToJsonWriter>(&mut self, value: &T) -> std::io::Result<()>;
+    type Error;
+
+    fn write_json_i64(&mut self, value: i64) -> Result<(), Self::Error>;
+    fn write_json_str(&mut self, value: &str) -> Result<(), Self::Error>;
 }
 
 pub trait ReadJson {
-    // TOD: type Error;
-    fn read_json<T: FromJsonReader>(&mut self) -> std::io::Result<T>;
+    type Error;
+    fn read_json<T: FromJson>(&mut self) -> Result<T, Self::Error>;
 }
 
-pub trait ToJsonWriter {
-    fn to_json_writer<W: WriteJson>(&self, writer: W) -> std::io::Result<()>;
+pub trait ToJson {
+    fn to_json<W: WriteJson>(&self, writer: W) -> Result<(), W::Error>;
 }
 
-pub trait FromJsonReader: Sized {
-    fn from_json_reader<R: ReadJson>(reader: R) -> std::io::Result<Self>;
+pub trait FromJson: Sized {
+    fn from_json<R: ReadJson>(reader: R) -> Result<Self, R::Error>;
+}
+
+impl ToJson for i64 {
+    fn to_json<W: WriteJson>(&self, mut writer: W) -> Result<(), W::Error> {
+        writer.write_json_i64(*self)
+    }
+}
+
+impl ToJson for String {
+    fn to_json<W: WriteJson>(&self, mut writer: W) -> Result<(), W::Error> {
+        writer.write_json_str(self)
+    }
 }
 
 #[derive(Debug)]
