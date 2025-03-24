@@ -98,10 +98,33 @@ impl FromStr for JsonValue {
             JsonValueKind::Bool => s.parse().map(Self::Bool)?,
             JsonValueKind::Number => s.parse().map(Self::Number)?,
             JsonValueKind::String => s.parse().map(Self::String)?,
-            JsonValueKind::Array => todo!(),
+            JsonValueKind::Array => JsonArrayElements::new(s)
+                .map(|s| s.and_then(|s| s.parse()))
+                .collect::<Result<_, Error>>()
+                .map(Self::Array)?,
             JsonValueKind::Object => todo!(),
         };
         Ok(value)
+    }
+}
+
+#[derive(Debug)]
+pub struct JsonArrayElements<'a> {
+    #[expect(dead_code)]
+    text: &'a str,
+}
+
+impl<'a> JsonArrayElements<'a> {
+    pub fn new(text: &'a str) -> Self {
+        Self { text }
+    }
+}
+
+impl<'a> Iterator for JsonArrayElements<'a> {
+    type Item = Result<&'a str, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
     }
 }
 
