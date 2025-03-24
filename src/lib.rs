@@ -1,64 +1,23 @@
-pub trait WriteJson {
-    fn write_json_null(&mut self) -> std::io::Result<()>;
-    fn write_json_bool(&mut self, value: bool) -> std::io::Result<()>;
-    fn write_json_i64(&mut self, value: i64) -> std::io::Result<()>;
-    fn write_json_f64(&mut self, value: f64) -> std::io::Result<()>;
-    fn write_json_str(&mut self, value: &str) -> std::io::Result<()>;
-    fn write_json_array<F>(&mut self, f: F) -> std::io::Result<()>
-    where
-        F: FnOnce(&mut Self);
-    fn write_json_object<F>(&mut self, f: F) -> std::io::Result<()>
-    where
-        F: FnOnce(&mut Self);
-
-    fn write_json_value<T: ToJson>(&mut self, value: &T) -> std::io::Result<()>;
-    fn write_json_object_member<T: ToJson>(&mut self, name: &str, value: &T)
-        -> std::io::Result<()>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum JsonValueKind {
+    Null,
+    Bool,
+    Number,
+    String,
+    Array,
+    Object,
 }
 
-pub trait ToJson {
-    fn to_json<W: WriteJson>(&self, writer: W) -> std::io::Result<()>;
-}
-
-impl ToJson for i64 {
-    fn to_json<W: WriteJson>(&self, mut writer: W) -> std::io::Result<()> {
-        writer.write_json_i64(*self)
+impl JsonValueKind {
+    pub fn from_char(c: char) -> Option<Self> {
+        match c {
+            'n' => Some(Self::Null),
+            't' | 'f' => Some(Self::Bool),
+            '0'..='9' => Some(Self::Number),
+            '"' => Some(Self::String),
+            '[' => Some(Self::Array),
+            '{' => Some(Self::Object),
+            _ => None,
+        }
     }
 }
-
-impl ToJson for String {
-    fn to_json<W: WriteJson>(&self, mut writer: W) -> std::io::Result<()> {
-        writer.write_json_str(self)
-    }
-}
-
-#[derive(Debug)]
-pub struct IoJsonWriter {}
-
-pub trait ReadJson {
-    type Error;
-    fn read_json<T: FromJson>(&mut self) -> Result<T, Self::Error>;
-}
-
-pub trait FromJson: Sized {
-    fn from_json<R: ReadJson>(reader: R) -> Result<Self, R::Error>;
-}
-
-#[derive(Debug)]
-pub struct IoJsonReader<R> {
-    pub inner: R,
-    pub line: usize,
-    pub column: usize,
-    pub path: Vec<()>, // TODO
-}
-
-#[derive(Debug)]
-pub struct StrJsonReader<'a> {
-    pub json: &'a str,
-    pub line: usize,
-    pub column: usize,
-    pub path: Vec<()>, // TODO
-}
-
-// JsonlJsonReader
-// DiagnosticJsonReader
