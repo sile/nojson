@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeMap,
+    fmt::Display,
     num::{ParseFloatError, ParseIntError},
     str::{FromStr, ParseBoolError},
 };
@@ -146,6 +147,50 @@ impl<'a> JsonObjectMemberAccessor<'a> {
 
     pub fn finsh(self) -> &'a str {
         todo!()
+    }
+}
+
+#[derive(Debug)]
+pub struct JsonObjectBuilder {
+    text: String,
+    first: bool,
+}
+
+impl JsonObjectBuilder {
+    pub fn new(mut text: String) -> Self {
+        text.push('{');
+        Self { text, first: true }
+    }
+
+    // TODO: -> Result
+    // TODO: check when writing value (if valid JSON)
+    // TODO: "key".as_json() -> JsonStr<'a>
+    pub fn push<K, V>(&mut self, _key: &str, _value: V)
+    where
+        V: Display,
+    {
+        use std::fmt::Write;
+
+        if !self.first {
+            self.text.push(',');
+            self.first = false;
+        }
+
+        let _ = write!(&mut self.text, "foo");
+
+        // let mut obj = JsonObjectBuilder::new(String::new());
+        // obj.push("foo", 1);
+        // obj.push("bar", 2);
+        // obj.push_with("baz", |writer| ...);
+        // let buf = obj.finish();
+
+        todo!()
+    }
+
+    pub fn finish(mut self) -> String {
+        // -> RawJsonValue?
+        self.text.push('}');
+        self.text
     }
 }
 
