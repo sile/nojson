@@ -5,6 +5,8 @@ use std::{
     str::{FromStr, ParseBoolError},
 };
 
+pub mod value;
+
 #[derive(Debug)]
 pub enum Error {
     Eos,
