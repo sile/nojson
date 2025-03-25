@@ -102,9 +102,32 @@ impl FromStr for JsonValue {
                 .map(|s| s.and_then(|s| s.parse()))
                 .collect::<Result<_, Error>>()
                 .map(Self::Array)?,
-            JsonValueKind::Object => todo!(),
+            JsonValueKind::Object => JsonObjectMembers::new(s)
+                .map(|s| s.and_then(|(k, v)| v.parse().map(|v| (k.to_owned(), v))))
+                .collect::<Result<_, Error>>()
+                .map(Self::Object)?,
         };
         Ok(value)
+    }
+}
+
+#[derive(Debug)]
+pub struct JsonObjectMembers<'a> {
+    #[expect(dead_code)]
+    text: &'a str,
+}
+
+impl<'a> JsonObjectMembers<'a> {
+    pub fn new(text: &'a str) -> Self {
+        Self { text }
+    }
+}
+
+impl<'a> Iterator for JsonObjectMembers<'a> {
+    type Item = Result<(&'a str, &'a str), Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
     }
 }
 
