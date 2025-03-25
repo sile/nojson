@@ -135,6 +135,18 @@ impl<'a> JsonObjectMemberAccessor<'a> {
     pub fn get(&self, _name: &str) -> Option<&'a str> {
         todo!()
     }
+
+    pub fn parse<T: FromStr>(&self, _name: &str) -> Result<T, T::Err> {
+        todo!()
+    }
+
+    pub fn parse_option<T: FromStr>(&self, _name: &str) -> Result<Option<T>, T::Err> {
+        todo!()
+    }
+
+    pub fn finsh(self) -> &'a str {
+        todo!()
+    }
 }
 
 #[derive(Debug)]
