@@ -112,6 +112,18 @@ impl FromStr for JsonValue {
 }
 
 #[derive(Debug)]
+pub struct JsonObjectMemberAccessor<'a> {
+    #[expect(dead_code)]
+    text: &'a str,
+}
+
+impl<'a> JsonObjectMemberAccessor<'a> {
+    pub fn get(&self, _name: &str) -> Option<&'a str> {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
 pub struct JsonObjectMembers<'a> {
     #[expect(dead_code)]
     text: &'a str,
