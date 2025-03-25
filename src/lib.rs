@@ -67,6 +67,20 @@ impl FromStr for Null {
     }
 }
 
+pub trait ParseOption {
+    fn parse_option<T: FromStr>(&self) -> Result<Option<T>, T::Err>;
+}
+
+impl ParseOption for str {
+    fn parse_option<T: FromStr>(&self) -> Result<Option<T>, T::Err> {
+        if self == "null" {
+            Ok(None)
+        } else {
+            self.parse().map(Some)
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JsonString(pub String);
 
