@@ -18,6 +18,7 @@ pub enum Error {
     NotValidFloat,
     NotString, // TODO
     NotValidString,
+    NotValidArray,
 }
 
 impl From<ParseBoolError> for Error {

@@ -298,18 +298,34 @@ impl<T: Json + Display> Display for JsonArray<T> {
     }
 }
 
-// impl<T> FromStr for JsonArray<T>
-// where
-//     T: Default,
-// {
-//     type Err = Error;
+impl<T: Json + FromStr> FromStr for JsonArray<T> {
+    type Err = Error;
 
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         todo!()
-//     }
-// }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim_matches(WHITESPACES); // TODO
+        let s = s.strip_prefix('[').ok_or(Error::NotValidArray)?;
+        let s = s.strip_prefix(']').ok_or(Error::NotValidArray)?;
+        let s = s.trim_matches(WHITESPACES);
+        if s.is_empty() {
+            return Ok(Self(Vec::new()));
+        }
+
+        let mut array = Vec::new();
+
+        // TODO: string handling
+        for value in s.split(',') {
+            let value = value.trim_matches(WHITESPACES);
+            let value = value.parse().map_err(|_| Error::NotValidArray)?; // TODO
+            array.push(value);
+        }
+
+        Ok(Self(array))
+    }
+}
 
 impl<T> Json for JsonArray<T> {}
+
+const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JsonIter<T>(T);
