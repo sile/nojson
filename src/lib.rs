@@ -14,6 +14,8 @@ pub enum Error {
     NotNull,
     NotBool,
     NotNumber,
+    NotFiniteFloat, // TODO
+    NotValidFloat,
 }
 
 impl From<ParseBoolError> for Error {
