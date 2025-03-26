@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     hash::Hash,
     marker::PhantomData,
+    ops::Range,
     str::{Chars, FromStr},
 };
 
@@ -23,6 +24,12 @@ pub enum JsonValue {
     String(JsonString),
     Array(JsonVec),
     Object(JsonObject),
+}
+
+impl JsonValue {
+    pub fn parse<T: FromStr>(&self) -> Result<T, T::Err> {
+        todo!()
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -376,6 +383,35 @@ where
             array,
             _item: PhantomData,
         })
+    }
+}
+
+// "[1,2,3]".split_json_array()?.map(...)
+#[derive(Debug)]
+#[expect(dead_code)]
+pub struct JsonArrayElements<'a> {
+    text: &'a str,
+    elemenents: Vec<Range<usize>>,
+}
+
+impl<'a> JsonArrayElements<'a> {
+    pub fn new(text: &'a str) -> Result<Self, Error> {
+        let text = text.trim_matches(WHITESPACES); // TODO
+        let text = text.strip_prefix('[').ok_or(Error::NotValidArray)?;
+        let text = text.strip_prefix(']').ok_or(Error::NotValidArray)?;
+        let text = text.trim_matches(WHITESPACES);
+        Ok(Self {
+            text,
+            elemenents: Vec::new(),
+        })
+    }
+}
+
+impl<'a> Iterator for JsonArrayElements<'a> {
+    type Item = JsonValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
     }
 }
 
