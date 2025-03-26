@@ -6,6 +6,7 @@ use std::{
 use value::{JsonF64, JsonString};
 
 pub mod value;
+pub mod value2;
 
 #[derive(Debug)]
 pub enum Error {
