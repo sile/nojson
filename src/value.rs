@@ -1,4 +1,9 @@
-use std::{collections::BTreeMap, fmt::Display, hash::Hash, str::FromStr};
+use std::{
+    collections::BTreeMap,
+    fmt::Display,
+    hash::Hash,
+    str::{Chars, FromStr},
+};
 
 use crate::Error;
 
@@ -203,6 +208,62 @@ impl<T: Display> Display for JsonString<T> {
     }
 }
 
+impl<T: FromStr> FromStr for JsonString<T> {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let Some(s) = s.strip_prefix('"') else {
+            return Err(Error::NotString);
+        };
+        let Some(s) = s.strip_suffix('"') else {
+            return Err(Error::NotValidString);
+        };
+
+        if s.chars().any(|c| c.is_control() || matches!(c, '"' | '\\')) {
+            let mut unescaped = String::with_capacity(s.len());
+            let mut chars = s.chars();
+            while let Some(c) = chars.next() {
+                match c {
+                    '\\' => unescaped.push(unescape_char(&mut chars)?),
+                    '"' => return Err(Error::NotValidString),
+                    _ if c.is_control() => return Err(Error::NotValidString),
+                    _ => unescaped.push(c),
+                }
+            }
+            unescaped
+                .parse()
+                .map(Self)
+                .map_err(|_| Error::NotValidString)
+        } else {
+            // TODO: Don't ignore the cause
+            s.parse().map(Self).map_err(|_| Error::NotValidString)
+        }
+    }
+}
+
+impl<T> Json for JsonString<T> {}
+
+fn unescape_char(chars: &mut Chars) -> Result<char, Error> {
+    let c = chars.next().ok_or(Error::NotValidString)?;
+    match c {
+        'n' => Ok('\n'),
+        'r' => Ok('\r'),
+        't' => Ok('\t'),
+        '\\' => Ok('\\'),
+        '"' => Ok('"'),
+        'u' => {
+            let mut code_point = 0;
+            for _ in 0..4 {
+                let hex_char = chars.next().ok_or(Error::NotValidString)?;
+                let digit = hex_char.to_digit(16).ok_or(Error::NotValidString)?;
+                code_point = (code_point << 4) | digit;
+            }
+            char::from_u32(code_point).ok_or(Error::NotValidString)
+        }
+        _ => Err(Error::NotValidString),
+    }
+}
+
 struct JsonStringWriter<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
 
 impl<'a, 'b> std::fmt::Write for JsonStringWriter<'a, 'b> {
@@ -223,16 +284,6 @@ impl<'a, 'b> std::fmt::Write for JsonStringWriter<'a, 'b> {
         Ok(())
     }
 }
-
-impl<T: FromStr> FromStr for JsonString<T> {
-    type Err = Error;
-
-    fn from_str(_s: &str) -> Result<Self, Self::Err> {
-        todo!()
-    }
-}
-
-impl<T> Json for JsonString<T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JsonArray<T = Vec<JsonValue>>(pub T);
