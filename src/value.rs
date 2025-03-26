@@ -65,6 +65,8 @@ impl<T: Json + FromStr> FromStr for Maybe<T> {
 
 impl<T: Json> Json for Maybe<T> {}
 
+// TODO: ParseOption
+
 impl Json for bool {}
 
 impl Json for isize {}
@@ -188,7 +190,42 @@ impl<T> JsonString<T> {
         self.0
     }
 }
-// TODO: impl<T> Json for JsonString<T> where T: AsRef<str> {}
+
+impl<T: AsRef<str>> Display for JsonString<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = self.0.as_ref();
+        if !s.chars().any(|c| c.is_control() || matches!(c, '"' | '\\')) {
+            return write!(f, "\"{s}\"");
+        }
+
+        write!(f, "\"")?;
+        for c in s.chars() {
+            match c {
+                '\n' => write!(f, r#"\n"#)?,
+                '\r' => write!(f, r#"\r"#)?,
+                '\t' => write!(f, r#"\t"#)?,
+                '\\' => write!(f, r#"\\"#)?,
+                '\"' => write!(f, r#"\""#)?,
+                '\u{0008}' => write!(f, r#"\b"#)?,
+                '\u{000C}' => write!(f, r#"\f"#)?,
+                c if c.is_control() => write!(f, r#"\u{:04x}"#, c as u32)?,
+                _ => write!(f, "{c}")?,
+            }
+        }
+        write!(f, "\"")?;
+        Ok(())
+    }
+}
+
+impl<T> FromStr for JsonString<T> {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        todo!()
+    }
+}
+
+impl<T> Json for JsonString<T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JsonArray<T = Vec<JsonValue>>(pub T);
