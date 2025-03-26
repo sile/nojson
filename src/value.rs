@@ -191,36 +191,43 @@ impl<T> JsonString<T> {
     }
 }
 
-impl<T: AsRef<str>> Display for JsonString<T> {
+impl<T: Display> Display for JsonString<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = self.0.as_ref();
-        if !s.chars().any(|c| c.is_control() || matches!(c, '"' | '\\')) {
-            return write!(f, "\"{s}\"");
-        }
+        use std::fmt::Write;
 
         write!(f, "\"")?;
-        for c in s.chars() {
-            match c {
-                '\n' => write!(f, r#"\n"#)?,
-                '\r' => write!(f, r#"\r"#)?,
-                '\t' => write!(f, r#"\t"#)?,
-                '\\' => write!(f, r#"\\"#)?,
-                '\"' => write!(f, r#"\""#)?,
-                '\u{0008}' => write!(f, r#"\b"#)?,
-                '\u{000C}' => write!(f, r#"\f"#)?,
-                c if c.is_control() => write!(f, r#"\u{:04x}"#, c as u32)?,
-                _ => write!(f, "{c}")?,
-            }
-        }
+        write!(JsonStringWriter(f), "{}", self.0)?;
         write!(f, "\"")?;
+
         Ok(())
     }
 }
 
-impl<T> FromStr for JsonString<T> {
+struct JsonStringWriter<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
+
+impl<'a, 'b> std::fmt::Write for JsonStringWriter<'a, 'b> {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        for c in s.chars() {
+            match c {
+                '\n' => write!(self.0, r#"\n"#)?,
+                '\r' => write!(self.0, r#"\r"#)?,
+                '\t' => write!(self.0, r#"\t"#)?,
+                '\\' => write!(self.0, r#"\\"#)?,
+                '\"' => write!(self.0, r#"\""#)?,
+                '\u{0008}' => write!(self.0, r#"\b"#)?,
+                '\u{000C}' => write!(self.0, r#"\f"#)?,
+                c if c.is_control() => write!(self.0, r#"\u{:04x}"#, c as u32)?,
+                _ => write!(self.0, "{c}")?,
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<T: FromStr> FromStr for JsonString<T> {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(_s: &str) -> Result<Self, Self::Err> {
         todo!()
     }
 }
