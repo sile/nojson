@@ -9,6 +9,10 @@ use crate::Error;
 
 pub trait Json {}
 
+impl<T: Json> Json for &T {}
+
+impl<T: Json> Json for Box<T> {}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum JsonValue {
     Null,
@@ -286,7 +290,52 @@ impl<'a, 'b> std::fmt::Write for JsonStringWriter<'a, 'b> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct JsonArray<T = Vec<JsonValue>>(pub T);
+pub struct JsonArray<T = JsonValue>(Vec<T>);
+
+impl<T: Json + Display> Display for JsonArray<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", JsonIter(self.0.iter()))
+    }
+}
+
+// impl<T> FromStr for JsonArray<T>
+// where
+//     T: Default,
+// {
+//     type Err = Error;
+
+//     fn from_str(s: &str) -> Result<Self, Self::Err> {
+//         todo!()
+//     }
+// }
+
+impl<T> Json for JsonArray<T> {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct JsonIter<T>(T);
+
+impl<T> Display for JsonIter<T>
+where
+    T: Iterator + Clone,
+    T::Item: Json + Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+        let mut first = true;
+        for item in self.0.clone() {
+            if first {
+                write!(f, "{item}")?;
+                first = false;
+            } else {
+                write!(f, ",{item}")?;
+            }
+        }
+        write!(f, "]")?;
+        Ok(())
+    }
+}
+
+impl<T> Json for JsonIter<T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JsonObject<T = BTreeMap<String, JsonValue>>(pub T);

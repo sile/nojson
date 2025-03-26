@@ -3,7 +3,7 @@ use std::{
     str::ParseBoolError,
 };
 
-use value::JsonF64;
+use value::{JsonF64, JsonString};
 
 pub mod value;
 
@@ -43,4 +43,8 @@ where
     f64: From<T>,
 {
     JsonF64::new(value.into())
+}
+
+pub fn string<T>(value: T) -> JsonString<T> {
+    JsonString::new(value)
 }
