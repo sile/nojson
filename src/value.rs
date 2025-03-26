@@ -303,7 +303,7 @@ impl<T: Json + FromStr> FromStr for JsonVec<T> {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let array: JsonArray<Vec<T>, T> = s.parse()?;
+        let array: JsonArray<_, _> = s.parse()?;
         Ok(Self(array.array))
     }
 }
