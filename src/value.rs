@@ -294,7 +294,7 @@ pub struct JsonArray<T = JsonValue>(Vec<T>);
 
 impl<T: Json + Display> Display for JsonArray<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", JsonIter(self.0.iter()))
+        write!(f, "{}", JsonIter(|| self.0.iter()))
     }
 }
 
@@ -328,17 +328,18 @@ impl<T> Json for JsonArray<T> {}
 const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct JsonIter<T>(T);
+pub struct JsonIter<F>(F);
 
-impl<T> Display for JsonIter<T>
+impl<F, T> Display for JsonIter<F>
 where
-    T: Iterator + Clone,
+    F: Fn() -> T,
+    T: Iterator,
     T::Item: Json + Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
         let mut first = true;
-        for item in self.0.clone() {
+        for item in self.0() {
             if first {
                 write!(f, "{item}")?;
                 first = false;
