@@ -2,6 +2,7 @@ use std::{
     collections::BTreeMap,
     fmt::Display,
     hash::Hash,
+    marker::PhantomData,
     str::{Chars, FromStr},
 };
 
@@ -20,7 +21,7 @@ pub enum JsonValue {
     Integer(i64),
     Float(JsonF64),
     String(JsonString),
-    Array(JsonArray),
+    Array(JsonVec),
     Object(JsonObject),
 }
 
@@ -290,45 +291,29 @@ impl<'a, 'b> std::fmt::Write for JsonStringWriter<'a, 'b> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct JsonArray<T = JsonValue>(Vec<T>);
+pub struct JsonVec<T = JsonValue>(Vec<T>);
 
-impl<T: Json + Display> Display for JsonArray<T> {
+impl<T: Json + Display> Display for JsonVec<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", JsonIter(|| self.0.iter()))
     }
 }
 
-impl<T: Json + FromStr> FromStr for JsonArray<T> {
+impl<T: Json + FromStr> FromStr for JsonVec<T> {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.trim_matches(WHITESPACES); // TODO
-        let s = s.strip_prefix('[').ok_or(Error::NotValidArray)?;
-        let s = s.strip_prefix(']').ok_or(Error::NotValidArray)?;
-        let s = s.trim_matches(WHITESPACES);
-        if s.is_empty() {
-            return Ok(Self(Vec::new()));
-        }
-
-        let mut array = Vec::new();
-
-        // TODO: string handling
-        for value in s.split(',') {
-            let value = value.trim_matches(WHITESPACES);
-            let value = value.parse().map_err(|_| Error::NotValidArray)?; // TODO
-            array.push(value);
-        }
-
-        Ok(Self(array))
+        let array: JsonArray<Vec<T>, T> = s.parse()?;
+        Ok(Self(array.array))
     }
 }
 
-impl<T> Json for JsonArray<T> {}
+impl<T> Json for JsonVec<T> {}
 
 const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct JsonIter<F>(F);
+pub struct JsonIter<T>(T);
 
 impl<F, T> Display for JsonIter<F>
 where
@@ -353,6 +338,46 @@ where
 }
 
 impl<T> Json for JsonIter<T> {}
+
+#[derive(Debug)]
+pub struct JsonArray<A, T> {
+    array: A,
+    _item: PhantomData<T>,
+}
+
+impl<A, T> FromStr for JsonArray<A, T>
+where
+    A: FromIterator<T>,
+    T: Json + FromStr,
+{
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim_matches(WHITESPACES); // TODO
+        let s = s.strip_prefix('[').ok_or(Error::NotValidArray)?;
+        let s = s.strip_prefix(']').ok_or(Error::NotValidArray)?;
+        let s = s.trim_matches(WHITESPACES);
+        if s.is_empty() {
+            return Ok(Self {
+                array: A::from_iter(std::iter::empty()),
+                _item: PhantomData,
+            });
+        }
+
+        // TODO: string handling
+        let array = s
+            .split(',')
+            .map(|value| {
+                let value = value.trim_matches(WHITESPACES);
+                value.parse().map_err(|_| Error::NotValidArray) // TODO
+            })
+            .collect::<Result<A, Error>>()?;
+        Ok(Self {
+            array,
+            _item: PhantomData,
+        })
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JsonObject<T = BTreeMap<String, JsonValue>>(pub T);
