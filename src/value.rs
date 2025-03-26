@@ -4,24 +4,6 @@ use crate::Error;
 
 pub trait Json {}
 
-pub trait AsJson {
-    type Item: Json;
-
-    fn as_json(&self) -> &Self::Item;
-}
-
-pub trait ToJson {
-    type Item: Json;
-
-    fn to_json(&self) -> Self::Item;
-}
-
-pub trait TryIntoJson {
-    type Item: Json;
-
-    fn try_into_json(self) -> Result<Self::Item, Error>;
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum JsonValue {
     Null,
@@ -55,6 +37,33 @@ impl FromStr for Null {
         }
     }
 }
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Maybe<T>(Option<T>);
+
+impl<T: Json + Display> Display for Maybe<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(v) = &self.0 {
+            v.fmt(f)
+        } else {
+            Null.fmt(f)
+        }
+    }
+}
+
+impl<T: Json + FromStr> FromStr for Maybe<T> {
+    type Err = T::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "null" {
+            Ok(Self(None))
+        } else {
+            s.parse().map(Some).map(Self)
+        }
+    }
+}
+
+impl<T: Json> Json for Maybe<T> {}
 
 impl Json for bool {}
 
