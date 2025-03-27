@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
 pub const NUMBER_PREFIX: [char; 11] = ['-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 pub const DIGITS: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
@@ -5,7 +7,7 @@ pub const DIGITS: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
 #[derive(Debug)]
 pub struct Error {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Kind {
     Null,
     Bool,
@@ -18,7 +20,7 @@ pub enum Kind {
 }
 
 // TODO: rename
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct JsonValue {
     pub kind: Kind,
     pub start: usize,
@@ -184,18 +186,12 @@ impl<'a> JsonParser<'a> {
 }
 
 #[derive(Debug)]
-pub struct JsonTextSlice<'a> {
+pub struct JsonText<'a, 'b> {
     pub text: &'a str,
-    pub values: &'a [JsonValue],
+    pub values: Cow<'b, [JsonValue]>,
 }
 
-#[derive(Debug)]
-pub struct JsonText<'a> {
-    pub text: &'a str,
-    pub values: Vec<JsonValue>,
-}
-
-impl<'a> JsonText<'a> {
+impl<'a> JsonText<'a, 'static> {
     pub fn new(text: &'a str) -> Result<Self, Error> {
         let mut parser = JsonParser {
             text,
@@ -205,7 +201,7 @@ impl<'a> JsonText<'a> {
         parser.parse()?;
         Ok(Self {
             text,
-            values: parser.values,
+            values: Cow::Owned(parser.values),
         })
     }
 }
