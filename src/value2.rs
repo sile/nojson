@@ -31,7 +31,7 @@ pub enum Value<'a> {
 
 impl<'a> Value<'a> {
     pub fn from_str_borrowed(text: &'a str) -> Result<Self, Error> {
-        let text = text.trim_matches(WHITESPACES);
+        let text = text.trim_matches(WHITESPACES); // TODO: remove?
         match text {
             "null" => Ok(Self::Null),
             "true" => Ok(Self::Bool(true)),
@@ -40,7 +40,7 @@ impl<'a> Value<'a> {
                 let c = text.chars().next().expect("TODO");
                 match c {
                     '-' | '0' => JsonNumber::from_str_borrowed(text).map(Self::Number),
-                    '"' => todo!(),
+                    '"' => JsonString::from_str_borrowed(text).map(Self::String),
                     '[' => todo!(),
                     '{' => todo!(),
                     _ => todo!(),
@@ -76,6 +76,55 @@ impl FromStr for Value<'static> {
 #[derive(Debug, Clone)]
 pub struct JsonString<'a> {
     pub text: Cow<'a, str>,
+}
+
+impl<'a> JsonString<'a> {
+    pub fn from_str_borrowed(text: &'a str) -> Result<Self, Error> {
+        let s = text.strip_prefix('"').expect("TODO");
+        let s = s.strip_suffix('"').expect("TODO");
+        if !s.contains(['"', '\\']) {
+            return Ok(Self {
+                text: Cow::Borrowed(text),
+            });
+        }
+
+        let mut unescaped = String::with_capacity(text.len());
+        unescaped.push('"');
+        let mut chars = s.chars();
+        while let Some(c) = chars.next() {
+            match c {
+                '"' => todo!(),
+                '\\' => {
+                    let c = chars.next().expect("TODO");
+                    match c {
+                        '\\' => unescaped.push('\\'),
+                        '"' => unescaped.push('"'),
+                        'n' => unescaped.push('\n'),
+                        'r' => unescaped.push('\r'),
+                        't' => unescaped.push('\t'),
+                        'b' => unescaped.push('\x08'),
+                        'f' => unescaped.push('\x0C'),
+                        'u' => {
+                            let mut code_point = 0;
+                            for _ in 0..4 {
+                                let hex_char = chars.next().expect("TODO");
+                                let digit = hex_char.to_digit(16).expect("TODO");
+                                code_point = (code_point << 4) | digit;
+                            }
+                            unescaped.push(char::from_u32(code_point).expect("TODO"));
+                        }
+                        _ => todo!(),
+                    }
+                }
+                _ => unescaped.push(c),
+            }
+        }
+        unescaped.push('"');
+
+        Ok(Self {
+            text: Cow::Owned(unescaped),
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
