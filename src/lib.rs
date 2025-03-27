@@ -3,10 +3,8 @@ use std::{
     str::ParseBoolError,
 };
 
-use value::{JsonF64, JsonString};
-
 pub mod formatter;
-pub mod value2;
+//pub mod value2;
 pub mod value3;
 
 #[derive(Debug)]
@@ -39,15 +37,4 @@ impl From<ParseFloatError> for Error {
     fn from(_value: ParseFloatError) -> Self {
         Self::NotNumber
     }
-}
-
-pub fn float<T>(value: T) -> Option<JsonF64>
-where
-    f64: From<T>,
-{
-    JsonF64::new(value.into())
-}
-
-pub fn string<T>(value: T) -> JsonString<T> {
-    JsonString::new(value)
 }
