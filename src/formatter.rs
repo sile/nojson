@@ -12,7 +12,7 @@ impl JsonDisplay for usize {}
 pub struct JsonF64(pub f64);
 
 #[derive(Debug)]
-pub struct JsonStr<T: AsRef<str>>(pub T);
+pub struct Str<T: AsRef<str>>(pub T);
 
 // #[derive(Debug)]
 // pub struct Json<T>(pub T);
@@ -34,6 +34,21 @@ pub struct FiniteF64(pub f64);
 
 #[derive(Debug)]
 pub struct Array<I>(pub I);
+
+#[derive(Debug)]
+pub enum Value {
+    Null,
+    Bool(bool),
+    Str(Str<String>),
+    Array(Array<Vec<Value>>),
+    // TODO: number, object
+}
+
+pub trait DisplayJson {
+    fn fmt(&self, fmt: ()) -> std::fmt::Result;
+
+    fn as_json(&self) -> Json<&Self>;
+}
 
 #[derive(Debug)]
 pub struct JsonFormatter<W> {

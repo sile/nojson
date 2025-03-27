@@ -289,21 +289,21 @@ impl<'a> JsonText<'a, 'static> {
         todo!()
     }
 
-    pub fn expect_array(&self) -> Result<JsonArray, Error> {
+    pub fn expect_array(&self) -> Result<JsonArrayText, Error> {
         if self.kind() != Kind::Array {
             todo!()
         }
-        Ok(JsonArray {
+        Ok(JsonArrayText {
             text: &self.text,
             values: &self.values[1..],
         })
     }
 
-    pub fn expect_object(&self) -> Result<JsonObject, Error> {
+    pub fn expect_object(&self) -> Result<JsonObjectText, Error> {
         if self.kind() != Kind::Object {
             todo!()
         }
-        Ok(JsonObject {
+        Ok(JsonObjectText {
             text: &self.text,
             values: &self.values[1..],
         })
@@ -311,18 +311,18 @@ impl<'a> JsonText<'a, 'static> {
 }
 
 #[derive(Debug)]
-pub struct JsonArray<'a, 'b> {
+pub struct JsonArrayText<'a, 'b> {
     pub text: &'a str,
     pub values: &'b [JsonValue],
 }
 
-impl<'a, 'b> JsonArray<'a, 'b> {
+impl<'a, 'b> JsonArrayText<'a, 'b> {
     pub fn expect_n<const N: usize>(&self) -> Result<[JsonText<'a, 'b>; N], Error> {
         todo!()
     }
 }
 
-impl<'a, 'b> Iterator for JsonArray<'a, 'b> {
+impl<'a, 'b> Iterator for JsonArrayText<'a, 'b> {
     type Item = JsonText<'a, 'b>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -341,12 +341,12 @@ impl<'a, 'b> Iterator for JsonArray<'a, 'b> {
 }
 
 #[derive(Debug)]
-pub struct JsonObject<'a, 'b> {
+pub struct JsonObjectText<'a, 'b> {
     pub text: &'a str,
     pub values: &'b [JsonValue],
 }
 
-impl<'a, 'b> JsonObject<'a, 'b> {
+impl<'a, 'b> JsonObjectText<'a, 'b> {
     pub fn with<const N: usize, const M: usize>(
         &self,
         _keys: [&str; N],
@@ -356,7 +356,7 @@ impl<'a, 'b> JsonObject<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Iterator for JsonObject<'a, 'b> {
+impl<'a, 'b> Iterator for JsonObjectText<'a, 'b> {
     type Item = (JsonString<'a>, JsonText<'a, 'b>);
 
     fn next(&mut self) -> Option<Self::Item> {
