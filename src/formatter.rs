@@ -25,6 +25,11 @@ impl<W: Write> JsonFormatter<W> {
         Self { writer }
     }
 
+    pub fn null(self) -> std::fmt::Result {
+        todo!()
+    }
+
+    // TODO: array<F>(&mut self, f:F)-> std::fmt::Result {}
     pub fn array(&mut self) -> JsonArrayFormatter<W> {
         JsonArrayFormatter::new(self)
     }
@@ -47,15 +52,26 @@ impl<'a, W: Write> JsonArrayFormatter<'a, W> {
         }
     }
 
-    pub fn value<T: JsonDisplay>(&mut self, value: &T) -> &mut Self {
+    pub fn value_with<F>(&mut self, f: F) -> &mut Self
+    where
+        F: FnOnce(&mut JsonFormatter<W>) -> std::fmt::Result,
+    {
         if self.error.is_some() {
-        } else if self.first {
-            self.first = false;
-            self.error = write!(self.fmt.writer, "{value}").err();
-        } else {
-            self.error = write!(self.fmt.writer, ",{value}").err();
+            return self;
         }
+        if self.first {
+            self.first = false;
+            self.error = self.fmt.writer.write_char(',').err();
+            if self.error.is_some() {
+                return self;
+            }
+        }
+        self.error = f(self.fmt).err();
         self
+    }
+
+    pub fn value<T: JsonDisplay>(&mut self, value: &T) -> &mut Self {
+        self.value_with(|fmt| write!(fmt.writer, "{value}"))
     }
 
     pub fn values<I>(&mut self, values: I) -> &mut Self
