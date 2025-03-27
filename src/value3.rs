@@ -277,6 +277,16 @@ impl<'a> JsonText<'a, 'static> {
             values: &self.values[1..],
         })
     }
+
+    pub fn expect_object(&self) -> Result<JsonObject, Error> {
+        if self.kind() != Kind::Object {
+            todo!()
+        }
+        Ok(JsonObject {
+            text: &self.text,
+            values: &self.values[1..],
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -286,18 +296,55 @@ pub struct JsonArray<'a, 'b> {
 }
 
 impl<'a, 'b> JsonArray<'a, 'b> {
-    pub fn get(&self, mut nth: usize) -> Option<JsonText> {
-        let mut i = 0;
-        while nth > 0 {
-            i += self.values[i].scope; // TODO: index check
-            nth -= 1;
+    pub fn expect_n<const N: usize>(&self) -> Result<[JsonText<'a, 'b>; N], Error> {
+        todo!()
+    }
+}
+
+impl<'a, 'b> Iterator for JsonArray<'a, 'b> {
+    type Item = JsonText<'a, 'b>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.values.is_empty() {
+            return None;
         }
-        let v = &self.values[i];
+
+        let v = &self.values[0];
+        let values = &self.values[..v.scope];
+        self.values = &self.values[v.scope..];
         Some(JsonText {
             text: self.text,
-            values: Cow::Borrowed(&self.values[i..][..v.scope]),
+            values: Cow::Borrowed(values),
         })
     }
+}
 
-    // TODO: expect_len(), Iterator
+#[derive(Debug)]
+pub struct JsonObject<'a, 'b> {
+    pub text: &'a str,
+    pub values: &'b [JsonValue],
+}
+
+impl<'a, 'b> JsonObject<'a, 'b> {
+    pub fn with<const N: usize, const M: usize>(
+        &self,
+        _keys: [&str; N],
+        _optional_keys: [&str; M],
+    ) -> Result<([JsonText<'a, 'b>; N], [Option<JsonText<'a, 'b>>; N]), Error> {
+        todo!()
+    }
+}
+
+impl<'a, 'b> Iterator for JsonObject<'a, 'b> {
+    type Item = (JsonString<'a>, JsonText<'a, 'b>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub struct JsonString<'a> {
+    pub text: &'a str,
+    pub value: JsonValue,
 }
