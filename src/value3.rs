@@ -48,10 +48,43 @@ impl<'a> JsonParser<'a> {
             self.parse_string(s)?;
         } else if let Some(s) = self.text.strip_prefix('[') {
             self.parse_array(s)?;
-        } else if self.text.starts_with('{') {
-            todo!()
+        } else if let Some(s) = self.text.strip_prefix('{') {
+            self.parse_object(s)?;
         }
         Ok(())
+    }
+
+    fn parse_object(&mut self, mut s: &'a str) -> Result<(), Error> {
+        let i = self.values.len();
+        self.push_value(Kind::Object, 0);
+
+        loop {
+            s = s.trim_start_matches(WHITESPACES);
+            if let Some(s) = s.strip_prefix('}') {
+                self.proceed(s);
+                self.values[i].end = self.index;
+                return Ok(());
+            }
+
+            self.proceed(s);
+            s = s.strip_prefix('"').expect("TODO");
+            self.parse_string(s)?;
+            s = self.text;
+
+            s = s.trim_start_matches(WHITESPACES);
+            s = s.strip_prefix(':').expect("TODO");
+            s = s.trim_start_matches(WHITESPACES);
+
+            self.proceed(s);
+            self.parse()?;
+            s = self.text;
+
+            s = s.trim_start_matches(WHITESPACES);
+            if s.starts_with('}') {
+                continue;
+            }
+            s = s.strip_prefix(',').expect("TODO");
+        }
     }
 
     fn parse_array(&mut self, mut s: &'a str) -> Result<(), Error> {
@@ -67,6 +100,7 @@ impl<'a> JsonParser<'a> {
             }
             self.proceed(s);
             self.parse()?;
+            s = self.text;
 
             s = s.trim_start_matches(WHITESPACES);
             if s.starts_with(']') {
