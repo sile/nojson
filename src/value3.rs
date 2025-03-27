@@ -46,12 +46,39 @@ impl<'a> JsonParser<'a> {
             self.parse_number()?;
         } else if let Some(s) = self.text.strip_prefix('"') {
             self.parse_string(s)?;
-        } else if self.text.starts_with('[') {
-            todo!()
+        } else if let Some(s) = self.text.strip_prefix('[') {
+            self.parse_array(s)?;
         } else if self.text.starts_with('{') {
             todo!()
         }
         Ok(())
+    }
+
+    fn parse_array(&mut self, mut s: &'a str) -> Result<(), Error> {
+        let i = self.values.len();
+        self.push_value(Kind::Array, 0);
+
+        loop {
+            s = s.trim_start_matches(WHITESPACES);
+            if let Some(s) = s.strip_prefix(']') {
+                self.proceed(s);
+                self.values[i].end = self.index;
+                return Ok(());
+            }
+            self.proceed(s);
+            self.parse()?;
+
+            s = s.trim_start_matches(WHITESPACES);
+            if s.starts_with(']') {
+                continue;
+            }
+            s = s.strip_prefix(',').expect("TODO");
+        }
+    }
+
+    fn proceed(&mut self, s: &'a str) {
+        self.index += self.text.len() - s.len();
+        self.text = s;
     }
 
     fn parse_string(&mut self, s: &str) -> Result<(), Error> {
