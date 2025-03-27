@@ -31,8 +31,9 @@ pub enum JsonValue<'a> {
 }
 
 impl<'a> JsonValue<'a> {
+    // TDOO: rename
     pub fn from_str_borrowed(text: &'a str) -> Result<Self, Error> {
-        let text = text.trim_matches(WHITESPACES); // TODO: remove?
+        let text = text.trim_start_matches(WHITESPACES);
         match text {
             "null" => Ok(Self::Null),
             "true" => Ok(Self::Bool(true)),
@@ -166,7 +167,7 @@ impl<'a> JsonArray<'a> {
         let s = s.strip_suffix(']').expect("TODO");
         let s = s.trim_matches(WHITESPACES);
 
-        let mut elements = Vec::new();
+        let elements = Vec::new();
         if s.is_empty() {
             return Ok(Self { text, elements });
         }
