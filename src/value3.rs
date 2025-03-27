@@ -44,14 +44,48 @@ impl<'a> JsonParser<'a> {
             self.push_value(Kind::Bool, "false".len());
         } else if self.text.starts_with(NUMBER_PREFIX) {
             self.parse_number()?;
-        } else if self.text.starts_with('"') {
-            todo!()
+        } else if let Some(s) = self.text.strip_prefix('"') {
+            self.parse_string(s)?;
         } else if self.text.starts_with('[') {
             todo!()
         } else if self.text.starts_with('{') {
             todo!()
         }
         Ok(())
+    }
+
+    fn parse_string(&mut self, s: &str) -> Result<(), Error> {
+        let mut kind = Kind::String;
+        let mut chars = s.chars();
+        while let Some(c) = chars.next() {
+            match c {
+                '"' => {
+                    let n = self.text.len() - s.len();
+                    self.push_value(kind, n);
+                    return Ok(());
+                }
+                '\\' => {
+                    kind = Kind::StringEscaped;
+                    let c = chars.next().expect("TODO");
+                    match c {
+                        '\\' | '"' | 'n' | 'r' | 't' | 'b' | 'f' => {}
+                        'u' => {
+                            let mut code_point = 0;
+                            for _ in 0..4 {
+                                let hex_char = chars.next().expect("TODO");
+                                let digit = hex_char.to_digit(16).expect("TODO");
+                                code_point = (code_point << 4) | digit;
+                            }
+                            char::from_u32(code_point).expect("TODO");
+                        }
+                        _ => todo!(),
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        todo!()
     }
 
     fn parse_number(&mut self) -> Result<(), Error> {
