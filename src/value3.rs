@@ -19,6 +19,16 @@ pub enum Kind {
     Object,
 }
 
+pub trait ParseJson: Sized {
+    fn parse_json(text: &str) -> Result<Self, Error>;
+}
+
+impl<'a, 'b, T: TryFrom<JsonText<'a, 'b>>> ParseJson for T {
+    fn parse_json(_text: &str) -> Result<Self, Error> {
+        todo!()
+    }
+}
+
 // TODO: rename
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct JsonValue {
