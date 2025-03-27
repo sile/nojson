@@ -7,6 +7,7 @@ use value::{JsonF64, JsonString};
 
 pub mod value;
 pub mod value2;
+pub mod value3;
 
 #[derive(Debug)]
 pub enum Error {
