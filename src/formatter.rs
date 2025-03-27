@@ -14,14 +14,26 @@ pub struct JsonF64(pub f64);
 #[derive(Debug)]
 pub struct JsonStr<T: AsRef<str>>(pub T);
 
+// #[derive(Debug)]
+// pub struct Json<T>(pub T);
+
+// impl<T: JsonDisplay> Display for Json<T> {
+//     fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         todo!()
+//     }
+// }
+
 #[derive(Debug)]
 pub struct Json<T>(pub T);
 
-impl<T: JsonDisplay> Display for Json<T> {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
+#[derive(Debug)]
+pub struct Null;
+
+#[derive(Debug)]
+pub struct FiniteF64(pub f64);
+
+#[derive(Debug)]
+pub struct Array<I>(pub I);
 
 #[derive(Debug)]
 pub struct JsonFormatter<W> {
