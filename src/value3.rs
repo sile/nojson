@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
 
 pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
 pub const NUMBER_PREFIX: [char; 11] = ['-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
@@ -25,6 +25,7 @@ pub struct JsonValue {
     pub kind: Kind,
     pub start: usize,
     pub end: usize,
+    pub scope: usize, // TODO: rename
 }
 
 #[derive(Debug)]
@@ -65,6 +66,7 @@ impl<'a> JsonParser<'a> {
             if let Some(s) = s.strip_prefix('}') {
                 self.proceed(s);
                 self.values[i].end = self.index;
+                self.values[i].scope = self.values.len() - i;
                 return Ok(());
             }
 
@@ -98,6 +100,7 @@ impl<'a> JsonParser<'a> {
             if let Some(s) = s.strip_prefix(']') {
                 self.proceed(s);
                 self.values[i].end = self.index;
+                self.values[i].scope = self.values.len() - i;
                 return Ok(());
             }
             self.proceed(s);
@@ -173,7 +176,12 @@ impl<'a> JsonParser<'a> {
     fn push_value(&mut self, kind: Kind, len: usize) {
         let start = self.index;
         let end = start + len;
-        self.values.push(JsonValue { kind, start, end });
+        self.values.push(JsonValue {
+            kind,
+            start,
+            end,
+            scope: 1,
+        });
         self.index = end;
         self.text = &self.text[len..];
     }
@@ -204,4 +212,92 @@ impl<'a> JsonText<'a, 'static> {
             values: Cow::Owned(parser.values),
         })
     }
+
+    fn root(&self) -> &JsonValue {
+        &self.values[0]
+    }
+
+    pub fn remaining_text(&self) -> &'a str {
+        &self.text[self.root().end..]
+    }
+
+    pub fn kind(&self) -> Kind {
+        self.root().kind
+    }
+
+    pub fn nullable<F, T>(&self, f: F) -> Result<Option<T>, Error>
+    where
+        F: FnOnce(&Self) -> Result<T, Error>,
+    {
+        (self.kind() != Kind::Null).then(|| f(self)).transpose()
+    }
+
+    pub fn expect_bool(&self) -> Result<bool, Error> {
+        todo!()
+    }
+
+    pub fn parse_integer<T>(&self) -> Result<T, Error>
+    where
+        T: FromStr,
+        Error: From<T::Err>,
+    {
+        self.parse_integer_with(|text| text.parse())
+    }
+
+    pub fn parse_integer_with<F, T, E>(&self, _f: F) -> Result<T, Error>
+    where
+        F: FnOnce(&str) -> Result<T, E>,
+        Error: From<E>,
+    {
+        todo!()
+    }
+
+    pub fn parse_number<T>(&self) -> Result<T, Error>
+    where
+        T: FromStr,
+        Error: From<T::Err>,
+    {
+        todo!()
+    }
+
+    pub fn parse_string<T>(&self) -> Result<T, Error>
+    where
+        T: FromStr,
+        Error: From<T::Err>,
+    {
+        todo!()
+    }
+
+    pub fn expect_array(&self) -> Result<JsonArray, Error> {
+        if self.kind() != Kind::Array {
+            todo!()
+        }
+        Ok(JsonArray {
+            text: &self.text,
+            values: &self.values[1..],
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct JsonArray<'a, 'b> {
+    pub text: &'a str,
+    pub values: &'b [JsonValue],
+}
+
+impl<'a, 'b> JsonArray<'a, 'b> {
+    pub fn get(&self, mut nth: usize) -> Option<JsonText> {
+        let mut i = 0;
+        while nth > 0 {
+            i += self.values[i].scope; // TODO: index check
+            nth -= 1;
+        }
+        let v = &self.values[i];
+        Some(JsonText {
+            text: self.text,
+            values: Cow::Borrowed(&self.values[i..][..v.scope]),
+        })
+    }
+
+    // TODO: expect_len(), Iterator
 }
