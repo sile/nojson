@@ -1,5 +1,6 @@
 pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
 pub const NUMBER_PREFIX: [char; 11] = ['-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+pub const DIGITS: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 #[derive(Debug)]
 pub struct Error {}
@@ -8,7 +9,8 @@ pub struct Error {}
 pub enum Kind {
     Null,
     Bool,
-    Number,
+    Integer,
+    Float,
     String,
     StringEscaped,
     Array,
@@ -41,7 +43,7 @@ impl<'a> JsonParser<'a> {
         } else if self.text.starts_with("false") {
             self.push_value(Kind::Bool, "false".len());
         } else if self.text.starts_with(NUMBER_PREFIX) {
-            todo!()
+            self.parse_number()?;
         } else if self.text.starts_with('"') {
             todo!()
         } else if self.text.starts_with('[') {
@@ -49,6 +51,25 @@ impl<'a> JsonParser<'a> {
         } else if self.text.starts_with('{') {
             todo!()
         }
+        Ok(())
+    }
+
+    fn parse_number(&mut self) -> Result<(), Error> {
+        let s = self.text.strip_prefix('-').unwrap_or(self.text);
+        let s = s.strip_prefix(DIGITS).expect("TODO");
+        let s = s.trim_start_matches(DIGITS);
+
+        let (kind, s) = if let Some(s) = s.strip_prefix('.') {
+            let s = s.strip_prefix(DIGITS).expect("TODO");
+            let s = s.trim_start_matches(DIGITS);
+            (Kind::Float, s)
+        } else {
+            (Kind::Integer, s)
+        };
+
+        let n = self.text.len() - s.len();
+        self.push_value(kind, n);
+
         Ok(())
     }
 
