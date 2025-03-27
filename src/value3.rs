@@ -184,6 +184,12 @@ impl<'a> JsonParser<'a> {
 }
 
 #[derive(Debug)]
+pub struct JsonTextSlice<'a> {
+    pub text: &'a str,
+    pub values: &'a [JsonValue],
+}
+
+#[derive(Debug)]
 pub struct JsonText<'a> {
     pub text: &'a str,
     pub values: Vec<JsonValue>,
