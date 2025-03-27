@@ -6,7 +6,6 @@ use std::{
 use value::{JsonF64, JsonString};
 
 pub mod formatter;
-pub mod value;
 pub mod value2;
 pub mod value3;
 

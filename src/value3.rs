@@ -29,6 +29,17 @@ impl<'a, 'b, T: TryFrom<JsonText<'a, 'b>>> ParseJson for T {
     }
 }
 
+#[derive(Debug)]
+pub struct Json<T>(pub T);
+
+impl<'a, 'b, T: TryFrom<JsonText<'a, 'b>>> FromStr for Json<T> {
+    type Err = Error;
+
+    fn from_str(_s: &str) -> Result<Self, Self::Err> {
+        todo!()
+    }
+}
+
 // TODO: rename
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct JsonValue {
