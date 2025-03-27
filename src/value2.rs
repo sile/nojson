@@ -1,4 +1,4 @@
-use std::{borrow::Cow, str::FromStr};
+use std::str::FromStr;
 
 use crate::value::Json;
 
@@ -22,14 +22,15 @@ pub enum PathItem {
 }
 
 #[derive(Debug, Clone)]
-pub enum Value<'a> {
+pub enum JsonValue<'a> {
     Null,
     Bool(bool),
     Number(JsonNumber<'a>),
     String(JsonString<'a>),
+    Array(JsonArray<'a>),
 }
 
-impl<'a> Value<'a> {
+impl<'a> JsonValue<'a> {
     pub fn from_str_borrowed(text: &'a str) -> Result<Self, Error> {
         let text = text.trim_matches(WHITESPACES); // TODO: remove?
         match text {
@@ -41,7 +42,7 @@ impl<'a> Value<'a> {
                 match c {
                     '-' | '0' => JsonNumber::from_str_borrowed(text).map(Self::Number),
                     '"' => JsonString::from_str_borrowed(text).map(Self::String),
-                    '[' => todo!(),
+                    '[' => JsonArray::from_str_borrowed(text).map(Self::Array),
                     '{' => todo!(),
                     _ => todo!(),
                 }
@@ -59,23 +60,25 @@ impl<'a> Value<'a> {
 
     // parse_nullable
 
-    pub fn to_owned(&self) -> Value<'static> {
+    // TODO: JsonValueOwned?
+    pub fn to_owned(&self) -> JsonValue<'static> {
         todo!()
     }
 }
 
-impl FromStr for Value<'static> {
+impl FromStr for JsonValue<'static> {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let value = Value::from_str_borrowed(s)?;
+        let value = JsonValue::from_str_borrowed(s)?;
         Ok(value.to_owned())
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct JsonString<'a> {
-    pub text: Cow<'a, str>,
+    pub text: &'a str,
+    pub unescaped_text: Option<String>,
 }
 
 impl<'a> JsonString<'a> {
@@ -84,7 +87,8 @@ impl<'a> JsonString<'a> {
         let s = s.strip_suffix('"').expect("TODO");
         if !s.contains(['"', '\\']) {
             return Ok(Self {
-                text: Cow::Borrowed(text),
+                text,
+                unescaped_text: None,
             });
         }
 
@@ -122,14 +126,15 @@ impl<'a> JsonString<'a> {
         unescaped.push('"');
 
         Ok(Self {
-            text: Cow::Owned(unescaped),
+            text,
+            unescaped_text: Some(unescaped),
         })
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct JsonNumber<'a> {
-    pub text: Cow<'a, str>,
+    pub text: &'a str,
 }
 
 impl<'a> JsonNumber<'a> {
@@ -144,8 +149,28 @@ impl<'a> JsonNumber<'a> {
         if !valid {
             todo!()
         }
-        Ok(Self {
-            text: Cow::Borrowed(text),
-        })
+        Ok(Self { text })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct JsonArray<'a> {
+    pub text: &'a str,
+    // TODO: rename
+    pub elements: Vec<JsonValue<'a>>,
+}
+
+impl<'a> JsonArray<'a> {
+    pub fn from_str_borrowed(text: &'a str) -> Result<Self, Error> {
+        let s = text.strip_prefix('[').expect("TODO");
+        let s = s.strip_suffix(']').expect("TODO");
+        let s = s.trim_matches(WHITESPACES);
+
+        let mut elements = Vec::new();
+        if s.is_empty() {
+            return Ok(Self { text, elements });
+        }
+
+        todo!()
     }
 }
