@@ -230,9 +230,9 @@ impl<'a, 'b> JsonArrayFormatter<'a, 'b> {
         }
     }
 
-    pub fn value<T>(&mut self, value: T) -> &mut Self
+    pub fn value_with<F>(&mut self, f: F) -> &mut Self
     where
-        T: DisplayJson,
+        F: FnOnce(&mut std::fmt::Formatter<'b>) -> std::fmt::Result,
     {
         if self.error.is_some() {
             return self;
@@ -247,12 +247,19 @@ impl<'a, 'b> JsonArrayFormatter<'a, 'b> {
             self.first = false;
         }
 
-        self.error = write!(self.inner, "{}", Json(value)).err();
+        self.error = f(self.inner).err();
         if self.error.is_some() {
             return self;
         }
 
         self
+    }
+
+    pub fn value<T>(&mut self, value: T) -> &mut Self
+    where
+        T: DisplayJson,
+    {
+        self.value_with(|f| write!(f, "{}", Json(value)))
     }
 
     pub fn values<I>(&mut self, iter: I) -> &mut Self
@@ -296,10 +303,10 @@ impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
         }
     }
 
-    pub fn member<K, V>(&mut self, key: K, value: V) -> &mut Self
+    pub fn member_with<K, F>(&mut self, key: K, f: F) -> &mut Self
     where
         K: DisplayJsonString,
-        V: DisplayJson,
+        F: FnOnce(&mut std::fmt::Formatter<'b>) -> std::fmt::Result,
     {
         if self.error.is_some() {
             return self;
@@ -314,12 +321,22 @@ impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
             self.first = false;
         }
 
-        self.error = write!(self.inner, "{}:{}", Json(key), Json(value)).err();
+        self.error = write!(self.inner, "{}:", Json(key))
+            .and_then(|()| f(self.inner))
+            .err();
         if self.error.is_some() {
             return self;
         }
 
         self
+    }
+
+    pub fn member<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: DisplayJsonString,
+        V: DisplayJson,
+    {
+        self.member_with(key, |f| write!(f, "{}", Json(value)))
     }
 
     pub fn members<I, K, V>(&mut self, iter: I) -> &mut Self
