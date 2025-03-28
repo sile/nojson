@@ -7,7 +7,7 @@ mod value;
 
 use std::fmt::Display;
 
-pub use format::{Array, DisplayJson};
+pub use format::{Array, DisplayJson, DisplayJsonString, Object};
 pub use value::{FiniteF64, Value};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

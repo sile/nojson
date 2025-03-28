@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
-    fmt::Display,
-};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crate::Json;
 
@@ -14,11 +11,17 @@ pub trait DisplayJson {
     // }
 }
 
+pub trait DisplayJsonString: DisplayJson {}
+
 impl<'a, T: DisplayJson> DisplayJson for &'a T {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         (*self).fmt(f)
     }
 }
+
+impl<T: DisplayJson> DisplayJsonString for Box<T> {}
+
+impl<'a, T: DisplayJson> DisplayJsonString for &'a T {}
 
 impl<T: DisplayJson> DisplayJson for Box<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -92,7 +95,7 @@ impl DisplayJson for u128 {
     }
 }
 
-impl DisplayJson for String {
+impl<'a> DisplayJson for &'a str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\"")?;
         let mut chars = self.chars();
@@ -114,6 +117,14 @@ impl DisplayJson for String {
     }
 }
 
+impl DisplayJson for String {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+
+impl DisplayJsonString for String {}
+
 impl<T: DisplayJson> DisplayJson for &[T] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Array(self.iter()).fmt(f)
@@ -132,15 +143,15 @@ impl<T: DisplayJson> DisplayJson for VecDeque<T> {
     }
 }
 
-impl<K: Display, V: DisplayJson> DisplayJson for BTreeMap<K, V> {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for BTreeMap<K, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Object(self.iter()).fmt(f)
     }
 }
 
-impl<K: Display, V: DisplayJson> DisplayJson for HashMap<K, V> {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for HashMap<K, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Object(self.iter()).fmt(f)
     }
 }
 
@@ -167,4 +178,26 @@ where
     }
 }
 
-// TODO: ObjectIter
+// TODO: ObjectIter?
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Object<T>(pub T);
+
+impl<T, K, V> DisplayJson for Object<T>
+where
+    T: Iterator<Item = (K, V)> + Clone,
+    K: DisplayJsonString,
+    V: DisplayJson,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{")?;
+        let mut members = self.0.clone();
+        if let Some((k, v)) = members.next() {
+            write!(f, "{}:{}", Json(k), Json(v))?;
+        }
+        for (k, v) in members {
+            write!(f, ",{}:{}", Json(k), Json(v))?;
+        }
+        write!(f, "}}")?;
+        Ok(())
+    }
+}

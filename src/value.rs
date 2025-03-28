@@ -22,18 +22,7 @@ impl DisplayJson for Value {
             Value::Float(v) => write!(f, "{v}"),
             Value::String(v) => write!(f, "{}", Json(v)),
             Value::Array(v) => write!(f, "{}", Json(v)),
-            Value::Object(vs) => {
-                write!(f, "{{")?;
-                let mut vs = vs.iter();
-                if let Some((k, v)) = vs.next() {
-                    write!(f, "{k}:{v}")?;
-                }
-                for (k, v) in vs {
-                    write!(f, ",{k}:{v}")?;
-                }
-                write!(f, "}}")?;
-                Ok(())
-            }
+            Value::Object(v) => write!(f, "{}", Json(v)),
         }
     }
 }
