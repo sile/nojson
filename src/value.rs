@@ -15,7 +15,37 @@ pub enum Value {
 
 impl DisplayJson for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        match self {
+            Value::Null => write!(f, "null"),
+            Value::Bool(v) => write!(f, "{v}"),
+            Value::Integer(v) => write!(f, "{v}"),
+            Value::Float(v) => write!(f, "{v}"),
+            Value::String(v) => DisplayJson::fmt(v, f),
+            Value::Array(vs) => {
+                write!(f, "[")?;
+                let mut vs = vs.iter();
+                if let Some(v) = vs.next() {
+                    write!(f, "{v}")?;
+                }
+                for v in vs {
+                    write!(f, ",{v}")?;
+                }
+                write!(f, "]")?;
+                Ok(())
+            }
+            Value::Object(vs) => {
+                write!(f, "{{")?;
+                let mut vs = vs.iter();
+                if let Some((k, v)) = vs.next() {
+                    write!(f, "{k}:{v}")?;
+                }
+                for (k, v) in vs {
+                    write!(f, ",{k}:{v}")?;
+                }
+                write!(f, "}}")?;
+                Ok(())
+            }
+        }
     }
 }
 
@@ -55,5 +85,17 @@ impl Ord for FiniteF64 {
 impl Hash for FiniteF64 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.to_bits().hash(state);
+    }
+}
+
+impl DisplayJson for FiniteF64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Display for FiniteF64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        DisplayJson::fmt(self, f)
     }
 }
