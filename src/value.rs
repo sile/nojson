@@ -41,6 +41,7 @@ pub struct FiniteF64(f64);
 impl FiniteF64 {
     pub const fn new(v: f64) -> Option<Self> {
         if v.is_finite() {
+            // Normalize negative zero for hashing purposes.
             Some(Self(if v == -0.0 { 0.0 } else { v }))
         } else {
             None

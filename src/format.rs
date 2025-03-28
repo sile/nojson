@@ -139,25 +139,25 @@ impl DisplayJsonString for String {}
 
 impl<T: DisplayJson> DisplayJson for &[T] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayIter(self.iter()).fmt(f)
+        ArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
 impl<T: DisplayJson, const N: usize> DisplayJson for [T; N] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayIter(self.iter()).fmt(f)
+        ArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
 impl<T: DisplayJson> DisplayJson for Vec<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayIter(self.iter()).fmt(f)
+        ArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
 impl<T: DisplayJson> DisplayJson for VecDeque<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayIter(self.iter()).fmt(f)
+        ArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
@@ -176,22 +176,14 @@ impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for HashMap<K, V> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ArrayIter<T>(pub T);
 
-impl<T> DisplayJson for ArrayIter<T>
+impl<F, I> DisplayJson for ArrayIter<F>
 where
-    T: Iterator + Clone,
-    T::Item: DisplayJson,
+    F: Fn() -> I,
+    I: Iterator,
+    I::Item: DisplayJson,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[")?;
-        let mut vs = self.0.clone();
-        if let Some(v) = vs.next() {
-            write!(f, "{}", Json(v))?;
-        }
-        for v in vs {
-            write!(f, ",{}", Json(v))?;
-        }
-        write!(f, "]")?;
-        Ok(())
+        ArrayFormatter::new(f).values(self.0()).finish()
     }
 }
 
@@ -206,16 +198,7 @@ where
     V: DisplayJson,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{")?;
-        let mut members = self.0();
-        if let Some((k, v)) = members.next() {
-            write!(f, "{}:{}", Json(k), Json(v))?;
-        }
-        for (k, v) in members {
-            write!(f, ",{}:{}", Json(k), Json(v))?;
-        }
-        write!(f, "}}")?;
-        Ok(())
+        ObjectFormatter::new(f).members(self.0()).finish()
     }
 }
 
@@ -226,6 +209,72 @@ impl<T: DisplayJson> DisplayJson for Option<T> {
         } else {
             write!(f, "null")
         }
+    }
+}
+
+pub struct ArrayFormatter<'a, 'b> {
+    inner: &'a mut std::fmt::Formatter<'b>,
+    first: bool,
+    error: Option<std::fmt::Error>,
+}
+
+impl<'a, 'b> ArrayFormatter<'a, 'b> {
+    pub fn new(inner: &'a mut std::fmt::Formatter<'b>) -> Self {
+        let error = write!(inner, "[").err();
+        Self {
+            inner,
+            first: true,
+            error,
+        }
+    }
+
+    pub fn value<T>(&mut self, value: T) -> &mut Self
+    where
+        T: DisplayJson,
+    {
+        if self.error.is_some() {
+            return self;
+        }
+
+        if !self.first {
+            self.error = write!(self.inner, ",").err();
+            if self.error.is_some() {
+                return self;
+            }
+        } else {
+            self.first = false;
+        }
+
+        self.error = write!(self.inner, "{}", Json(value)).err();
+        if self.error.is_some() {
+            return self;
+        }
+
+        self
+    }
+
+    pub fn values<I>(&mut self, iter: I) -> &mut Self
+    where
+        I: IntoIterator,
+        I::Item: DisplayJson,
+    {
+        if self.error.is_some() {
+            return self;
+        }
+        for v in iter {
+            if self.value(v).error.is_some() {
+                break;
+            }
+        }
+        self
+    }
+
+    pub fn finish(&mut self) -> std::fmt::Result {
+        if let Some(e) = self.error.take() {
+            return Err(e);
+        }
+        write!(self.inner, "]")?;
+        Ok(())
     }
 }
 
