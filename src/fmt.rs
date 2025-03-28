@@ -173,11 +173,10 @@ impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for HashMap<K, V> {
     }
 }
 
-// TODO: rename
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ArrayIter<T>(pub T);
+pub struct JsonArrayValues<T>(pub T);
 
-impl<F, I> DisplayJson for ArrayIter<F>
+impl<F, I> DisplayJson for JsonArrayValues<F>
 where
     F: Fn() -> I,
     I: Iterator,
@@ -188,11 +187,10 @@ where
     }
 }
 
-// TODO: rename
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ObjectIter<T>(pub T);
+pub struct JsonObjectMembers<T>(pub T);
 
-impl<F, I, K, V> DisplayJson for ObjectIter<F>
+impl<F, I, K, V> DisplayJson for JsonObjectMembers<F>
 where
     F: Fn() -> I,
     I: Iterator<Item = (K, V)>,
