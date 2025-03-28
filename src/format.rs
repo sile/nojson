@@ -127,39 +127,38 @@ impl DisplayJsonString for String {}
 
 impl<T: DisplayJson> DisplayJson for &[T] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Array(self.iter()).fmt(f)
+        ArrayIter(self.iter()).fmt(f)
     }
 }
 
 impl<T: DisplayJson> DisplayJson for Vec<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Array(self.iter()).fmt(f)
+        ArrayIter(self.iter()).fmt(f)
     }
 }
 
 impl<T: DisplayJson> DisplayJson for VecDeque<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Array(self.iter()).fmt(f)
+        ArrayIter(self.iter()).fmt(f)
     }
 }
 
 impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for BTreeMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Object(self.iter()).fmt(f)
+        ObjectIter(self.iter()).fmt(f)
     }
 }
 
 impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for HashMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Object(self.iter()).fmt(f)
+        ObjectIter(self.iter()).fmt(f)
     }
 }
 
-// TODO: ArrayIter?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Array<T>(pub T);
+pub struct ArrayIter<T>(pub T);
 
-impl<T> DisplayJson for Array<T>
+impl<T> DisplayJson for ArrayIter<T>
 where
     T: Iterator + Clone,
     T::Item: DisplayJson,
@@ -178,11 +177,10 @@ where
     }
 }
 
-// TODO: ObjectIter?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Object<T>(pub T);
+pub struct ObjectIter<T>(pub T);
 
-impl<T, K, V> DisplayJson for Object<T>
+impl<T, K, V> DisplayJson for ObjectIter<T>
 where
     T: Iterator<Item = (K, V)> + Clone,
     K: DisplayJsonString,
