@@ -2,6 +2,7 @@
 pub mod value3;
 
 pub mod fmt;
+pub mod str;
 mod value;
 
 pub use value::{FiniteF64, Value};
