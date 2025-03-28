@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt::Display, hash::Hash};
 
-use crate::DisplayJson;
+use crate::{DisplayJson, Json};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Value {
@@ -20,19 +20,8 @@ impl DisplayJson for Value {
             Value::Bool(v) => write!(f, "{v}"),
             Value::Integer(v) => write!(f, "{v}"),
             Value::Float(v) => write!(f, "{v}"),
-            Value::String(v) => DisplayJson::fmt(v, f),
-            Value::Array(vs) => {
-                write!(f, "[")?;
-                let mut vs = vs.iter();
-                if let Some(v) = vs.next() {
-                    write!(f, "{v}")?;
-                }
-                for v in vs {
-                    write!(f, ",{v}")?;
-                }
-                write!(f, "]")?;
-                Ok(())
-            }
+            Value::String(v) => write!(f, "{}", Json(v)),
+            Value::Array(v) => write!(f, "{}", Json(v)),
             Value::Object(vs) => {
                 write!(f, "{{")?;
                 let mut vs = vs.iter();
