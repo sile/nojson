@@ -95,6 +95,18 @@ impl DisplayJson for u128 {
     }
 }
 
+impl DisplayJson for isize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+impl DisplayJson for usize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
 impl<'a> DisplayJson for &'a str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\"")?;
@@ -213,5 +225,73 @@ impl<T: DisplayJson> DisplayJson for Option<T> {
         } else {
             write!(f, "null")
         }
+    }
+}
+
+pub struct ObjectFormatter<'a, 'b> {
+    inner: &'a mut std::fmt::Formatter<'b>,
+    first: bool,
+    error: Option<std::fmt::Error>,
+}
+
+impl<'a, 'b> ObjectFormatter<'a, 'b> {
+    pub fn new(inner: &'a mut std::fmt::Formatter<'b>) -> Self {
+        let error = write!(inner, "{{").err();
+        Self {
+            inner,
+            first: true,
+            error,
+        }
+    }
+
+    pub fn member<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: DisplayJsonString,
+        V: DisplayJson,
+    {
+        if self.error.is_some() {
+            return self;
+        }
+
+        if !self.first {
+            self.error = write!(self.inner, ",").err();
+            if self.error.is_some() {
+                return self;
+            }
+        } else {
+            self.first = false;
+        }
+
+        self.error = write!(self.inner, "{}:{}", Json(key), Json(value)).err();
+        if self.error.is_some() {
+            return self;
+        }
+
+        self
+    }
+
+    pub fn members<I, K, V>(&mut self, iter: I) -> &mut Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: DisplayJsonString,
+        V: DisplayJson,
+    {
+        if self.error.is_some() {
+            return self;
+        }
+        for (k, v) in iter {
+            if self.member(k, v).error.is_some() {
+                break;
+            }
+        }
+        self
+    }
+
+    pub fn finish(self) -> std::fmt::Result {
+        if let Some(e) = self.error {
+            return Err(e);
+        }
+        write!(self.inner, "}}")?;
+        Ok(())
     }
 }
