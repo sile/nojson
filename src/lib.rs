@@ -1,40 +1,11 @@
-use std::{
-    num::{ParseFloatError, ParseIntError},
-    str::ParseBoolError,
-};
-
 pub mod formatter;
 //pub mod value2;
+mod value;
 pub mod value3;
 
-#[derive(Debug)]
-pub enum Error {
-    Eos,
-    InvalidJsonValue,
-    NotNull,
-    NotBool,
-    NotNumber,
-    NotFiniteFloat, // TODO
-    NotValidFloat,
-    NotString, // TODO
-    NotValidString,
-    NotValidArray,
-}
+pub use value::{FiniteF64, Value};
 
-impl From<ParseBoolError> for Error {
-    fn from(_value: ParseBoolError) -> Self {
-        Self::NotBool
-    }
-}
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Json<T>(pub T);
 
-impl From<ParseIntError> for Error {
-    fn from(_value: ParseIntError) -> Self {
-        Self::NotNumber
-    }
-}
-
-impl From<ParseFloatError> for Error {
-    fn from(_value: ParseFloatError) -> Self {
-        Self::NotNumber
-    }
-}
+// TODO: Display, FromStr
