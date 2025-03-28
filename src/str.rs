@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 // TODO: private
 pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
 
@@ -24,38 +26,44 @@ pub enum JsonStrKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct JsonStr<'a> {
-    json: &'a str,
+    text: &'a str,
 }
 
 impl<'a> JsonStr<'a> {
     pub fn new(text: &'a str) -> Result<Self, Error> {
+        Ok(Self { text })
+    }
+
+    pub fn text(&self) -> &'a str {
+        self.text
+    }
+
+    pub fn nullable<F, T>(&self, _f: F) -> Result<Option<T>, Error>
+    where
+        F: FnOnce() -> Result<T, Error>,
+    {
         todo!()
     }
-}
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonNullStr<'a> {
-    json: &'a str,
-}
+    pub fn parse_integer<T>(&self) -> Result<T, Error>
+    where
+        T: FromStr,
+        Error: From<T::Err>,
+    {
+        self.parse_integer_with(|s| s.parse())
+    }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonBoolStr<'a> {
-    json: &'a str,
-}
+    pub fn parse_integer_with<F, T, E>(&self, _f: F) -> Result<T, Error>
+    where
+        F: FnOnce(&str) -> Result<T, E>,
+        Error: From<E>,
+    {
+        todo!()
+    }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonIntegerStr<'a> {
-    json: &'a str,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonFloatStr<'a> {
-    json: &'a str,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonStringStr<'a> {
-    json: &'a str,
+    // TODO: kind()
+    // TODO: parse_null(), parse_bool(), parse_float(), parse_number(), parse_string()
+    // TODO: array(), object()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
