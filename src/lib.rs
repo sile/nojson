@@ -17,4 +17,11 @@ impl<T: fmt::DisplayJson> std::fmt::Display for Json<T> {
     }
 }
 
-// TODO: FromStr
+impl<T: str::FromJsonStr> std::str::FromStr for Json<T> {
+    type Err = str::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = str::JsonStr::new(s)?;
+        T::from_json_str(&s).map(Self)
+    }
+}
