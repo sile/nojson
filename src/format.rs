@@ -163,13 +163,13 @@ impl<T: DisplayJson> DisplayJson for VecDeque<T> {
 
 impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for BTreeMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ObjectIter(self.iter()).fmt(f)
+        ObjectFormatter::new(f).members(self.iter()).finish()
     }
 }
 
 impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for HashMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ObjectIter(self.iter()).fmt(f)
+        ObjectFormatter::new(f).members(self.iter()).finish()
     }
 }
 
@@ -198,15 +198,16 @@ where
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjectIter<T>(pub T);
 
-impl<T, K, V> DisplayJson for ObjectIter<T>
+impl<F, I, K, V> DisplayJson for ObjectIter<F>
 where
-    T: Iterator<Item = (K, V)> + Clone,
+    F: Fn() -> I,
+    I: Iterator<Item = (K, V)>,
     K: DisplayJsonString,
     V: DisplayJson,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{")?;
-        let mut members = self.0.clone();
+        let mut members = self.0();
         if let Some((k, v)) = members.next() {
             write!(f, "{}:{}", Json(k), Json(v))?;
         }
@@ -287,8 +288,8 @@ impl<'a, 'b> ObjectFormatter<'a, 'b> {
         self
     }
 
-    pub fn finish(self) -> std::fmt::Result {
-        if let Some(e) = self.error {
+    pub fn finish(&mut self) -> std::fmt::Result {
+        if let Some(e) = self.error.take() {
             return Err(e);
         }
         write!(self.inner, "}}")?;
