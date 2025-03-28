@@ -2,10 +2,11 @@
 pub mod value3;
 
 pub mod fmt;
+pub mod num;
 pub mod str;
 mod value;
 
-pub use value::{FiniteF64, JsonValue};
+pub use value::JsonValue;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);
