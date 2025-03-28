@@ -9,6 +9,11 @@ pub struct JsonNullStr<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct JsonBoolStr<'a> {
+    json: &'a str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct JsonIntegerStr<'a> {
     json: &'a str,
 }
