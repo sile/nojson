@@ -3,31 +3,31 @@ use std::{collections::BTreeMap, fmt::Display, hash::Hash};
 use crate::{Json, fmt::DisplayJson};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Value {
+pub enum JsonValue {
     Null,
     Bool(bool),
     Integer(i64),
     Float(FiniteF64),
     String(String),
-    Array(Vec<Value>),
-    Object(BTreeMap<String, Value>),
+    Array(Vec<JsonValue>),
+    Object(BTreeMap<String, JsonValue>),
 }
 
-impl DisplayJson for Value {
+impl DisplayJson for JsonValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Null => write!(f, "null"),
-            Value::Bool(v) => write!(f, "{v}"),
-            Value::Integer(v) => write!(f, "{v}"),
-            Value::Float(v) => write!(f, "{v}"),
-            Value::String(v) => write!(f, "{}", Json(v)),
-            Value::Array(v) => write!(f, "{}", Json(v)),
-            Value::Object(v) => write!(f, "{}", Json(v)),
+            JsonValue::Null => write!(f, "null"),
+            JsonValue::Bool(v) => write!(f, "{v}"),
+            JsonValue::Integer(v) => write!(f, "{v}"),
+            JsonValue::Float(v) => write!(f, "{v}"),
+            JsonValue::String(v) => write!(f, "{}", Json(v)),
+            JsonValue::Array(v) => write!(f, "{}", Json(v)),
+            JsonValue::Object(v) => write!(f, "{}", Json(v)),
         }
     }
 }
 
-impl Display for Value {
+impl Display for JsonValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         DisplayJson::fmt(self, f)
     }

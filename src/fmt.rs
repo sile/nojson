@@ -139,40 +139,41 @@ impl DisplayJsonString for String {}
 
 impl<T: DisplayJson> DisplayJson for &[T] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayFormatter::new(f).values(self.iter()).finish()
+        JsonArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
 impl<T: DisplayJson, const N: usize> DisplayJson for [T; N] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayFormatter::new(f).values(self.iter()).finish()
+        JsonArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
 impl<T: DisplayJson> DisplayJson for Vec<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayFormatter::new(f).values(self.iter()).finish()
+        JsonArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
 impl<T: DisplayJson> DisplayJson for VecDeque<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayFormatter::new(f).values(self.iter()).finish()
+        JsonArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
 impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for BTreeMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ObjectFormatter::new(f).members(self.iter()).finish()
+        JsonObjectFormatter::new(f).members(self.iter()).finish()
     }
 }
 
 impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for HashMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ObjectFormatter::new(f).members(self.iter()).finish()
+        JsonObjectFormatter::new(f).members(self.iter()).finish()
     }
 }
 
+// TODO: rename
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ArrayIter<T>(pub T);
 
@@ -183,10 +184,11 @@ where
     I::Item: DisplayJson,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ArrayFormatter::new(f).values(self.0()).finish()
+        JsonArrayFormatter::new(f).values(self.0()).finish()
     }
 }
 
+// TODO: rename
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjectIter<T>(pub T);
 
@@ -198,7 +200,7 @@ where
     V: DisplayJson,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ObjectFormatter::new(f).members(self.0()).finish()
+        JsonObjectFormatter::new(f).members(self.0()).finish()
     }
 }
 
@@ -212,13 +214,13 @@ impl<T: DisplayJson> DisplayJson for Option<T> {
     }
 }
 
-pub struct ArrayFormatter<'a, 'b> {
+pub struct JsonArrayFormatter<'a, 'b> {
     inner: &'a mut std::fmt::Formatter<'b>,
     first: bool,
     error: Option<std::fmt::Error>,
 }
 
-impl<'a, 'b> ArrayFormatter<'a, 'b> {
+impl<'a, 'b> JsonArrayFormatter<'a, 'b> {
     pub fn new(inner: &'a mut std::fmt::Formatter<'b>) -> Self {
         let error = write!(inner, "[").err();
         Self {
@@ -278,13 +280,13 @@ impl<'a, 'b> ArrayFormatter<'a, 'b> {
     }
 }
 
-pub struct ObjectFormatter<'a, 'b> {
+pub struct JsonObjectFormatter<'a, 'b> {
     inner: &'a mut std::fmt::Formatter<'b>,
     first: bool,
     error: Option<std::fmt::Error>,
 }
 
-impl<'a, 'b> ObjectFormatter<'a, 'b> {
+impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
     pub fn new(inner: &'a mut std::fmt::Formatter<'b>) -> Self {
         let error = write!(inner, "{{").err();
         Self {
