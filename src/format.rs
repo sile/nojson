@@ -131,6 +131,12 @@ impl<T: DisplayJson> DisplayJson for &[T] {
     }
 }
 
+impl<T: DisplayJson, const N: usize> DisplayJson for [T; N] {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        ArrayIter(self.iter()).fmt(f)
+    }
+}
+
 impl<T: DisplayJson> DisplayJson for Vec<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         ArrayIter(self.iter()).fmt(f)
