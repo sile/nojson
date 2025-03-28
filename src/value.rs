@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt::Display, hash::Hash};
 
-use crate::{DisplayJson, Json};
+use crate::{Json, fmt::DisplayJson};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Value {
