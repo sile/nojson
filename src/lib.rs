@@ -2,7 +2,7 @@ pub mod formatter;
 //pub mod value2;
 pub mod value3;
 
-mod format;
+mod format; // TDOO: pub fmt (?)
 mod value;
 
 use std::fmt::Display;

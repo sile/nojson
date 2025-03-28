@@ -205,3 +205,13 @@ where
         Ok(())
     }
 }
+
+impl<T: DisplayJson> DisplayJson for Option<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(v) = self {
+            write!(f, "{}", Json(v))
+        } else {
+            write!(f, "null")
+        }
+    }
+}
