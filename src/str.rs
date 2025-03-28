@@ -25,16 +25,16 @@ pub enum JsonStrKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonStr<'a> {
-    text: &'a str,
+pub struct JsonStr<'t> {
+    text: &'t str,
 }
 
-impl<'a> JsonStr<'a> {
-    pub fn new(text: &'a str) -> Result<Self, Error> {
+impl<'t> JsonStr<'t> {
+    pub fn new(text: &'t str) -> Result<Self, Error> {
         Ok(Self { text })
     }
 
-    pub fn text(&self) -> &'a str {
+    pub fn text(&self) -> &'t str {
         self.text
     }
 
@@ -61,14 +61,35 @@ impl<'a> JsonStr<'a> {
         todo!()
     }
 
+    pub fn as_array(&self) -> Result<JsonArrayStr<'_, 't>, Error> {
+        todo!()
+    }
+
+    // pub fn with_array_indices()
+    // pub fn with_object_members()
+
     // TODO: kind()
     // TODO: parse_null(), parse_bool(), parse_float(), parse_number(), parse_string()
     // TODO: array(), object()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonArrayStr<'a> {
-    json: &'a str,
+pub struct JsonArrayStr<'a, 't> {
+    s: &'a JsonStr<'t>,
+}
+
+impl<'a, 't> JsonArrayStr<'a, 't> {
+    pub fn get(&self, _index: usize) -> Result<&'a JsonStr<'t>, Error> {
+        todo!()
+    }
+}
+
+impl<'a, 't> Iterator for JsonArrayStr<'a, 't> {
+    type Item = &'a JsonStr<'t>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
