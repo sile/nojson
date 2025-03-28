@@ -1,4 +1,6 @@
-use std::{collections::BTreeMap, hash::Hash};
+use std::{collections::BTreeMap, fmt::Display, hash::Hash};
+
+use crate::DisplayJson;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Value {
@@ -11,7 +13,19 @@ pub enum Value {
     Object(BTreeMap<String, Value>),
 }
 
-// TODO: Display, FromStr
+impl DisplayJson for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        DisplayJson::fmt(self, f)
+    }
+}
+
+// TODO:  FromStr
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
 pub struct FiniteF64(f64);
