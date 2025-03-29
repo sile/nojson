@@ -1,4 +1,4 @@
-use std::{borrow::Cow, hash::Hash, ops::Range};
+use std::{borrow::Cow, hash::Hash, num::NonZeroUsize, ops::Range};
 
 // TODO: private
 pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
@@ -6,14 +6,28 @@ pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
 // TODO: Result
 
 #[derive(Debug)]
-pub struct Error<'text, 'index> {
+pub struct Error {
     pub kind: ErrorKind,
-    pub context: JsonStr<'text, 'index>, // TODO: location or else
+    pub context: ErrorContext,
     pub reason: Option<Box<dyn Send + Sync + std::error::Error>>,
 }
 
-impl<'text, 'index> Error<'text, 'index> {
-    pub fn new<E>(kind: ErrorKind, context: &JsonStr<'text, 'index>, reason: E) -> Self
+#[derive(Debug)]
+pub struct ErrorContext {
+    pub line: NonZeroUsize,
+    pub column: NonZeroUsize,
+    pub path: Vec<()>,
+}
+
+#[derive(Debug)]
+pub struct Error2<'text, 'index> {
+    pub kind: ErrorKind,
+    pub context: JsonStr3<'text, 'index>, // TODO: location or else
+    pub reason: Option<Box<dyn Send + Sync + std::error::Error>>,
+}
+
+impl<'text, 'index> Error2<'text, 'index> {
+    pub fn new<E>(kind: ErrorKind, context: &JsonStr3<'text, 'index>, reason: E) -> Self
     where
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
@@ -28,10 +42,8 @@ impl<'text, 'index> Error<'text, 'index> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ErrorKind {}
 
-pub trait FromJsonStr: Sized {
-    fn from_json_str<'text, 'index>(
-        s: &JsonStr<'text, 'index>,
-    ) -> Result<Self, Error<'text, 'index>>;
+pub trait FromJsonValueStr: Sized {
+    fn from_json_value_str(s: &JsonValueStr) -> Result<Self, Error>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -44,53 +56,52 @@ pub enum JsonStrKind {
     Object,
 }
 
-// TODO: rename
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct JsonValue {
+struct JsonValueIndexEntry {
     kind: JsonStrKind,
     text: Range<usize>,
-    value: Range<usize>,
+    size: NonZeroUsize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JsonStr2<'a> {
+pub struct JsonStr<'a> {
     text: &'a str,
-    values: Vec<JsonValue>,
+    values: Vec<JsonValueIndexEntry>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsonValueStr<'a> {
-    json: &'a JsonStr2<'a>,
+    json: &'a JsonStr<'a>,
     index: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JsonStr<'text, 'index> {
+pub struct JsonStr3<'text, 'index> {
     text: Cow<'text, str>,
     index: usize,
-    values: Cow<'index, [JsonValue]>,
+    values: Cow<'index, [JsonValueIndexEntry]>,
 }
 
-impl<'text, 'index> PartialOrd for JsonStr<'text, 'index> {
+impl<'text, 'index> PartialOrd for JsonStr3<'text, 'index> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'text, 'index> Ord for JsonStr<'text, 'index> {
+impl<'text, 'index> Ord for JsonStr3<'text, 'index> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         (&self.text, self.index).cmp(&(&other.text, other.index))
     }
 }
 
-impl<'text, 'index> Hash for JsonStr<'text, 'index> {
+impl<'text, 'index> Hash for JsonStr3<'text, 'index> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         (&self.text, self.index).hash(state);
     }
 }
 
-impl<'text> JsonStr<'text, 'static> {
-    pub fn new(text: &'text str) -> Result<Self, Error<'text, 'static>> {
+impl<'text> JsonStr3<'text, 'static> {
+    pub fn new(text: &'text str) -> Result<Self, Error2<'text, 'static>> {
         Ok(Self {
             text: Cow::Borrowed(text),
             index: 0,
@@ -99,7 +110,7 @@ impl<'text> JsonStr<'text, 'static> {
     }
 }
 
-impl<'text, 'index> JsonStr<'text, 'index> {
+impl<'text, 'index> JsonStr3<'text, 'index> {
     pub fn text(&self) -> &str {
         &self.text
     }
