@@ -19,9 +19,15 @@ pub enum JsonError {
     },
     InvalidNumber {
         position: usize,
+        // TODO: error_position? or range
     },
     InvalidString {
         position: usize,
+        // TODO: error_position? or range
+    },
+    InvalidArray {
+        position: usize,
+        // TODO: error_position? or range
     },
     Other {
         position: usize,
@@ -208,6 +214,8 @@ impl<'a> JsonParser<'a> {
             self.parse_number()?;
         } else if let Some(s) = self.text.strip_prefix('"') {
             self.parse_string(s)?;
+        } else if let Some(s) = self.text.strip_prefix('{') {
+            self.parse_array(s)?;
         } else if !self.text.is_empty() {
             if self.text.starts_with(['+', '.']) {
                 return Err(self.invalid_number());
@@ -270,6 +278,36 @@ impl<'a> JsonParser<'a> {
 
         self.push_value(kind, self.text.len() - s.len());
         Ok(())
+    }
+
+    fn parse_array(&mut self, s: &'a str) -> Result<(), JsonError> {
+        let s = s.trim_start_matches(WHITESPACE_PATTERN);
+        if let Some(s) = s.strip_prefix('}') {
+            self.push_value(JsonValueStrKind::Array, self.text.len() - s.len());
+            return Ok(());
+        }
+
+        let index = self.values.len();
+        self.push_value(JsonValueStrKind::Array, self.text.len() - s.len());
+
+        loop {
+            self.parse_value()?;
+
+            let s = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            if let Some(s) = s.strip_prefix('}') {
+                self.text = s;
+                self.values[index].text.end = self.position();
+                self.values[index].size =
+                    NonZeroUsize::MIN.saturating_add(self.values.len() - index - 1);
+                return Ok(());
+            } else if let Some(s) = s.strip_prefix(',') {
+                self.text = s;
+            } else {
+                return Err(JsonError::InvalidArray {
+                    position: self.position(),
+                });
+            }
+        }
     }
 
     fn parse_string(&mut self, mut s: &'a str) -> Result<(), JsonError> {
