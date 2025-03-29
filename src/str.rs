@@ -1,4 +1,4 @@
-use std::{hash::Hash, num::NonZeroUsize, ops::Range, str::FromStr};
+use std::{borrow::Cow, hash::Hash, num::NonZeroUsize, ops::Range, str::FromStr};
 
 // TODO: private
 pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
@@ -85,6 +85,56 @@ impl<'a> JsonValueStr<'a> {
         F: FnOnce(&str) -> Result<T, E>,
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
+        todo!()
+    }
+
+    pub fn array_values(&self) -> Result<JsonArrayValues, Error> {
+        todo!()
+    }
+
+    pub fn object_members(&self) -> Result<JsonObjectMembers, Error> {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub struct JsonArrayValues<'a> {
+    _value: JsonValueStr<'a>,
+}
+
+impl<'a> JsonArrayValues<'a> {
+    pub fn get(&self, _index: usize) -> Option<JsonValueStr<'a>> {
+        todo!()
+    }
+
+    pub fn expect(&self, _index: usize) -> Result<JsonValueStr<'a>, Error> {
+        todo!()
+    }
+}
+
+impl<'a> Iterator for JsonArrayValues<'a> {
+    type Item = JsonValueStr<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub struct JsonObjectMembers<'a> {
+    _value: JsonValueStr<'a>,
+}
+
+impl<'a> JsonObjectMembers<'a> {
+    pub fn expect(&self, _name: &str) -> Result<JsonValueStr<'a>, Error> {
+        todo!()
+    }
+}
+
+impl<'a> Iterator for JsonObjectMembers<'a> {
+    type Item = (Cow<'a, str>, JsonValueStr<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
         todo!()
     }
 }
