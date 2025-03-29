@@ -1,5 +1,6 @@
 pub mod fmt;
 pub mod num;
+mod parser;
 pub mod str;
 mod value;
 
