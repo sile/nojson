@@ -52,6 +52,11 @@ pub enum JsonError {
         position: usize,
         error: Box<dyn Send + Sync + std::error::Error>,
     },
+    UnexpectedArraySize {
+        expected: usize,
+        actual: usize,
+        position: usize,
+    },
     Other {
         position: usize,
         error: Box<dyn Send + Sync + std::error::Error>,
@@ -193,8 +198,29 @@ impl<'a> JsonValueStr<'a> {
         self.expect(&[JsonValueStrKind::Array]).map(JsonValues::new)
     }
 
-    pub fn to_fixed_array<const N: usize>(self) -> Result<[JsonValues<'a>; N], JsonError> {
-        todo!()
+    pub fn to_fixed_array<const N: usize>(self) -> Result<[JsonValueStr<'a>; N], JsonError> {
+        let mut values = self.to_array_values()?;
+        let mut fixed_array = [self; N];
+        for (i, v) in fixed_array.iter_mut().enumerate() {
+            *v = values
+                .next()
+                .ok_or_else(|| JsonError::UnexpectedArraySize {
+                    expected: N,
+                    actual: i,
+                    position: self.position(),
+                })?;
+        }
+
+        let extra = values.count();
+        if extra > 0 {
+            return Err(JsonError::UnexpectedArraySize {
+                expected: N,
+                actual: N + extra,
+                position: self.position(),
+            });
+        }
+
+        Ok(fixed_array)
     }
 
     pub fn to_object_members(self) -> Result<JsonKeyValuePairs<'a>, JsonError> {
