@@ -164,11 +164,18 @@ impl<'a> JsonValueStr<'a> {
         }
     }
 
-    pub fn nullable<F, T, E>(self, f: F) -> Result<Option<T>, E>
+    pub fn non_null_then<F, T>(self, f: F) -> Option<T>
     where
-        F: FnOnce() -> Result<T, E>,
+        F: FnOnce(Self) -> T,
     {
-        (self.kind() != JsonValueStrKind::Null).then(f).transpose()
+        (self.kind() != JsonValueStrKind::Null).then(|| f(self))
+    }
+
+    pub fn non_null_then_try<F, T, E>(self, f: F) -> Result<Option<T>, E>
+    where
+        F: FnOnce(Self) -> Result<T, E>,
+    {
+        self.non_null_then(f).transpose()
     }
 
     pub fn parse<T>(self) -> Result<T, JsonError>
