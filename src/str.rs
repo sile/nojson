@@ -1,26 +1,36 @@
 use std::{borrow::Cow, hash::Hash, num::NonZeroUsize, ops::Range, str::FromStr};
 
-// TODO: private
-pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
-
-// TODO: Result
+const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 
 #[derive(Debug)]
-pub struct Error {
-    pub kind: ErrorKind,
-    pub context: ErrorContext,
+pub enum JsonErrorContext<'a> {
+    Parser(&'a JsonParse<'a>),
+    Value(JsonValueStr<'a>),
+}
+
+impl<'a> JsonErrorContext<'a> {
+    pub fn line_and_column(&self) -> (NonZeroUsize, NonZeroUsize) {
+        todo!()
+    }
+
+    pub fn path(&self) -> Vec<()> {
+        todo!()
+    }
+
+    pub fn text(&self) -> &'a str {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub enum JsonErrorKind {}
+
+#[derive(Debug)]
+pub struct JsonError<'a> {
+    pub kind: JsonErrorKind,
+    pub context: Option<JsonErrorContext<'a>>,
     pub reason: Option<Box<dyn Send + Sync + std::error::Error>>,
 }
-
-#[derive(Debug)]
-pub struct ErrorContext {
-    pub line: NonZeroUsize,
-    pub column: NonZeroUsize,
-    pub path: Vec<()>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ErrorKind {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum JsonValueStrKind {
@@ -39,24 +49,45 @@ struct JsonValueIndexEntry {
     size: NonZeroUsize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JsonStr<'a> {
+#[derive(Debug)]
+pub struct JsonParser<'a> {
     text: &'a str,
+    remaining_text: &'a str,
     values: Vec<JsonValueIndexEntry>,
 }
 
-impl<'a> JsonStr<'a> {
-    pub fn value(&self) -> JsonValueStr {
-        JsonValueStr {
-            json: self,
-            index: 0,
+impl<'a> JsonParser<'a> {
+    pub fn new(text: &'a str) -> Self {
+        Self {
+            text,
+            remaining_text: text.trim_start_matches(WHITESPACE_PATTERN),
+            values: Vec::new(),
         }
+    }
+
+    pub fn parse(&mut self) -> Result<JsonValueStr, JsonError> {
+        if let Some(root) = self.values.first() {
+            self.remaining_text =
+                &self.text[root.text.end..].trim_start_matches(WHITESPACE_PATTERN);
+            self.values.clear();
+        }
+        todo!()
+    }
+
+    // TODO: expect_eos()
+
+    pub fn is_eos(&self) -> bool {
+        self.remaining_text.is_empty()
+    }
+
+    pub fn remaining_text(&self) -> &'a text {
+        self.remaining_text
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JsonValueStr<'a> {
-    json: &'a JsonStr<'a>,
+    json: &'a JsonParser<'a>,
     index: usize,
 }
 
@@ -74,6 +105,9 @@ impl<'a> JsonValueStr<'a> {
         todo!()
     }
 
+    // TODO: position() -> (NonZeroUsize, NonZeroUsize)
+    // TODO: parent() -> Option<JsonValueStr>
+
     pub fn nullable<F, T, E>(&self, f: F) -> Result<Option<T>, E>
     where
         F: FnOnce() -> Result<T, E>,
@@ -81,7 +115,7 @@ impl<'a> JsonValueStr<'a> {
         (self.kind() != JsonValueStrKind::Null).then(f).transpose()
     }
 
-    pub fn parse<T>(&self) -> Result<T, Error>
+    pub fn parse<T>(&self) -> Result<T, JsonError>
     where
         T: FromStr,
         T::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
@@ -89,7 +123,7 @@ impl<'a> JsonValueStr<'a> {
         self.parse_with(|text| text.parse())
     }
 
-    pub fn parse_with<F, T, E>(&self, f: F) -> Result<T, Error>
+    pub fn parse_with<F, T, E>(&self, f: F) -> Result<T, JsonError>
     where
         F: FnOnce(&str) -> Result<T, E>,
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
@@ -97,7 +131,7 @@ impl<'a> JsonValueStr<'a> {
         f(&self.to_str()).map_err(|_e| todo!())
     }
 
-    pub fn integer(self) -> Result<Self, Error> {
+    pub fn integer(self) -> Result<Self, JsonError> {
         if !matches!(self.kind(), JsonValueStrKind::Number { integer: true }) {
             todo!();
         }
@@ -108,11 +142,11 @@ impl<'a> JsonValueStr<'a> {
         matches!(self.kind(), JsonValueStrKind::Number { integer: true }).then_some(self)
     }
 
-    pub fn array(&self) -> Result<JsonArrayStr, Error> {
+    pub fn array(&self) -> Result<JsonArrayStr, JsonError> {
         todo!()
     }
 
-    pub fn object(&self) -> Result<JsonObjectStr, Error> {
+    pub fn object(&self) -> Result<JsonObjectStr, JsonError> {
         todo!()
     }
 }
@@ -127,7 +161,7 @@ impl<'a> JsonArrayStr<'a> {
         todo!()
     }
 
-    pub fn expect(&self, _index: usize) -> Result<JsonValueStr<'a>, Error> {
+    pub fn expect(&self, _index: usize) -> Result<JsonValueStr<'a>, JsonError> {
         todo!()
     }
 }
@@ -146,7 +180,7 @@ pub struct JsonObjectStr<'a> {
 }
 
 impl<'a> JsonObjectStr<'a> {
-    pub fn expect(&self, _name: &str) -> Result<JsonValueStr<'a>, Error> {
+    pub fn expect(&self, _name: &str) -> Result<JsonValueStr<'a>, JsonError> {
         todo!()
     }
 }
