@@ -1,6 +1,3 @@
-//pub mod value2;
-pub mod value3;
-
 pub mod fmt;
 pub mod num;
 pub mod str;
