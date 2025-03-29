@@ -1,4 +1,4 @@
-use std::{borrow::Cow, hash::Hash, num::NonZeroUsize, ops::Range, str::FromStr};
+use std::{borrow::Cow, hash::Hash, ops::Range, str::FromStr};
 
 use crate::parser::JsonParser;
 
@@ -78,7 +78,7 @@ pub enum JsonValueStrKind {
 pub(crate) struct JsonValueIndexEntry {
     pub kind: JsonValueStrKind,
     pub text: Range<usize>,
-    pub size: NonZeroUsize, // TODO: end_index
+    pub end_index: usize,
 }
 
 #[derive(Debug)]
@@ -115,6 +115,10 @@ pub struct JsonValueStr<'a> {
 impl<'a> JsonValueStr<'a> {
     pub fn kind(self) -> JsonValueStrKind {
         self.json.values[self.index].kind
+    }
+
+    fn entry(&self) -> &JsonValueIndexEntry {
+        &self.json.values[self.index]
     }
 
     pub fn text(self) -> &'a str {
@@ -298,22 +302,15 @@ impl<'a> JsonValueStr<'a> {
 
 #[derive(Debug)]
 pub struct JsonValues<'a> {
-    next: Option<JsonValueStr<'a>>,
+    value: JsonValueStr<'a>,
     end_index: usize,
 }
 
 impl<'a> JsonValues<'a> {
-    fn new(array: JsonValueStr<'a>) -> Self {
-        let end_index = array.index + array.json.values[array.index].size.get() - 1;
-        let next = if array.index == end_index {
-            None
-        } else {
-            Some(JsonValueStr {
-                index: array.index + 1,
-                ..array
-            })
-        };
-        Self { next, end_index }
+    fn new(mut value: JsonValueStr<'a>) -> Self {
+        let end_index = value.entry().end_index;
+        value.index += 1;
+        Self { value, end_index }
     }
 }
 
@@ -321,14 +318,11 @@ impl<'a> Iterator for JsonValues<'a> {
     type Item = JsonValueStr<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let value = self.next.take()?;
-        let next_index = value.index + value.json.values[value.index].size.get();
-        if next_index < self.end_index {
-            self.next = Some(JsonValueStr {
-                index: next_index,
-                ..value
-            });
+        if self.value.index == self.end_index {
+            return None;
         }
+        let value = self.value;
+        self.value.index = value.entry().end_index;
         Some(value)
     }
 }

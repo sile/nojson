@@ -1,4 +1,4 @@
-use std::{num::NonZeroUsize, ops::Range};
+use std::ops::Range;
 
 use crate::str::{JsonError, JsonValueIndexEntry, JsonValueStrKind};
 
@@ -139,8 +139,7 @@ impl<'a> JsonParser<'a> {
             if let Some(s) = self.text.strip_prefix('}') {
                 self.text = s;
                 self.values[index].text.end = self.position();
-                self.values[index].size =
-                    NonZeroUsize::MIN.saturating_add(self.values.len() - index - 1);
+                self.values[index].end_index = self.values.len();
                 return Ok(());
             }
             self.text = self
@@ -172,8 +171,7 @@ impl<'a> JsonParser<'a> {
             if let Some(s) = s.strip_prefix(']') {
                 self.text = s;
                 self.values[index].text.end = self.position();
-                self.values[index].size =
-                    NonZeroUsize::MIN.saturating_add(self.values.len() - index - 1);
+                self.values[index].end_index = self.values.len();
                 return Ok(());
             } else if let Some(s) = s.strip_prefix(',') {
                 self.text = s;
@@ -291,7 +289,7 @@ impl<'a> JsonParser<'a> {
                 start: position,
                 end: position + len,
             },
-            size: NonZeroUsize::MIN,
+            end_index: self.values.len() + 1,
         };
         self.values.push(entry);
         self.text = &self.text[len..];
