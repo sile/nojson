@@ -72,7 +72,7 @@ pub enum JsonValueStrKind {
 struct JsonValueIndexEntry {
     kind: JsonValueStrKind,
     text: Range<usize>,
-    size: NonZeroUsize,
+    size: NonZeroUsize, // TODO: end_index
 }
 
 #[derive(Debug)]
@@ -189,16 +189,16 @@ impl<'a> JsonValueStr<'a> {
         ])
     }
 
-    pub fn to_array_iter(self) -> Result<JsonArrayStr<'a>, JsonError> {
+    pub fn to_array_values(self) -> Result<JsonArrayValues<'a>, JsonError> {
         self.expect(&[JsonValueStrKind::Array])
-            .map(JsonArrayStr::new)
+            .map(JsonArrayValues::new)
     }
 
-    pub fn to_fixed_array<const N: usize>(self) -> Result<[JsonArrayStr<'a>; N], JsonError> {
+    pub fn to_fixed_array<const N: usize>(self) -> Result<[JsonArrayValues<'a>; N], JsonError> {
         todo!()
     }
 
-    pub fn to_object(self) -> Result<JsonObjectStr<'a>, JsonError> {
+    pub fn to_object_members(self) -> Result<JsonObjectMembers<'a>, JsonError> {
         todo!()
     }
 
@@ -207,47 +207,60 @@ impl<'a> JsonValueStr<'a> {
         _required_member_names: [&str; N],
         _optional_member_names: [&str; M],
         _allow_unknown_members: bool,
-    ) -> Result<([JsonArrayStr<'a>; N], [JsonArrayStr<'a>; M]), JsonError> {
+    ) -> Result<([JsonArrayValues<'a>; N], [JsonArrayValues<'a>; M]), JsonError> {
         todo!()
     }
 }
 
-// TODO: rename
 #[derive(Debug)]
-pub struct JsonArrayStr<'a> {
-    value: JsonValueStr<'a>,
+pub struct JsonArrayValues<'a> {
+    value: Option<JsonValueStr<'a>>,
     end_index: usize,
 }
 
-impl<'a> JsonArrayStr<'a> {
+impl<'a> JsonArrayValues<'a> {
     fn new(array: JsonValueStr<'a>) -> Self {
-        // TODO: size
         let end_index = array.index + array.json.values[array.index].size.get() - 1;
-        let value = array; // TODO:
+        let value = if array.index == end_index {
+            None
+        } else {
+            Some(JsonValueStr {
+                index: array.index + 1,
+                ..array
+            })
+        };
         Self { value, end_index }
     }
 }
 
-impl<'a> Iterator for JsonArrayStr<'a> {
+impl<'a> Iterator for JsonArrayValues<'a> {
     type Item = JsonValueStr<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        let value = self.value.take()?;
+        let next_index = value.index + value.json.values[value.index].size.get();
+        if next_index < self.end_index {
+            self.value = Some(JsonValueStr {
+                index: next_index,
+                ..value
+            });
+        }
+        Some(value)
     }
 }
 
 #[derive(Debug)]
-pub struct JsonObjectStr<'a> {
+pub struct JsonObjectMembers<'a> {
     _value: JsonValueStr<'a>,
 }
 
-impl<'a> JsonObjectStr<'a> {
+impl<'a> JsonObjectMembers<'a> {
     pub fn expect(&self, _name: &str) -> Result<JsonValueStr<'a>, JsonError> {
         todo!()
     }
 }
 
-impl<'a> Iterator for JsonObjectStr<'a> {
+impl<'a> Iterator for JsonObjectMembers<'a> {
     type Item = (JsonValueStr<'a>, JsonValueStr<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
