@@ -131,7 +131,34 @@ impl<'a> JsonValueStr<'a> {
 
     pub fn to_str(self) -> Cow<'a, str> {
         if matches!(self.kind(), JsonValueStrKind::String { escaped: true }) {
-            todo!()
+            let mut unescaped = String::with_capacity(self.text().len());
+            let mut chars = self.text().chars();
+            while let Some(c) = chars.next() {
+                match c {
+                    '\\' => {
+                        let c = chars.next().expect("infallible");
+                        match c {
+                            '\\' | '/' | '"' | 'n' | 't' | 'r' | 'b' | 'f' => unescaped.push(c),
+                            'u' => {
+                                let c = std::str::from_utf8(&[
+                                    chars.next().expect("infallible") as u8,
+                                    chars.next().expect("infallible") as u8,
+                                    chars.next().expect("infallible") as u8,
+                                    chars.next().expect("infallible") as u8,
+                                ])
+                                .ok()
+                                .and_then(|code| u32::from_str_radix(code, 16).ok())
+                                .and_then(char::from_u32)
+                                .expect("infallible");
+                                unescaped.push(c);
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                    _ => unescaped.push(c),
+                }
+            }
+            Cow::Owned(unescaped)
         } else {
             Cow::Borrowed(self.text())
         }
@@ -244,8 +271,7 @@ impl<'a> JsonValueStr<'a> {
             let k = k.to_str();
             if let Some(i) = required_member_names.iter().position(|n| k == *n) {
                 required[i] = v;
-            }
-            if let Some(i) = optional_member_names.iter().position(|n| k == *n) {
+            } else if let Some(i) = optional_member_names.iter().position(|n| k == *n) {
                 optional[i] = Some(v);
             }
         }
