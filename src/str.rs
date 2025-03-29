@@ -57,6 +57,10 @@ pub enum JsonError {
         actual: usize,
         position: usize,
     },
+    MissingRequiredMember {
+        member_names: Vec<String>,
+        position: usize,
+    },
     Other {
         position: usize,
         error: Box<dyn Send + Sync + std::error::Error>,
@@ -230,11 +234,35 @@ impl<'a> JsonValueStr<'a> {
 
     pub fn to_fixed_object<const N: usize, const M: usize>(
         self,
-        _required_member_names: [&str; N],
-        _optional_member_names: [&str; M],
-        _allow_unknown_members: bool,
-    ) -> Result<([JsonValues<'a>; N], [JsonValues<'a>; M]), JsonError> {
-        todo!()
+        required_member_names: [&str; N],
+        optional_member_names: [&str; M],
+    ) -> Result<([JsonValueStr<'a>; N], [Option<JsonValueStr<'a>>; M]), JsonError> {
+        let mut members = self.to_object_members()?;
+        let mut required = [self; N];
+        let mut optional = [None; M];
+        while let Some((k, v)) = members.next() {
+            let k = k.to_str();
+            if let Some(i) = required_member_names.iter().position(|n| k == *n) {
+                required[i] = v;
+            }
+            if let Some(i) = optional_member_names.iter().position(|n| k == *n) {
+                optional[i] = Some(v);
+            }
+        }
+
+        let missing_members = required_member_names
+            .iter()
+            .zip(required.iter())
+            .filter_map(|(&name, value)| (value.index != self.index).then(|| name.to_owned()))
+            .collect::<Vec<_>>();
+        if !missing_members.is_empty() {
+            return Err(JsonError::MissingRequiredMember {
+                member_names: missing_members,
+                position: self.position(),
+            });
+        }
+
+        Ok((required, optional))
     }
 }
 
