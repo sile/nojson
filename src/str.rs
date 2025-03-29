@@ -15,6 +15,7 @@ pub enum JsonError {
     NotEos {
         position: usize,
     },
+    // TODO: remove?
     UnmatchedArrayClose {
         position: usize,
     },
@@ -238,7 +239,7 @@ impl<'a> JsonParser<'a> {
                 return Err(JsonError::UnmatchedArrayClose { position });
             } else if self.text.starts_with(['}']) {
                 let position = self.position();
-                return Err(JsonError::UnmatchedArrayClose { position });
+                return Err(JsonError::UnmatchedObjectClose { position });
             } else {
                 let position = self.position();
                 return Err(JsonError::InvalidValue { position });
@@ -309,6 +310,7 @@ impl<'a> JsonParser<'a> {
 
         let index = self.values.len();
         self.push_value(JsonValueStrKind::Object, self.text.len() - s.len());
+        self.text = s;
 
         loop {
             self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
@@ -318,8 +320,9 @@ impl<'a> JsonParser<'a> {
                 .ok_or_else(|| self.eos_or_invalid_object())?;
             self.parse_string(s)?;
 
-            let s = self.text.trim_start_matches(WHITESPACE_PATTERN);
-            self.text = s
+            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            self.text = self
+                .text
                 .strip_prefix(':')
                 .ok_or_else(|| self.eos_or_invalid_object())?;
             self.parse_value()?;
@@ -368,6 +371,10 @@ impl<'a> JsonParser<'a> {
                 self.text = s;
             } else if s.is_empty() {
                 return Err(self.unexpected_eos());
+            } else if s.starts_with(['}']) {
+                self.text = s;
+                let position = self.position();
+                return Err(JsonError::UnmatchedObjectClose { position });
             } else {
                 return Err(self.invalid_array());
             }
@@ -414,9 +421,13 @@ impl<'a> JsonParser<'a> {
         }
     }
 
+    // TODO: rename
     fn eos_or_invalid_object(&mut self) -> JsonError {
         if self.text.is_empty() {
             self.unexpected_eos()
+        } else if self.text.starts_with(']') {
+            let position = self.position();
+            JsonError::UnmatchedArrayClose { position }
         } else {
             self.invalid_object()
         }
@@ -687,7 +698,7 @@ mod tests {
         }
 
         // Unmatched ']'.
-        for text in ["]", "[1,2]]"] {
+        for text in ["]", "[1,2]]", r#"{"foo":[]]}"#] {
             assert!(
                 matches!(
                     JsonStr::parse(text),
@@ -700,6 +711,55 @@ mod tests {
 
         // Unexpected EOS.
         for text in ["[", "[1,2", "[1,2,"] {
+            assert!(
+                matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
+                "text={text}, error={:?}",
+                JsonStr::parse(text)
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_objects() -> Result<(), JsonError> {
+        // Objects.
+        for text in [
+            "{}",
+            "{ \n\t }",
+            r#"{"foo":1  ,"null": null, "foo" :"bar" }"#,
+            r#"{"foo": {}, "bar":[{"a":null}]}"#,
+        ] {
+            let json = JsonStr::parse(text)?;
+            let value = json.value();
+            assert_eq!(value.kind(), JsonValueStrKind::Object);
+            assert_eq!(value.text(), text);
+            assert_eq!(value.position(), 0);
+        }
+
+        // Invalid objects.
+        for text in ["{,}", "{:}", r#"{"foo","bar"}"#, r#"{"foo":"bar",}"#] {
+            assert!(
+                matches!(JsonStr::parse(text), Err(JsonError::InvalidObject { .. })),
+                "text={text}, error={:?}",
+                JsonStr::parse(text)
+            );
+        }
+
+        // Unmatched '}'.
+        for text in ["}", r#"{"1":2}}"#, "[{}}]"] {
+            assert!(
+                matches!(
+                    JsonStr::parse(text),
+                    Err(JsonError::UnmatchedObjectClose { .. })
+                ),
+                "text={text}, error={:?}",
+                JsonStr::parse(text)
+            );
+        }
+
+        // Unexpected EOS.
+        for text in ["{", r#"{"1" "#, r#"{"1": "#, r#"{"1": 2"#] {
             assert!(
                 matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
                 "text={text}, error={:?}",
