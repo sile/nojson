@@ -288,7 +288,7 @@ impl<'a> JsonParser<'a> {
             kind = JsonValueStrKind::String { escaped: true };
             s = s.strip_prefix('\\').ok_or_else(|| self.invalid_string())?;
             match s.chars().next().ok_or_else(|| self.unexpected_eos())? {
-                '"' | '\\' | '/' | '\n' | '\t' | '\r' | 'b' | 'f' => s = &s[1..],
+                '"' | '\\' | '/' | 'n' | 't' | 'r' | 'b' | 'f' => s = &s[1..],
                 'u' => {
                     if s.len() < 5 {
                         return Err(self.unexpected_eos());
@@ -377,7 +377,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_null() -> Result<(), JsonError> {
+    fn parse_nulls() -> Result<(), JsonError> {
         let json = JsonStr::parse(" null ")?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueStrKind::Null);
@@ -397,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_bool() -> Result<(), JsonError> {
+    fn parse_bools() -> Result<(), JsonError> {
         let json = JsonStr::parse("true")?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueStrKind::Bool);
@@ -419,7 +419,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_number() -> Result<(), JsonError> {
+    fn parse_numbers() -> Result<(), JsonError> {
         // Integers.
         for text in ["0", "-12"] {
             let json = JsonStr::parse(text)?;
@@ -466,6 +466,61 @@ mod tests {
 
         // Unexpected EOS.
         for text in ["123.", "-", "123e", "123e-"] {
+            assert!(
+                matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
+                "text={text}, error={:?}",
+                JsonStr::parse(text)
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_strings() -> Result<(), JsonError> {
+        // Non-escaped strings.
+        for text in [r#" "" "#, r#" "abc" "#] {
+            let json = JsonStr::parse(text)?;
+            let value = json.value();
+            assert_eq!(value.kind(), JsonValueStrKind::String { escaped: false });
+            assert_eq!(value.text(), text.trim());
+            assert_eq!(value.position(), 1);
+        }
+
+        // Escaped strings.
+        for text in [
+            r#" "ab\tc" "#,
+            r#" "\n\\a\r\nb\b\"\fc" "#,
+            r#" "ab\uF20ac" "#,
+        ] {
+            let json = JsonStr::parse(text)?;
+            let value = json.value();
+            assert_eq!(value.kind(), JsonValueStrKind::String { escaped: true });
+            assert_eq!(value.text(), text.trim());
+            assert_eq!(value.position(), 1);
+        }
+
+        // Invalid strings.
+        for text in [r#" "ab\xc" "#, r#" "ab\uXyz0c" "#] {
+            assert!(
+                matches!(
+                    JsonStr::parse(text),
+                    Err(JsonError::InvalidString { position: 1 })
+                ),
+                "text={text}, error={:?}",
+                JsonStr::parse(text)
+            );
+        }
+
+        // Unexpected EOS.
+        for text in [
+            r#" "ab "#,
+            r#" "ab\"#,
+            r#" "ab\u"#,
+            r#" "ab\u0"#,
+            r#" "ab\u01"#,
+            r#" "ab\u012"#,
+        ] {
             assert!(
                 matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
                 "text={text}, error={:?}",
