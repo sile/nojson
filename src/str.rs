@@ -41,10 +41,20 @@ pub enum JsonError {
         position: usize,
         // TODO: error_position? or range
     },
-    // TODO: Invalid{ kind, range?}
+    UnexpectedKind {
+        expected_kinds: &'static [JsonValueStrKind],
+        actual_kind: JsonValueStrKind,
+        position: usize, // TODO: range
+    },
+    // Valid JSON value, but the content was unexpected.
+    UnexpectedValue {
+        kind: JsonValueStrKind,
+        position: usize,
+        error: Box<dyn Send + Sync + std::error::Error>,
+    },
     Other {
         position: usize,
-        source: Box<dyn Send + Sync + std::error::Error>,
+        error: Box<dyn Send + Sync + std::error::Error>,
     },
 }
 
@@ -111,17 +121,21 @@ impl<'a> JsonValueStr<'a> {
     }
 
     pub fn to_str(self) -> Cow<'a, str> {
-        todo!()
+        if matches!(self.kind(), JsonValueStrKind::String { escaped: true }) {
+            todo!()
+        } else {
+            Cow::Borrowed(self.text())
+        }
     }
 
-    pub fn nullable<F, T, E>(&self, f: F) -> Result<Option<T>, E>
+    pub fn nullable<F, T, E>(self, f: F) -> Result<Option<T>, E>
     where
         F: FnOnce() -> Result<T, E>,
     {
         (self.kind() != JsonValueStrKind::Null).then(f).transpose()
     }
 
-    pub fn parse<T>(&self) -> Result<T, JsonError>
+    pub fn parse<T>(self) -> Result<T, JsonError>
     where
         T: FromStr,
         T::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
@@ -129,46 +143,88 @@ impl<'a> JsonValueStr<'a> {
         self.parse_with(|text| text.parse())
     }
 
-    pub fn parse_with<F, T, E>(&self, f: F) -> Result<T, JsonError>
+    pub fn parse_with<F, T, E>(self, f: F) -> Result<T, JsonError>
     where
         F: FnOnce(&str) -> Result<T, E>,
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
-        f(&self.to_str()).map_err(|_e| todo!())
+        f(&self.to_str()).map_err(|e| JsonError::UnexpectedValue {
+            kind: self.kind(),
+            position: self.position(),
+            error: e.into(),
+        })
     }
 
-    pub fn integer(self) -> Result<Self, JsonError> {
-        if !matches!(self.kind(), JsonValueStrKind::Number { integer: true }) {
-            todo!();
+    pub fn expect(self, kinds: &'static [JsonValueStrKind]) -> Result<Self, JsonError> {
+        if kinds.contains(&self.kind()) {
+            Ok(self)
+        } else {
+            Err(JsonError::UnexpectedKind {
+                expected_kinds: &kinds,
+                actual_kind: self.kind(),
+                position: self.position(),
+            })
         }
-        Ok(self)
     }
 
-    pub fn maybe_integer(self) -> Option<Self> {
-        matches!(self.kind(), JsonValueStrKind::Number { integer: true }).then_some(self)
+    pub fn as_bool(self) -> Result<Self, JsonError> {
+        self.expect(&[JsonValueStrKind::Bool])
     }
 
-    pub fn array(&self) -> Result<JsonArrayStr, JsonError> {
+    pub fn as_integer(self) -> Result<Self, JsonError> {
+        self.expect(&[JsonValueStrKind::Number { integer: true }])
+    }
+
+    pub fn as_number(self) -> Result<Self, JsonError> {
+        self.expect(&[
+            JsonValueStrKind::Number { integer: true },
+            JsonValueStrKind::Number { integer: false },
+        ])
+    }
+
+    pub fn as_string(self) -> Result<Self, JsonError> {
+        self.expect(&[
+            JsonValueStrKind::String { escaped: false },
+            JsonValueStrKind::String { escaped: true },
+        ])
+    }
+
+    pub fn to_array_iter(self) -> Result<JsonArrayStr<'a>, JsonError> {
+        self.expect(&[JsonValueStrKind::Array])
+            .map(JsonArrayStr::new)
+    }
+
+    pub fn to_fixed_array<const N: usize>(self) -> Result<[JsonArrayStr<'a>; N], JsonError> {
         todo!()
     }
 
-    pub fn object(&self) -> Result<JsonObjectStr, JsonError> {
+    pub fn to_object(self) -> Result<JsonObjectStr<'a>, JsonError> {
+        todo!()
+    }
+
+    pub fn to_fixed_object<const N: usize, const M: usize>(
+        self,
+        _required_member_names: [&str; N],
+        _optional_member_names: [&str; M],
+        _allow_unknown_members: bool,
+    ) -> Result<([JsonArrayStr<'a>; N], [JsonArrayStr<'a>; M]), JsonError> {
         todo!()
     }
 }
 
+// TODO: rename
 #[derive(Debug)]
 pub struct JsonArrayStr<'a> {
-    _value: JsonValueStr<'a>,
+    value: JsonValueStr<'a>,
+    end_index: usize,
 }
 
 impl<'a> JsonArrayStr<'a> {
-    pub fn get(&self, _index: usize) -> Option<JsonValueStr<'a>> {
-        todo!()
-    }
-
-    pub fn expect(&self, _index: usize) -> Result<JsonValueStr<'a>, JsonError> {
-        todo!()
+    fn new(array: JsonValueStr<'a>) -> Self {
+        // TODO: size
+        let end_index = array.index + array.json.values[array.index].size.get() - 1;
+        let value = array; // TODO:
+        Self { value, end_index }
     }
 }
 
