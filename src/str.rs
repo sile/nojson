@@ -65,6 +65,15 @@ impl<'a> JsonValueStr<'a> {
         self.json.values[self.index].kind
     }
 
+    pub fn text(&self) -> &str {
+        let text = &self.json.values[self.index].text;
+        &self.json.text[text.start..text.end]
+    }
+
+    pub fn to_str(&self) -> Cow<str> {
+        todo!()
+    }
+
     pub fn nullable<F, T, E>(&self, f: F) -> Result<Option<T>, E>
     where
         F: FnOnce() -> Result<T, E>,
@@ -80,12 +89,15 @@ impl<'a> JsonValueStr<'a> {
         self.parse_integer_with(|text| text.parse())
     }
 
-    pub fn parse_integer_with<F, T, E>(&self, _f: F) -> Result<T, Error>
+    pub fn parse_integer_with<F, T, E>(&self, f: F) -> Result<T, Error>
     where
         F: FnOnce(&str) -> Result<T, E>,
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
-        todo!()
+        if !matches!(self.kind(), JsonValueStrKind::Number { integer: true }) {
+            todo!();
+        }
+        f(&self.to_str()).map_err(|_e| todo!())
     }
 
     // TODO: expect_array(&self)-> Result<JsonArrayStr, Error>
