@@ -20,6 +20,9 @@ pub enum JsonError {
     InvalidNumber {
         position: usize,
     },
+    InvalidString {
+        position: usize,
+    },
     Other {
         position: usize,
         source: Box<dyn Send + Sync + std::error::Error>,
@@ -203,6 +206,8 @@ impl<'a> JsonParser<'a> {
             self.push_value(JsonValueStrKind::Bool, "false".len());
         } else if self.text.starts_with(NUMBER_START_PATTERN) {
             self.parse_number()?;
+        } else if let Some(s) = self.text.strip_prefix('"') {
+            self.parse_string(s)?;
         } else if !self.text.is_empty() {
             if self.text.starts_with(['+', '.']) {
                 return Err(self.invalid_number());
@@ -267,6 +272,38 @@ impl<'a> JsonParser<'a> {
         Ok(())
     }
 
+    fn parse_string(&mut self, mut s: &'a str) -> Result<(), JsonError> {
+        let mut kind = JsonValueStrKind::String { escaped: false };
+
+        loop {
+            s = s.trim_start_matches(|c| !(matches!(c, '"' | '\\') || c.is_ascii_control()));
+            if let Some(s) = s.strip_prefix('"') {
+                self.push_value(kind, self.text.len() - s.len());
+                return Ok(());
+            }
+            if s.is_empty() {
+                return Err(self.unexpected_eos());
+            }
+
+            kind = JsonValueStrKind::String { escaped: true };
+            s = s.strip_prefix('\\').ok_or_else(|| self.invalid_string())?;
+            match s.chars().next().ok_or_else(|| self.unexpected_eos())? {
+                '"' | '\\' | '/' | '\n' | '\t' | '\r' | 'b' | 'f' => s = &s[1..],
+                'u' => {
+                    if s.len() < 5 {
+                        return Err(self.unexpected_eos());
+                    }
+                    s.get(1..5)
+                        .and_then(|code| u32::from_str_radix(code, 16).ok())
+                        .and_then(char::from_u32)
+                        .ok_or_else(|| self.invalid_string())?;
+                    s = &s[5..];
+                }
+                _ => return Err(self.invalid_string()),
+            }
+        }
+    }
+
     fn eos_or_number_error(&mut self, eos: bool) -> JsonError {
         if eos {
             self.unexpected_eos()
@@ -277,6 +314,12 @@ impl<'a> JsonParser<'a> {
 
     fn invalid_number(&self) -> JsonError {
         JsonError::InvalidNumber {
+            position: self.position(),
+        }
+    }
+
+    fn invalid_string(&self) -> JsonError {
+        JsonError::InvalidString {
             position: self.position(),
         }
     }
