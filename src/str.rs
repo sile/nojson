@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{hash::Hash, num::NonZeroUsize, ops::Range, str::FromStr};
 
 // TODO: private
 pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
@@ -16,22 +16,51 @@ pub trait FromJsonStr: Sized {
 pub enum JsonStrKind {
     Null,
     Bool,
-    Integer,
-    Float,
-    String,
-    StringEscaped,
+    Number { integer: bool },
+    String { escaped: bool },
     Array,
     Object,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct JsonValue {
+    kind: JsonStrKind,
+    text: Range<usize>,
+    size: NonZeroUsize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsonStr<'t> {
     text: &'t str,
+    index: usize,
+    values: Vec<JsonValue>,
+}
+
+impl<'t> PartialOrd for JsonStr<'t> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'t> Ord for JsonStr<'t> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.text, self.index).cmp(&(other.text, other.index))
+    }
+}
+
+impl<'t> Hash for JsonStr<'t> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (self.text, self.index).hash(state);
+    }
 }
 
 impl<'t> JsonStr<'t> {
     pub fn new(text: &'t str) -> Result<Self, Error> {
-        Ok(Self { text })
+        Ok(Self {
+            text,
+            index: 0,
+            values: Vec::new(),
+        })
     }
 
     pub fn text(&self) -> &'t str {
@@ -61,12 +90,9 @@ impl<'t> JsonStr<'t> {
         todo!()
     }
 
-    pub fn as_array(&self) -> Result<JsonArrayStr<'_, 't>, Error> {
+    pub fn expect_array(&self) -> Result<JsonArrayStr<'_, 't>, Error> {
         todo!()
     }
-
-    // pub fn with_array_indices()
-    // pub fn with_object_members()
 
     // TODO: kind()
     // TODO: parse_null(), parse_bool(), parse_float(), parse_number(), parse_string()
