@@ -5,6 +5,7 @@ const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 #[derive(Debug)]
 pub enum JsonError {
     UnexpectedEos { position: usize },
+    NotValueStart { position: usize },
     //
     // pub kind: JsonErrorKind,
     // pub position: usize,
@@ -44,6 +45,13 @@ impl<'a> JsonStr<'a> {
         })
     }
 
+    pub fn value(&self) -> JsonValueStr {
+        JsonValueStr {
+            json: self,
+            index: 0,
+        }
+    }
+
     pub fn remaining_text(&self) -> &'a str {
         &self.text[self.values[0].text.end..]
     }
@@ -65,12 +73,13 @@ impl<'a> JsonValueStr<'a> {
         &self.json.text[text.start..text.end]
     }
 
+    pub fn position(self) -> usize {
+        self.json.values[self.index].text.start
+    }
+
     pub fn to_str(self) -> Cow<'a, str> {
         todo!()
     }
-
-    // TODO: position() -> (NonZeroUsize, NonZeroUsize)
-    // TODO: parent() -> Option<JsonValueStr>
 
     pub fn nullable<F, T, E>(&self, f: F) -> Result<Option<T>, E>
     where
@@ -176,12 +185,28 @@ impl<'a> JsonParser<'a> {
     fn parse_value(&mut self) -> Result<(), JsonError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         if self.text.starts_with("null") {
-            todo!()
-        } else if self.text.is_empty() {
-            Err(self.unexpected_eos())
+            self.push_value(JsonValueStrKind::Null, "null".len());
+        } else if !self.text.is_empty() {
+            let position = self.position();
+            return Err(JsonError::NotValueStart { position });
         } else {
-            todo!()
+            return Err(self.unexpected_eos());
         }
+        Ok(())
+    }
+
+    fn push_value(&mut self, kind: JsonValueStrKind, len: usize) {
+        let position = self.position();
+        let entry = JsonValueIndexEntry {
+            kind,
+            text: Range {
+                start: position,
+                end: position + len,
+            },
+            size: NonZeroUsize::MIN,
+        };
+        self.values.push(entry);
+        self.text = &self.text[len..];
     }
 
     fn position(&self) -> usize {
@@ -209,5 +234,22 @@ mod tests {
             JsonStr::parse("    "),
             Err(JsonError::UnexpectedEos { position: 4 })
         ));
+    }
+
+    #[test]
+    fn parse_null() -> Result<(), JsonError> {
+        let json = JsonStr::parse(" null foo")?;
+        let value = json.value();
+        assert_eq!(value.kind(), JsonValueStrKind::Null);
+        assert_eq!(value.text(), "null");
+        assert_eq!(value.position(), 1);
+        assert_eq!(json.remaining_text(), " foo");
+
+        assert!(matches!(
+            JsonStr::parse("nul"),
+            Err(JsonError::NotValueStart { position: 0 })
+        ));
+
+        Ok(())
     }
 }
