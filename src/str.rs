@@ -204,7 +204,7 @@ impl<'a> JsonValueStr<'a> {
             Ok(self)
         } else {
             Err(JsonError::UnexpectedKind {
-                expected_kinds: &kinds,
+                expected_kinds: kinds,
                 actual_kind: self.kind(),
                 position: self.position(),
             })
@@ -272,10 +272,9 @@ impl<'a> JsonValueStr<'a> {
         required_member_names: [&str; N],
         optional_member_names: [&str; M],
     ) -> Result<([JsonValueStr<'a>; N], [Option<JsonValueStr<'a>>; M]), JsonError> {
-        let mut members = self.to_object_members()?;
         let mut required = [self; N];
         let mut optional = [None; M];
-        while let Some((k, v)) = members.next() {
+        for (k, v) in self.to_object_members()? {
             let k = k.to_str();
             if let Some(i) = required_member_names.iter().position(|n| k == *n) {
                 required[i] = v;
@@ -287,7 +286,8 @@ impl<'a> JsonValueStr<'a> {
         let missing_members = required_member_names
             .iter()
             .zip(required.iter())
-            .filter_map(|(&name, value)| (value.index != self.index).then(|| name.to_owned()))
+            .filter(|(_, value)| value.index != self.index)
+            .map(|(&name, _)| name.to_owned())
             .collect::<Vec<_>>();
         if !missing_members.is_empty() {
             return Err(JsonError::MissingRequiredMember {

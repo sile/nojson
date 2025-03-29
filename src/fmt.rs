@@ -10,7 +10,7 @@ pub trait DisplayJson {
 
 pub trait DisplayJsonString: DisplayJson {}
 
-impl<'a, T: DisplayJson> DisplayJson for &'a T {
+impl<T: DisplayJson> DisplayJson for &T {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         (*self).fmt(f)
     }
@@ -18,7 +18,7 @@ impl<'a, T: DisplayJson> DisplayJson for &'a T {
 
 impl<T: DisplayJson> DisplayJsonString for Box<T> {}
 
-impl<'a, T: DisplayJson> DisplayJsonString for &'a T {}
+impl<T: DisplayJson> DisplayJsonString for &T {}
 
 impl<T: DisplayJson> DisplayJson for Box<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -104,11 +104,10 @@ impl DisplayJson for usize {
     }
 }
 
-impl<'a> DisplayJson for &'a str {
+impl DisplayJson for &str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\"")?;
-        let mut chars = self.chars();
-        while let Some(c) = chars.next() {
+        for c in self.chars() {
             match c {
                 '\n' => write!(f, r#"\n"#)?,
                 '\r' => write!(f, r#"\r"#)?,

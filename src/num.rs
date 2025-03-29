@@ -2,7 +2,7 @@ use std::{fmt::Display, hash::Hash};
 
 use crate::fmt::DisplayJson;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct FiniteF64(f64);
 
 impl FiniteF64 {
@@ -21,6 +21,12 @@ impl FiniteF64 {
 }
 
 impl Eq for FiniteF64 {}
+
+impl PartialOrd for FiniteF64 {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 impl Ord for FiniteF64 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
