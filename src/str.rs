@@ -186,6 +186,10 @@ impl<'a> JsonParser<'a> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         if self.text.starts_with("null") {
             self.push_value(JsonValueStrKind::Null, "null".len());
+        } else if self.text.starts_with("true") {
+            self.push_value(JsonValueStrKind::Bool, "true".len());
+        } else if self.text.starts_with("false") {
+            self.push_value(JsonValueStrKind::Bool, "false".len());
         } else if !self.text.is_empty() {
             let position = self.position();
             return Err(JsonError::NotValueStart { position });
@@ -248,6 +252,30 @@ mod tests {
         assert!(matches!(
             JsonStr::parse("nul"),
             Err(JsonError::NotValueStart { position: 0 })
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_bool() -> Result<(), JsonError> {
+        let json = JsonStr::parse("true false foo")?;
+        let value = json.value();
+        assert_eq!(value.kind(), JsonValueStrKind::Bool);
+        assert_eq!(value.text(), "true");
+        assert_eq!(value.position(), 0);
+        assert_eq!(json.remaining_text(), " false foo");
+
+        let json = JsonStr::parse(json.remaining_text())?;
+        let value = json.value();
+        assert_eq!(value.kind(), JsonValueStrKind::Bool);
+        assert_eq!(value.text(), "false");
+        assert_eq!(value.position(), 1);
+        assert_eq!(json.remaining_text(), " foo");
+
+        assert!(matches!(
+            JsonStr::parse(json.remaining_text()),
+            Err(JsonError::NotValueStart { position: 1 })
         ));
 
         Ok(())
