@@ -1,15 +1,28 @@
 use std::{borrow::Cow, hash::Hash, num::NonZeroUsize, ops::Range, str::FromStr};
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
+const NUMBER_START_PATTERN: [char; 12] = ['-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const DIGIT_PATTERN: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum JsonError {
-    UnexpectedEos { position: usize },
-    NotValueStart { position: usize },
-    //
-    // pub kind: JsonErrorKind,
-    // pub position: usize,
-    // pub reason: Option<Box<dyn Send + Sync + std::error::Error>>,
+    UnexpectedEos {
+        position: usize,
+    },
+    NotEos {
+        position: usize,
+    },
+    InvalidValue {
+        position: usize,
+    },
+    InvalidNumber {
+        position: usize,
+    },
+    Other {
+        position: usize,
+        source: Box<dyn Send + Sync + std::error::Error>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -190,13 +203,36 @@ impl<'a> JsonParser<'a> {
             self.push_value(JsonValueStrKind::Bool, "true".len());
         } else if self.text.starts_with("false") {
             self.push_value(JsonValueStrKind::Bool, "false".len());
+        } else if self.text.starts_with(NUMBER_START_PATTERN) {
+            self.parse_number()?;
         } else if !self.text.is_empty() {
             let position = self.position();
-            return Err(JsonError::NotValueStart { position });
+            return Err(JsonError::InvalidValue { position });
         } else {
             return Err(self.unexpected_eos());
         }
         Ok(())
+    }
+
+    fn parse_number(&mut self) -> Result<(), JsonError> {
+        let mut kind = JsonValueStrKind::Number { integer: true };
+        let s = self.text.strip_prefix('-').unwrap_or(self.text);
+        let s = s
+            .strip_prefix(DIGIT_PATTERN)
+            .ok_or_else(|| self.eos_or_number_error(s))?;
+        self.push_value(kind, self.text.len() - s.len());
+        Ok(())
+    }
+
+    fn eos_or_number_error(&mut self, s: &'a str) -> JsonError {
+        if s.is_empty() {
+            self.text = s;
+            self.unexpected_eos()
+        } else {
+            JsonError::InvalidNumber {
+                position: self.position(),
+            }
+        }
     }
 
     fn push_value(&mut self, kind: JsonValueStrKind, len: usize) {
@@ -251,7 +287,7 @@ mod tests {
 
         assert!(matches!(
             JsonStr::parse("nul"),
-            Err(JsonError::NotValueStart { position: 0 })
+            Err(JsonError::InvalidValue { position: 0 })
         ));
 
         Ok(())
@@ -275,7 +311,7 @@ mod tests {
 
         assert!(matches!(
             JsonStr::parse(json.remaining_text()),
-            Err(JsonError::NotValueStart { position: 1 })
+            Err(JsonError::InvalidValue { position: 1 })
         ));
 
         Ok(())
