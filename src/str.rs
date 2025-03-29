@@ -61,16 +61,16 @@ pub struct JsonValueStr<'a> {
 }
 
 impl<'a> JsonValueStr<'a> {
-    pub fn kind(&self) -> JsonValueStrKind {
+    pub fn kind(self) -> JsonValueStrKind {
         self.json.values[self.index].kind
     }
 
-    pub fn text(&self) -> &str {
+    pub fn text(self) -> &'a str {
         let text = &self.json.values[self.index].text;
         &self.json.text[text.start..text.end]
     }
 
-    pub fn to_str(&self) -> Cow<str> {
+    pub fn to_str(self) -> Cow<'a, str> {
         todo!()
     }
 
@@ -81,23 +81,27 @@ impl<'a> JsonValueStr<'a> {
         (self.kind() != JsonValueStrKind::Null).then(f).transpose()
     }
 
-    pub fn parse_integer<T>(&self) -> Result<T, Error>
+    pub fn parse<T>(&self) -> Result<T, Error>
     where
         T: FromStr,
         T::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
-        self.parse_integer_with(|text| text.parse())
+        self.parse_with(|text| text.parse())
     }
 
-    pub fn parse_integer_with<F, T, E>(&self, f: F) -> Result<T, Error>
+    pub fn parse_with<F, T, E>(&self, f: F) -> Result<T, Error>
     where
         F: FnOnce(&str) -> Result<T, E>,
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
+        f(&self.to_str()).map_err(|_e| todo!())
+    }
+
+    pub fn integer(self) -> Result<Self, Error> {
         if !matches!(self.kind(), JsonValueStrKind::Number { integer: true }) {
             todo!();
         }
-        f(&self.to_str()).map_err(|_e| todo!())
+        Ok(self)
     }
 
     // TODO: expect_array(&self)-> Result<JsonArrayStr, Error>
