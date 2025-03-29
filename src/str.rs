@@ -18,6 +18,9 @@ pub enum JsonError {
     UnmatchedArrayClose {
         position: usize,
     },
+    UnmatchedObjectClose {
+        position: usize,
+    },
     InvalidValue {
         position: usize,
     },
@@ -33,6 +36,11 @@ pub enum JsonError {
         position: usize,
         // TODO: error_position? or range
     },
+    InvalidObject {
+        position: usize,
+        // TODO: error_position? or range
+    },
+    // TODO: Invalid{ kind, range?}
     Other {
         position: usize,
         source: Box<dyn Send + Sync + std::error::Error>,
@@ -220,10 +228,15 @@ impl<'a> JsonParser<'a> {
             self.parse_string(s)?;
         } else if let Some(s) = self.text.strip_prefix('[') {
             self.parse_array(s)?;
+        } else if let Some(s) = self.text.strip_prefix('{') {
+            self.parse_object(s)?;
         } else if !self.text.is_empty() {
             if self.text.starts_with(['+', '.']) {
                 return Err(self.invalid_number());
             } else if self.text.starts_with([']']) {
+                let position = self.position();
+                return Err(JsonError::UnmatchedArrayClose { position });
+            } else if self.text.starts_with(['}']) {
                 let position = self.position();
                 return Err(JsonError::UnmatchedArrayClose { position });
             } else {
@@ -285,6 +298,45 @@ impl<'a> JsonParser<'a> {
 
         self.push_value(kind, self.text.len() - s.len());
         Ok(())
+    }
+
+    fn parse_object(&mut self, s: &'a str) -> Result<(), JsonError> {
+        let s = s.trim_start_matches(WHITESPACE_PATTERN);
+        if let Some(s) = s.strip_prefix('}') {
+            self.push_value(JsonValueStrKind::Object, self.text.len() - s.len());
+            return Ok(());
+        }
+
+        let index = self.values.len();
+        self.push_value(JsonValueStrKind::Object, self.text.len() - s.len());
+
+        loop {
+            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            let s = self
+                .text
+                .strip_prefix('"')
+                .ok_or_else(|| self.eos_or_invalid_object())?;
+            self.parse_string(s)?;
+
+            let s = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            self.text = s
+                .strip_prefix(':')
+                .ok_or_else(|| self.eos_or_invalid_object())?;
+            self.parse_value()?;
+
+            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            if let Some(s) = self.text.strip_prefix('}') {
+                self.text = s;
+                self.values[index].text.end = self.position();
+                self.values[index].size =
+                    NonZeroUsize::MIN.saturating_add(self.values.len() - index - 1);
+                return Ok(());
+            }
+            self.text = self
+                .text
+                .strip_prefix(',')
+                .ok_or_else(|| self.eos_or_invalid_object())?;
+        }
     }
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonError> {
@@ -362,6 +414,20 @@ impl<'a> JsonParser<'a> {
         }
     }
 
+    fn eos_or_invalid_object(&mut self) -> JsonError {
+        if self.text.is_empty() {
+            self.unexpected_eos()
+        } else {
+            self.invalid_object()
+        }
+    }
+
+    fn invalid_object(&self) -> JsonError {
+        JsonError::InvalidObject {
+            position: self.position(),
+        }
+    }
+
     fn invalid_array(&self) -> JsonError {
         JsonError::InvalidArray {
             position: self.position(),
@@ -384,6 +450,10 @@ impl<'a> JsonParser<'a> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         if self.text.starts_with(']') {
             return Err(JsonError::UnmatchedArrayClose {
+                position: self.position(),
+            });
+        } else if self.text.starts_with('}') {
+            return Err(JsonError::UnmatchedObjectClose {
                 position: self.position(),
             });
         } else if !self.text.is_empty() {
