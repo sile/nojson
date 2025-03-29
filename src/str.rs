@@ -104,22 +104,25 @@ impl<'a> JsonValueStr<'a> {
         Ok(self)
     }
 
-    // TODO: expect_array(&self)-> Result<JsonArrayStr, Error>
-    pub fn array_values(&self) -> Result<JsonArrayValues, Error> {
+    pub fn maybe_integer(self) -> Option<Self> {
+        matches!(self.kind(), JsonValueStrKind::Number { integer: true }).then_some(self)
+    }
+
+    pub fn array(&self) -> Result<JsonArrayStr, Error> {
         todo!()
     }
 
-    pub fn object_members(&self) -> Result<JsonObjectMembers, Error> {
+    pub fn object(&self) -> Result<JsonObjectStr, Error> {
         todo!()
     }
 }
 
 #[derive(Debug)]
-pub struct JsonArrayValues<'a> {
+pub struct JsonArrayStr<'a> {
     _value: JsonValueStr<'a>,
 }
 
-impl<'a> JsonArrayValues<'a> {
+impl<'a> JsonArrayStr<'a> {
     pub fn get(&self, _index: usize) -> Option<JsonValueStr<'a>> {
         todo!()
     }
@@ -129,7 +132,7 @@ impl<'a> JsonArrayValues<'a> {
     }
 }
 
-impl<'a> Iterator for JsonArrayValues<'a> {
+impl<'a> Iterator for JsonArrayStr<'a> {
     type Item = JsonValueStr<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -138,18 +141,18 @@ impl<'a> Iterator for JsonArrayValues<'a> {
 }
 
 #[derive(Debug)]
-pub struct JsonObjectMembers<'a> {
+pub struct JsonObjectStr<'a> {
     _value: JsonValueStr<'a>,
 }
 
-impl<'a> JsonObjectMembers<'a> {
+impl<'a> JsonObjectStr<'a> {
     pub fn expect(&self, _name: &str) -> Result<JsonValueStr<'a>, Error> {
         todo!()
     }
 }
 
-impl<'a> Iterator for JsonObjectMembers<'a> {
-    type Item = (Cow<'a, str>, JsonValueStr<'a>);
+impl<'a> Iterator for JsonObjectStr<'a> {
+    type Item = (JsonValueStr<'a>, JsonValueStr<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         todo!()
