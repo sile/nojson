@@ -1,4 +1,4 @@
-use std::{borrow::Cow, hash::Hash, num::NonZeroUsize, ops::Range};
+use std::{borrow::Cow, hash::Hash, ops::Range};
 
 // TODO: private
 pub const WHITESPACES: [char; 4] = [' ', '\t', '\r', '\n'];
@@ -44,14 +44,26 @@ pub enum JsonStrKind {
     Object,
 }
 
+// TODO: rename
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct JsonValue {
     kind: JsonStrKind,
     text: Range<usize>,
-    size: NonZeroUsize,
+    value: Range<usize>,
 }
 
-// TODO: rename 'index
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JsonStr2<'a> {
+    text: &'a str,
+    values: Vec<JsonValue>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JsonValueStr<'a> {
+    json: &'a JsonStr2<'a>,
+    index: usize,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsonStr<'text, 'index> {
     text: Cow<'text, str>,
