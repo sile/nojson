@@ -3,33 +3,12 @@ use std::{borrow::Cow, hash::Hash, num::NonZeroUsize, ops::Range, str::FromStr};
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 
 #[derive(Debug)]
-pub enum JsonErrorContext<'a> {
-    Parser(&'a JsonParse<'a>),
-    Value(JsonValueStr<'a>),
-}
-
-impl<'a> JsonErrorContext<'a> {
-    pub fn line_and_column(&self) -> (NonZeroUsize, NonZeroUsize) {
-        todo!()
-    }
-
-    pub fn path(&self) -> Vec<()> {
-        todo!()
-    }
-
-    pub fn text(&self) -> &'a str {
-        todo!()
-    }
-}
-
-#[derive(Debug)]
-pub enum JsonErrorKind {}
-
-#[derive(Debug)]
-pub struct JsonError<'a> {
-    pub kind: JsonErrorKind,
-    pub context: Option<JsonErrorContext<'a>>,
-    pub reason: Option<Box<dyn Send + Sync + std::error::Error>>,
+pub enum JsonError {
+    UnexpectedEos { position: usize },
+    //
+    // pub kind: JsonErrorKind,
+    // pub position: usize,
+    // pub reason: Option<Box<dyn Send + Sync + std::error::Error>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -50,44 +29,29 @@ struct JsonValueIndexEntry {
 }
 
 #[derive(Debug)]
-pub struct JsonParser<'a> {
+pub struct JsonStr<'a> {
     text: &'a str,
-    remaining_text: &'a str,
     values: Vec<JsonValueIndexEntry>,
 }
 
-impl<'a> JsonParser<'a> {
-    pub fn new(text: &'a str) -> Self {
-        Self {
+impl<'a> JsonStr<'a> {
+    pub fn parse(text: &'a str) -> Result<Self, JsonError> {
+        let mut parser = JsonParser::new(text);
+        parser.parse_value()?;
+        Ok(Self {
             text,
-            remaining_text: text.trim_start_matches(WHITESPACE_PATTERN),
-            values: Vec::new(),
-        }
+            values: parser.values,
+        })
     }
 
-    pub fn parse(&mut self) -> Result<JsonValueStr, JsonError> {
-        if let Some(root) = self.values.first() {
-            self.remaining_text =
-                &self.text[root.text.end..].trim_start_matches(WHITESPACE_PATTERN);
-            self.values.clear();
-        }
-        todo!()
-    }
-
-    // TODO: expect_eos()
-
-    pub fn is_eos(&self) -> bool {
-        self.remaining_text.is_empty()
-    }
-
-    pub fn remaining_text(&self) -> &'a text {
-        self.remaining_text
+    pub fn remaining_text(&self) -> &'a str {
+        &self.text[self.values[0].text.end..]
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct JsonValueStr<'a> {
-    json: &'a JsonParser<'a>,
+    json: &'a JsonStr<'a>,
     index: usize,
 }
 
@@ -190,5 +154,60 @@ impl<'a> Iterator for JsonObjectStr<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         todo!()
+    }
+}
+
+#[derive(Debug)]
+struct JsonParser<'a> {
+    original_text: &'a str,
+    text: &'a str,
+    values: Vec<JsonValueIndexEntry>,
+}
+
+impl<'a> JsonParser<'a> {
+    fn new(text: &'a str) -> Self {
+        Self {
+            original_text: text,
+            text,
+            values: Vec::new(),
+        }
+    }
+
+    fn parse_value(&mut self) -> Result<(), JsonError> {
+        self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+        if self.text.starts_with("null") {
+            todo!()
+        } else if self.text.is_empty() {
+            Err(self.unexpected_eos())
+        } else {
+            todo!()
+        }
+    }
+
+    fn position(&self) -> usize {
+        self.original_text.len() - self.text.len()
+    }
+
+    fn unexpected_eos(&self) -> JsonError {
+        JsonError::UnexpectedEos {
+            position: self.position(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_empty_text() {
+        assert!(matches!(
+            JsonStr::parse(""),
+            Err(JsonError::UnexpectedEos { position: 0 })
+        ));
+        assert!(matches!(
+            JsonStr::parse("    "),
+            Err(JsonError::UnexpectedEos { position: 4 })
+        ));
     }
 }

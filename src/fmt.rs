@@ -2,13 +2,10 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crate::Json;
 
+// TODO: Formatter and PrettyJson for pretty-print
+
 pub trait DisplayJson {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
-
-    // TODO
-    // fn as_json(&self) -> Json<&Self> {
-    //     Json(self)
-    // }
 }
 
 pub trait DisplayJsonString: DisplayJson {}
