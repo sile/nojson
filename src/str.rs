@@ -2,6 +2,7 @@ use std::{borrow::Cow, hash::Hash, num::NonZeroUsize, ops::Range, str::FromStr};
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 const NUMBER_START_PATTERN: [char; 11] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-'];
+const NUMBER_END_PATTERN: [char; 7] = [' ', '\t', '\r', '\n', ',', ']', '}'];
 const DIGIT_PATTERN: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 #[derive(Debug)]
@@ -12,6 +13,9 @@ pub enum JsonError {
     },
     // TODO: rename
     NotEos {
+        position: usize,
+    },
+    UnmatchedArrayClose {
         position: usize,
     },
     InvalidValue {
@@ -214,11 +218,14 @@ impl<'a> JsonParser<'a> {
             self.parse_number()?;
         } else if let Some(s) = self.text.strip_prefix('"') {
             self.parse_string(s)?;
-        } else if let Some(s) = self.text.strip_prefix('{') {
+        } else if let Some(s) = self.text.strip_prefix('[') {
             self.parse_array(s)?;
         } else if !self.text.is_empty() {
             if self.text.starts_with(['+', '.']) {
                 return Err(self.invalid_number());
+            } else if self.text.starts_with([']']) {
+                let position = self.position();
+                return Err(JsonError::UnmatchedArrayClose { position });
             } else {
                 let position = self.position();
                 return Err(JsonError::InvalidValue { position });
@@ -272,7 +279,7 @@ impl<'a> JsonParser<'a> {
             s
         };
 
-        if !(s.is_empty() || s.starts_with(WHITESPACE_PATTERN)) {
+        if !(s.is_empty() || s.starts_with(NUMBER_END_PATTERN)) {
             return Err(self.invalid_number());
         }
 
@@ -282,7 +289,7 @@ impl<'a> JsonParser<'a> {
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonError> {
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
-        if let Some(s) = s.strip_prefix('}') {
+        if let Some(s) = s.strip_prefix(']') {
             self.push_value(JsonValueStrKind::Array, self.text.len() - s.len());
             return Ok(());
         }
@@ -291,10 +298,15 @@ impl<'a> JsonParser<'a> {
         self.push_value(JsonValueStrKind::Array, self.text.len() - s.len());
 
         loop {
+            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            if self.text.starts_with([',', ']']) {
+                return Err(self.invalid_array());
+            }
+
             self.parse_value()?;
 
             let s = self.text.trim_start_matches(WHITESPACE_PATTERN);
-            if let Some(s) = s.strip_prefix('}') {
+            if let Some(s) = s.strip_prefix(']') {
                 self.text = s;
                 self.values[index].text.end = self.position();
                 self.values[index].size =
@@ -302,10 +314,10 @@ impl<'a> JsonParser<'a> {
                 return Ok(());
             } else if let Some(s) = s.strip_prefix(',') {
                 self.text = s;
+            } else if s.is_empty() {
+                return Err(self.unexpected_eos());
             } else {
-                return Err(JsonError::InvalidArray {
-                    position: self.position(),
-                });
+                return Err(self.invalid_array());
             }
         }
     }
@@ -350,6 +362,12 @@ impl<'a> JsonParser<'a> {
         }
     }
 
+    fn invalid_array(&self) -> JsonError {
+        JsonError::InvalidArray {
+            position: self.position(),
+        }
+    }
+
     fn invalid_number(&self) -> JsonError {
         JsonError::InvalidNumber {
             position: self.position(),
@@ -364,7 +382,11 @@ impl<'a> JsonParser<'a> {
 
     pub fn check_eos(&mut self) -> Result<(), JsonError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
-        if !self.text.is_empty() {
+        if self.text.starts_with(']') {
+            return Err(JsonError::UnmatchedArrayClose {
+                position: self.position(),
+            });
+        } else if !self.text.is_empty() {
             return Err(JsonError::NotEos {
                 position: self.position(),
             });
@@ -559,6 +581,55 @@ mod tests {
             r#" "ab\u01"#,
             r#" "ab\u012"#,
         ] {
+            assert!(
+                matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
+                "text={text}, error={:?}",
+                JsonStr::parse(text)
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_arrays() -> Result<(), JsonError> {
+        // Arrays.
+        for text in [
+            "[]",
+            "[ \n\t ]",
+            "[1  ,null, \"foo\"  ]",
+            "[ 1, [[ 2 ], 3,null ],false]",
+        ] {
+            let json = JsonStr::parse(text)?;
+            let value = json.value();
+            assert_eq!(value.kind(), JsonValueStrKind::Array);
+            assert_eq!(value.text(), text);
+            assert_eq!(value.position(), 0);
+        }
+
+        // Invalid arrays.
+        for text in ["[,]", "[1,2,]"] {
+            assert!(
+                matches!(JsonStr::parse(text), Err(JsonError::InvalidArray { .. })),
+                "text={text}, error={:?}",
+                JsonStr::parse(text)
+            );
+        }
+
+        // Unmatched ']'.
+        for text in ["]", "[1,2]]"] {
+            assert!(
+                matches!(
+                    JsonStr::parse(text),
+                    Err(JsonError::UnmatchedArrayClose { .. })
+                ),
+                "text={text}, error={:?}",
+                JsonStr::parse(text)
+            );
+        }
+
+        // Unexpected EOS.
+        for text in ["[", "[1,2", "[1,2,"] {
             assert!(
                 matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
                 "text={text}, error={:?}",
