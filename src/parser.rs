@@ -34,7 +34,7 @@ impl<'a> JsonParser<'a> {
             Some('f') => self.parse_false(&self.text[1..]),
             Some('"') => self.parse_string(&self.text[1..]),
             Some('[') => self.parse_array(&self.text[1..]),
-            Some('{') => self.parse_object(s),
+            Some('{') => self.parse_object(&self.text[1..]),
             None => Err(self.unexpected_eos()),
             _ => {
                 if self.text.starts_with(NUMBER_START_PATTERN) {
