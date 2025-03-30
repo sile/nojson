@@ -1,6 +1,6 @@
-use std::{borrow::Cow, hash::Hash, ops::Range, str::FromStr};
+use std::{borrow::Cow, ops::Range, str::FromStr};
 
-use crate::parser::JsonParser;
+use crate::{JsonValueKind, parser::JsonParser};
 
 #[derive(Debug)]
 #[non_exhaustive]
@@ -39,13 +39,13 @@ pub enum JsonError {
         // TODO: error_position? or range
     },
     UnexpectedKind {
-        expected_kinds: &'static [JsonValueStrKind],
-        actual_kind: JsonValueStrKind,
+        expected_kinds: &'static [JsonValueKind],
+        actual_kind: JsonValueKind,
         position: usize, // TODO: range
     },
     // Valid JSON value, but the content was unexpected.
     UnexpectedValue {
-        kind: JsonValueStrKind,
+        kind: JsonValueKind,
         position: usize,
         error: Box<dyn Send + Sync + std::error::Error>,
     },
@@ -64,19 +64,10 @@ pub enum JsonError {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum JsonValueStrKind {
-    Null,
-    Bool,
-    Number { integer: bool },
-    String { escaped: bool },
-    Array,
-    Object,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct JsonValueIndexEntry {
-    pub kind: JsonValueStrKind,
+    pub kind: JsonValueKind,
+    pub escaped: bool,
     pub text: Range<usize>,
     pub end_index: usize,
 }
@@ -113,7 +104,7 @@ pub struct JsonValueStr<'a> {
 }
 
 impl<'a> JsonValueStr<'a> {
-    pub fn kind(self) -> JsonValueStrKind {
+    pub fn kind(self) -> JsonValueKind {
         self.json.values[self.index].kind
     }
 
@@ -131,7 +122,7 @@ impl<'a> JsonValueStr<'a> {
     }
 
     pub fn to_str(self) -> Cow<'a, str> {
-        if matches!(self.kind(), JsonValueStrKind::String { escaped: true }) {
+        if self.entry().escaped {
             let mut unescaped = String::with_capacity(self.text().len());
             let mut chars = self.text().chars();
             while let Some(c) = chars.next() {
@@ -169,7 +160,7 @@ impl<'a> JsonValueStr<'a> {
     where
         F: FnOnce(Self) -> T,
     {
-        (self.kind() != JsonValueStrKind::Null).then(|| f(self))
+        (self.kind() != JsonValueKind::Null).then(|| f(self))
     }
 
     pub fn non_null_then_try<F, T, E>(self, f: F) -> Result<Option<T>, E>
@@ -199,7 +190,7 @@ impl<'a> JsonValueStr<'a> {
         })
     }
 
-    pub fn expect(self, kinds: &'static [JsonValueStrKind]) -> Result<Self, JsonError> {
+    pub fn expect(self, kinds: &'static [JsonValueKind]) -> Result<Self, JsonError> {
         if kinds.contains(&self.kind()) {
             Ok(self)
         } else {
@@ -212,29 +203,23 @@ impl<'a> JsonValueStr<'a> {
     }
 
     pub fn as_bool(self) -> Result<Self, JsonError> {
-        self.expect(&[JsonValueStrKind::Bool])
+        self.expect(&[JsonValueKind::Bool])
     }
 
     pub fn as_integer(self) -> Result<Self, JsonError> {
-        self.expect(&[JsonValueStrKind::Number { integer: true }])
+        self.expect(&[JsonValueKind::Integer])
     }
 
     pub fn as_number(self) -> Result<Self, JsonError> {
-        self.expect(&[
-            JsonValueStrKind::Number { integer: true },
-            JsonValueStrKind::Number { integer: false },
-        ])
+        self.expect(&[JsonValueKind::Integer, JsonValueKind::Float])
     }
 
     pub fn as_string(self) -> Result<Self, JsonError> {
-        self.expect(&[
-            JsonValueStrKind::String { escaped: false },
-            JsonValueStrKind::String { escaped: true },
-        ])
+        self.expect(&[JsonValueKind::String])
     }
 
     pub fn to_array_values(self) -> Result<impl Iterator<Item = JsonValueStr<'a>>, JsonError> {
-        self.expect(&[JsonValueStrKind::Array]).map(JsonValues::new)
+        self.expect(&[JsonValueKind::Array]).map(JsonValues::new)
     }
 
     pub fn to_fixed_array<const N: usize>(self) -> Result<[JsonValueStr<'a>; N], JsonError> {
@@ -265,7 +250,7 @@ impl<'a> JsonValueStr<'a> {
     pub fn to_object_members(
         self,
     ) -> Result<impl Iterator<Item = (JsonValueStr<'a>, JsonValueStr<'a>)>, JsonError> {
-        self.expect(&[JsonValueStrKind::Object])
+        self.expect(&[JsonValueKind::Object])
             .map(JsonKeyValuePairs::new)
     }
 
@@ -372,7 +357,7 @@ mod tests {
     fn parse_nulls() -> Result<(), JsonError> {
         let json = JsonTextStr::parse(" null ")?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueStrKind::Null);
+        assert_eq!(value.kind(), JsonValueKind::Null);
         assert_eq!(value.text(), "null");
         assert_eq!(value.position(), 1);
 
@@ -392,13 +377,13 @@ mod tests {
     fn parse_bools() -> Result<(), JsonError> {
         let json = JsonTextStr::parse("true")?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueStrKind::Bool);
+        assert_eq!(value.kind(), JsonValueKind::Bool);
         assert_eq!(value.text(), "true");
         assert_eq!(value.position(), 0);
 
         let json = JsonTextStr::parse(" false ")?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueStrKind::Bool);
+        assert_eq!(value.kind(), JsonValueKind::Bool);
         assert_eq!(value.text(), "false");
         assert_eq!(value.position(), 1);
 
@@ -416,7 +401,7 @@ mod tests {
         for text in ["0", "-12"] {
             let json = JsonTextStr::parse(text)?;
             let value = json.value();
-            assert_eq!(value.kind(), JsonValueStrKind::Number { integer: true });
+            assert_eq!(value.kind(), JsonValueKind::Integer);
             assert_eq!(value.text(), text);
             assert_eq!(value.position(), 0);
         }
@@ -425,7 +410,7 @@ mod tests {
         for text in ["12.3", "12.3e4", "12.3e-4", "-0.3e+4", "12E034"] {
             let json = JsonTextStr::parse(text)?;
             let value = json.value();
-            assert_eq!(value.kind(), JsonValueStrKind::Number { integer: false });
+            assert_eq!(value.kind(), JsonValueKind::Float);
             assert_eq!(value.text(), text);
             assert_eq!(value.position(), 0);
         }
@@ -477,9 +462,10 @@ mod tests {
         for text in [r#" "" "#, r#" "abc" "#] {
             let json = JsonTextStr::parse(text)?;
             let value = json.value();
-            assert_eq!(value.kind(), JsonValueStrKind::String { escaped: false });
+            assert_eq!(value.kind(), JsonValueKind::String);
             assert_eq!(value.text(), text.trim());
             assert_eq!(value.position(), 1);
+            assert!(!value.entry().escaped);
         }
 
         // Escaped strings.
@@ -490,9 +476,10 @@ mod tests {
         ] {
             let json = JsonTextStr::parse(text)?;
             let value = json.value();
-            assert_eq!(value.kind(), JsonValueStrKind::String { escaped: true });
+            assert_eq!(value.kind(), JsonValueKind::String);
             assert_eq!(value.text(), text.trim());
             assert_eq!(value.position(), 1);
+            assert!(value.entry().escaped);
         }
 
         // Invalid strings.
@@ -540,7 +527,7 @@ mod tests {
         ] {
             let json = JsonTextStr::parse(text)?;
             let value = json.value();
-            assert_eq!(value.kind(), JsonValueStrKind::Array);
+            assert_eq!(value.kind(), JsonValueKind::Array);
             assert_eq!(value.text(), text);
             assert_eq!(value.position(), 0);
         }
@@ -595,7 +582,7 @@ mod tests {
         ] {
             let json = JsonTextStr::parse(text)?;
             let value = json.value();
-            assert_eq!(value.kind(), JsonValueStrKind::Object);
+            assert_eq!(value.kind(), JsonValueKind::Object);
             assert_eq!(value.text(), text);
             assert_eq!(value.position(), 0);
         }

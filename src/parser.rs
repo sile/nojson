@@ -1,6 +1,9 @@
 use std::ops::Range;
 
-use crate::str::{JsonError, JsonValueIndexEntry, JsonValueStrKind};
+use crate::{
+    JsonValueKind,
+    str::{JsonError, JsonValueIndexEntry},
+};
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 const NUMBER_START_PATTERN: [char; 11] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-'];
@@ -26,11 +29,11 @@ impl<'a> JsonParser<'a> {
     pub fn parse_value(&mut self) -> Result<(), JsonError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         if self.text.starts_with("null") {
-            self.push_value(JsonValueStrKind::Null, "null".len());
+            self.push_value(JsonValueKind::Null, "null".len());
         } else if self.text.starts_with("true") {
-            self.push_value(JsonValueStrKind::Bool, "true".len());
+            self.push_value(JsonValueKind::Bool, "true".len());
         } else if self.text.starts_with("false") {
-            self.push_value(JsonValueStrKind::Bool, "false".len());
+            self.push_value(JsonValueKind::Bool, "false".len());
         } else if self.text.starts_with(NUMBER_START_PATTERN) {
             self.parse_number()?;
         } else if let Some(s) = self.text.strip_prefix('"') {
@@ -60,7 +63,7 @@ impl<'a> JsonParser<'a> {
 
     // number = [ minus ] int [ frac ] [ exp ]
     fn parse_number(&mut self) -> Result<(), JsonError> {
-        let mut kind = JsonValueStrKind::Number { integer: true };
+        let mut kind = JsonValueKind::Integer;
 
         // [ minus ]
         let s = self.text.strip_prefix('-').unwrap_or(self.text);
@@ -82,7 +85,7 @@ impl<'a> JsonParser<'a> {
 
         // [ frac ]
         let s = if let Some(s) = s.strip_prefix('.') {
-            kind = JsonValueStrKind::Number { integer: false };
+            kind = JsonValueKind::Float;
             s.strip_prefix(DIGIT_PATTERN)
                 .ok_or_else(|| self.eos_or_number_error(s.is_empty()))
                 .map(|s| s.trim_start_matches(DIGIT_PATTERN))?
@@ -92,7 +95,7 @@ impl<'a> JsonParser<'a> {
 
         // [ exp ]
         let s = if let Some(s) = s.strip_prefix(['e', 'E']) {
-            kind = JsonValueStrKind::Number { integer: false };
+            kind = JsonValueKind::Float;
             let s = s.strip_prefix(['-', '+']).unwrap_or(s);
             s.strip_prefix(DIGIT_PATTERN)
                 .ok_or_else(|| self.eos_or_number_error(s.is_empty()))
@@ -112,12 +115,12 @@ impl<'a> JsonParser<'a> {
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonError> {
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix('}') {
-            self.push_value(JsonValueStrKind::Object, self.text.len() - s.len());
+            self.push_value(JsonValueKind::Object, self.text.len() - s.len());
             return Ok(());
         }
 
         let index = self.values.len();
-        self.push_value(JsonValueStrKind::Object, self.text.len() - s.len());
+        self.push_value(JsonValueKind::Object, self.text.len() - s.len());
         self.text = s;
 
         loop {
@@ -152,12 +155,12 @@ impl<'a> JsonParser<'a> {
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonError> {
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix(']') {
-            self.push_value(JsonValueStrKind::Array, self.text.len() - s.len());
+            self.push_value(JsonValueKind::Array, self.text.len() - s.len());
             return Ok(());
         }
 
         let index = self.values.len();
-        self.push_value(JsonValueStrKind::Array, self.text.len() - s.len());
+        self.push_value(JsonValueKind::Array, self.text.len() - s.len());
 
         loop {
             self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
@@ -188,19 +191,20 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_string(&mut self, mut s: &'a str) -> Result<(), JsonError> {
-        let mut kind = JsonValueStrKind::String { escaped: false };
+        let mut escaped = false;
 
         loop {
             s = s.trim_start_matches(|c| !(matches!(c, '"' | '\\') || c.is_ascii_control()));
             if let Some(s) = s.strip_prefix('"') {
-                self.push_value(kind, self.text.len() - s.len());
+                self.push_value(JsonValueKind::String, self.text.len() - s.len());
+                self.values.last_mut().expect("infallible").escaped = escaped;
                 return Ok(());
             }
             if s.is_empty() {
                 return Err(self.unexpected_eos());
             }
 
-            kind = JsonValueStrKind::String { escaped: true };
+            escaped = true;
             s = s.strip_prefix('\\').ok_or_else(|| self.invalid_string())?;
             match s.chars().next().ok_or_else(|| self.unexpected_eos())? {
                 '"' | '\\' | '/' | 'n' | 't' | 'r' | 'b' | 'f' => s = &s[1..],
@@ -281,10 +285,11 @@ impl<'a> JsonParser<'a> {
         Ok(())
     }
 
-    fn push_value(&mut self, kind: JsonValueStrKind, len: usize) {
+    fn push_value(&mut self, kind: JsonValueKind, len: usize) {
         let position = self.position();
         let entry = JsonValueIndexEntry {
             kind,
+            escaped: false,
             text: Range {
                 start: position,
                 end: position + len,
