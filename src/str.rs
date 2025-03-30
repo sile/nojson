@@ -287,11 +287,17 @@ mod tests {
     fn parse_empty_text() {
         assert!(matches!(
             JsonTextStr::parse(""),
-            Err(JsonParseError::UnexpectedEos { position: 0 })
+            Err(JsonParseError::UnexpectedEos {
+                kind: None,
+                position: 0
+            })
         ));
         assert!(matches!(
             JsonTextStr::parse("    "),
-            Err(JsonParseError::UnexpectedEos { position: 4 })
+            Err(JsonParseError::UnexpectedEos {
+                kind: None,
+                position: 4
+            })
         ));
     }
 
@@ -312,7 +318,10 @@ mod tests {
         ));
         assert!(matches!(
             JsonTextStr::parse("nul"),
-            Err(JsonParseError::UnexpectedEos { position: 3 })
+            Err(JsonParseError::UnexpectedEos {
+                kind: Some(JsonValueKind::Null),
+                position: 3
+            })
         ));
         assert!(matches!(
             JsonTextStr::parse("nulla"),
@@ -349,7 +358,10 @@ mod tests {
         ));
         assert!(matches!(
             JsonTextStr::parse("tr"),
-            Err(JsonParseError::UnexpectedEos { position: 2 })
+            Err(JsonParseError::UnexpectedEos {
+                kind: Some(JsonValueKind::Bool),
+                position: 2
+            })
         ));
 
         Ok(())

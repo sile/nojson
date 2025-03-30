@@ -74,14 +74,12 @@ impl<'a> JsonParser<'a> {
     }
 
     fn unexpected_value_char(&self, offset: usize) -> JsonParseError {
+        let kind = self.kind;
         let position = self.position() + offset;
         if position == self.original_text.len() {
-            JsonParseError::UnexpectedEos { position }
+            JsonParseError::UnexpectedEos { kind, position }
         } else {
-            JsonParseError::UnexpectedValueChar {
-                kind: self.kind,
-                position,
-            }
+            JsonParseError::UnexpectedValueChar { kind, position }
         }
     }
 
@@ -281,6 +279,7 @@ impl<'a> JsonParser<'a> {
 
     fn unexpected_eos(&self) -> JsonParseError {
         JsonParseError::UnexpectedEos {
+            kind: self.kind,
             position: self.original_text.len(),
         }
     }

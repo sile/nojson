@@ -5,7 +5,7 @@ use crate::JsonValueKind;
 #[non_exhaustive]
 pub enum JsonParseError {
     UnexpectedEos {
-        // TODO: kind
+        kind: Option<JsonValueKind>,
         position: usize,
     },
     UnexpectedTrailingChar {
@@ -43,7 +43,7 @@ pub enum JsonParseError {
 impl JsonParseError {
     pub fn position(&self) -> usize {
         match self {
-            JsonParseError::UnexpectedEos { position }
+            JsonParseError::UnexpectedEos { position, .. }
             | JsonParseError::UnexpectedTrailingChar { position }
             | JsonParseError::UnexpectedValueChar { position, .. }
             | JsonParseError::UnexpectedKind { position, .. }
