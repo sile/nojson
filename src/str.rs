@@ -82,12 +82,12 @@ pub(crate) struct JsonValueIndexEntry {
 }
 
 #[derive(Debug)]
-pub struct JsonStr<'a> {
+pub struct JsonTextStr<'a> {
     text: &'a str,
     values: Vec<JsonValueIndexEntry>,
 }
 
-impl<'a> JsonStr<'a> {
+impl<'a> JsonTextStr<'a> {
     pub fn parse(text: &'a str) -> Result<Self, JsonError> {
         let mut parser = JsonParser::new(text);
         parser.parse_value()?;
@@ -108,7 +108,7 @@ impl<'a> JsonStr<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct JsonValueStr<'a> {
-    json: &'a JsonStr<'a>,
+    json: &'a JsonTextStr<'a>,
     index: usize,
 }
 
@@ -357,29 +357,29 @@ mod tests {
     #[test]
     fn parse_empty_text() {
         assert!(matches!(
-            JsonStr::parse(""),
+            JsonTextStr::parse(""),
             Err(JsonError::UnexpectedEos { position: 0 })
         ));
         assert!(matches!(
-            JsonStr::parse("    "),
+            JsonTextStr::parse("    "),
             Err(JsonError::UnexpectedEos { position: 4 })
         ));
     }
 
     #[test]
     fn parse_nulls() -> Result<(), JsonError> {
-        let json = JsonStr::parse(" null ")?;
+        let json = JsonTextStr::parse(" null ")?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueStrKind::Null);
         assert_eq!(value.text(), "null");
         assert_eq!(value.position(), 1);
 
         assert!(matches!(
-            JsonStr::parse("nul"),
+            JsonTextStr::parse("nul"),
             Err(JsonError::InvalidValue { position: 0 })
         ));
         assert!(matches!(
-            JsonStr::parse("nulla"),
+            JsonTextStr::parse("nulla"),
             Err(JsonError::NotEos { position: 4 })
         ));
 
@@ -388,20 +388,20 @@ mod tests {
 
     #[test]
     fn parse_bools() -> Result<(), JsonError> {
-        let json = JsonStr::parse("true")?;
+        let json = JsonTextStr::parse("true")?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueStrKind::Bool);
         assert_eq!(value.text(), "true");
         assert_eq!(value.position(), 0);
 
-        let json = JsonStr::parse(" false ")?;
+        let json = JsonTextStr::parse(" false ")?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueStrKind::Bool);
         assert_eq!(value.text(), "false");
         assert_eq!(value.position(), 1);
 
         assert!(matches!(
-            JsonStr::parse("false true"),
+            JsonTextStr::parse("false true"),
             Err(JsonError::NotEos { position: 6 })
         ));
 
@@ -412,7 +412,7 @@ mod tests {
     fn parse_numbers() -> Result<(), JsonError> {
         // Integers.
         for text in ["0", "-12"] {
-            let json = JsonStr::parse(text)?;
+            let json = JsonTextStr::parse(text)?;
             let value = json.value();
             assert_eq!(value.kind(), JsonValueStrKind::Number { integer: true });
             assert_eq!(value.text(), text);
@@ -421,7 +421,7 @@ mod tests {
 
         // Floats.
         for text in ["12.3", "12.3e4", "12.3e-4", "-0.3e+4", "12E034"] {
-            let json = JsonStr::parse(text)?;
+            let json = JsonTextStr::parse(text)?;
             let value = json.value();
             assert_eq!(value.kind(), JsonValueStrKind::Number { integer: false });
             assert_eq!(value.text(), text);
@@ -434,11 +434,11 @@ mod tests {
         ] {
             assert!(
                 matches!(
-                    JsonStr::parse(text),
+                    JsonTextStr::parse(text),
                     Err(JsonError::InvalidNumber { position: 0 })
                 ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
@@ -446,20 +446,23 @@ mod tests {
         for text in ["e123"] {
             assert!(
                 matches!(
-                    JsonStr::parse(text),
+                    JsonTextStr::parse(text),
                     Err(JsonError::InvalidValue { position: 0 })
                 ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
         // Unexpected EOS.
         for text in ["123.", "-", "123e", "123e-"] {
             assert!(
-                matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
+                matches!(
+                    JsonTextStr::parse(text),
+                    Err(JsonError::UnexpectedEos { .. })
+                ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
@@ -470,7 +473,7 @@ mod tests {
     fn parse_strings() -> Result<(), JsonError> {
         // Non-escaped strings.
         for text in [r#" "" "#, r#" "abc" "#] {
-            let json = JsonStr::parse(text)?;
+            let json = JsonTextStr::parse(text)?;
             let value = json.value();
             assert_eq!(value.kind(), JsonValueStrKind::String { escaped: false });
             assert_eq!(value.text(), text.trim());
@@ -483,7 +486,7 @@ mod tests {
             r#" "\n\\a\r\nb\b\"\fc" "#,
             r#" "ab\uF20ac" "#,
         ] {
-            let json = JsonStr::parse(text)?;
+            let json = JsonTextStr::parse(text)?;
             let value = json.value();
             assert_eq!(value.kind(), JsonValueStrKind::String { escaped: true });
             assert_eq!(value.text(), text.trim());
@@ -494,11 +497,11 @@ mod tests {
         for text in [r#" "ab\xc" "#, r#" "ab\uXyz0c" "#] {
             assert!(
                 matches!(
-                    JsonStr::parse(text),
+                    JsonTextStr::parse(text),
                     Err(JsonError::InvalidString { position: 1 })
                 ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
@@ -512,9 +515,12 @@ mod tests {
             r#" "ab\u012"#,
         ] {
             assert!(
-                matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
+                matches!(
+                    JsonTextStr::parse(text),
+                    Err(JsonError::UnexpectedEos { .. })
+                ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
@@ -530,7 +536,7 @@ mod tests {
             "[1  ,null, \"foo\"  ]",
             "[ 1, [[ 2 ], 3,null ],false]",
         ] {
-            let json = JsonStr::parse(text)?;
+            let json = JsonTextStr::parse(text)?;
             let value = json.value();
             assert_eq!(value.kind(), JsonValueStrKind::Array);
             assert_eq!(value.text(), text);
@@ -540,9 +546,12 @@ mod tests {
         // Invalid arrays.
         for text in ["[,]", "[1,2,]"] {
             assert!(
-                matches!(JsonStr::parse(text), Err(JsonError::InvalidArray { .. })),
+                matches!(
+                    JsonTextStr::parse(text),
+                    Err(JsonError::InvalidArray { .. })
+                ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
@@ -550,20 +559,23 @@ mod tests {
         for text in ["]", "[1,2]]", r#"{"foo":[]]}"#] {
             assert!(
                 matches!(
-                    JsonStr::parse(text),
+                    JsonTextStr::parse(text),
                     Err(JsonError::UnmatchedArrayClose { .. })
                 ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
         // Unexpected EOS.
         for text in ["[", "[1,2", "[1,2,"] {
             assert!(
-                matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
+                matches!(
+                    JsonTextStr::parse(text),
+                    Err(JsonError::UnexpectedEos { .. })
+                ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
@@ -579,7 +591,7 @@ mod tests {
             r#"{"foo":1  ,"null": null, "foo" :"bar" }"#,
             r#"{"foo": {}, "bar":[{"a":null}]}"#,
         ] {
-            let json = JsonStr::parse(text)?;
+            let json = JsonTextStr::parse(text)?;
             let value = json.value();
             assert_eq!(value.kind(), JsonValueStrKind::Object);
             assert_eq!(value.text(), text);
@@ -589,9 +601,12 @@ mod tests {
         // Invalid objects.
         for text in ["{,}", "{:}", r#"{"foo","bar"}"#, r#"{"foo":"bar",}"#] {
             assert!(
-                matches!(JsonStr::parse(text), Err(JsonError::InvalidObject { .. })),
+                matches!(
+                    JsonTextStr::parse(text),
+                    Err(JsonError::InvalidObject { .. })
+                ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
@@ -599,20 +614,23 @@ mod tests {
         for text in ["}", r#"{"1":2}}"#, "[{}}]"] {
             assert!(
                 matches!(
-                    JsonStr::parse(text),
+                    JsonTextStr::parse(text),
                     Err(JsonError::UnmatchedObjectClose { .. })
                 ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
         // Unexpected EOS.
         for text in ["{", r#"{"1" "#, r#"{"1": "#, r#"{"1": 2"#] {
             assert!(
-                matches!(JsonStr::parse(text), Err(JsonError::UnexpectedEos { .. })),
+                matches!(
+                    JsonTextStr::parse(text),
+                    Err(JsonError::UnexpectedEos { .. })
+                ),
                 "text={text}, error={:?}",
-                JsonStr::parse(text)
+                JsonTextStr::parse(text)
             );
         }
 
