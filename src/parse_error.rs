@@ -5,9 +5,11 @@ use crate::JsonValueKind;
 #[non_exhaustive]
 pub enum JsonParseError {
     UnexpectedEos {
+        // TODO: kind
         position: usize,
     },
     UnexpectedTrailingChar {
+        // TODO: kind
         position: usize,
     },
     UnexpectedValueChar {

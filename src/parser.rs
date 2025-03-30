@@ -12,7 +12,7 @@ const DIGIT_PATTERN: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', 
 pub(crate) struct JsonParser<'a> {
     original_text: &'a str,
     text: &'a str,
-    current: Option<JsonValueKind>, // TODO: remove Option
+    kind: Option<JsonValueKind>,
     pub values: Vec<JsonValueIndexEntry>,
 }
 
@@ -21,7 +21,7 @@ impl<'a> JsonParser<'a> {
         Self {
             original_text: text,
             text,
-            current: None,
+            kind: None,
             values: Vec::new(),
         }
     }
@@ -59,9 +59,9 @@ impl<'a> JsonParser<'a> {
         literal_suffix: &str,
         s: &'a str,
     ) -> Result<(), JsonParseError> {
-        self.current = Some(kind);
+        self.kind = Some(kind);
         if s.starts_with(literal_suffix) {
-            self.push_entry(kind, 1 + literal_suffix.len());
+            self.push_entry(1 + literal_suffix.len());
             Ok(())
         } else {
             for (i, (c0, c1)) in s.chars().zip(literal_suffix.chars()).enumerate() {
@@ -79,7 +79,7 @@ impl<'a> JsonParser<'a> {
             JsonParseError::UnexpectedEos { position }
         } else {
             JsonParseError::UnexpectedValueChar {
-                kind: self.current,
+                kind: self.kind,
                 position,
             }
         }
@@ -87,8 +87,7 @@ impl<'a> JsonParser<'a> {
 
     // number = [ minus ] int [ frac ] [ exp ]
     fn parse_number(&mut self) -> Result<(), JsonParseError> {
-        let mut kind = JsonValueKind::Integer;
-        self.current = Some(kind);
+        self.kind = Some(JsonValueKind::Integer);
 
         // [ minus ]
         let s = self.text.strip_prefix('-').unwrap_or(self.text);
@@ -110,8 +109,7 @@ impl<'a> JsonParser<'a> {
 
         // [ frac ]
         let s = if let Some(s) = s.strip_prefix('.') {
-            kind = JsonValueKind::Float;
-            self.current = Some(kind);
+            self.kind = Some(JsonValueKind::Float);
             s.strip_prefix(DIGIT_PATTERN)
                 .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
                 .map(|s| s.trim_start_matches(DIGIT_PATTERN))?
@@ -121,8 +119,7 @@ impl<'a> JsonParser<'a> {
 
         // [ exp ]
         let s = if let Some(s) = s.strip_prefix(['e', 'E']) {
-            kind = JsonValueKind::Float;
-            self.current = Some(kind);
+            self.kind = Some(JsonValueKind::Float);
             let s = s.strip_prefix(['-', '+']).unwrap_or(s);
             s.strip_prefix(DIGIT_PATTERN)
                 .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
@@ -131,22 +128,21 @@ impl<'a> JsonParser<'a> {
             s
         };
 
-        self.push_entry(kind, self.offset(s));
+        self.push_entry(self.offset(s));
         Ok(())
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
-        let kind = JsonValueKind::Object;
-        self.current = Some(kind);
+        self.kind = Some(JsonValueKind::Object);
 
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix('}') {
-            self.push_entry(kind, self.offset(s));
+            self.push_entry(self.offset(s));
             return Ok(());
         }
 
         let index = self.values.len();
-        self.push_entry(kind, self.offset(s)); // Push a placeholder entry
+        self.push_entry(self.offset(s)); // Push a placeholder entry
         self.text = s;
 
         loop {
@@ -156,7 +152,7 @@ impl<'a> JsonParser<'a> {
                 .strip_prefix('"')
                 .ok_or_else(|| self.unexpected_value_char(0))?;
             self.parse_string(s)?;
-            self.current = Some(kind);
+            self.kind = Some(JsonValueKind::Object);
 
             // Value.
             self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
@@ -165,7 +161,7 @@ impl<'a> JsonParser<'a> {
                 .strip_prefix(':')
                 .ok_or_else(|| self.unexpected_value_char(0))?;
             self.parse_value()?;
-            self.current = Some(kind);
+            self.kind = Some(JsonValueKind::Object);
 
             self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
             if let Some(s) = self.text.strip_prefix('}') {
@@ -183,21 +179,20 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonParseError> {
-        let kind = JsonValueKind::Array;
-        self.current = Some(kind);
+        self.kind = Some(JsonValueKind::Array);
 
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix(']') {
-            self.push_entry(kind, self.offset(s));
+            self.push_entry(self.offset(s));
             return Ok(());
         }
 
         let index = self.values.len();
-        self.push_entry(kind, self.offset(s)); // Push a placeholder entry
+        self.push_entry(self.offset(s)); // Push a placeholder entry
 
         loop {
             self.parse_value()?;
-            self.current = Some(kind);
+            self.kind = Some(JsonValueKind::Array);
 
             let s = self.text.trim_start_matches(WHITESPACE_PATTERN);
             if let Some(s) = s.strip_prefix(']') {
@@ -214,13 +209,12 @@ impl<'a> JsonParser<'a> {
 
     fn parse_string(&mut self, mut s: &'a str) -> Result<(), JsonParseError> {
         let mut escaped = false;
-        let kind = JsonValueKind::String;
-        self.current = Some(kind);
+        self.kind = Some(JsonValueKind::String);
 
         loop {
             s = s.trim_start_matches(|c| !(matches!(c, '"' | '\\') || c.is_ascii_control()));
             if let Some(s) = s.strip_prefix('"') {
-                self.push_entry(kind, self.offset(s));
+                self.push_entry(self.offset(s));
                 self.values.last_mut().expect("infallible").escaped = escaped;
                 return Ok(());
             }
@@ -257,10 +251,10 @@ impl<'a> JsonParser<'a> {
         Ok(())
     }
 
-    fn push_entry(&mut self, kind: JsonValueKind, len: usize) {
+    fn push_entry(&mut self, len: usize) {
         let position = self.position();
         let entry = JsonValueIndexEntry {
-            kind,
+            kind: self.kind.expect("infallible"),
             escaped: false,
             text: Range {
                 start: position,
