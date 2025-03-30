@@ -233,7 +233,7 @@ impl<'a> JsonValueStr<'a> {
         ])
     }
 
-    pub fn to_array_values(self) -> Result<JsonValues<'a>, JsonError> {
+    pub fn to_array_values(self) -> Result<impl Iterator<Item = JsonValueStr<'a>>, JsonError> {
         self.expect(&[JsonValueStrKind::Array]).map(JsonValues::new)
     }
 
@@ -262,7 +262,9 @@ impl<'a> JsonValueStr<'a> {
         Ok(fixed_array)
     }
 
-    pub fn to_object_members(self) -> Result<JsonKeyValuePairs<'a>, JsonError> {
+    pub fn to_object_members(
+        self,
+    ) -> Result<impl Iterator<Item = (JsonValueStr<'a>, JsonValueStr<'a>)>, JsonError> {
         self.expect(&[JsonValueStrKind::Object])
             .map(JsonKeyValuePairs::new)
     }
@@ -301,7 +303,7 @@ impl<'a> JsonValueStr<'a> {
 }
 
 #[derive(Debug)]
-pub struct JsonValues<'a> {
+struct JsonValues<'a> {
     value: JsonValueStr<'a>,
     end_index: usize,
 }
@@ -328,7 +330,7 @@ impl<'a> Iterator for JsonValues<'a> {
 }
 
 #[derive(Debug)]
-pub struct JsonKeyValuePairs<'a> {
+struct JsonKeyValuePairs<'a> {
     inner: JsonValues<'a>,
 }
 
