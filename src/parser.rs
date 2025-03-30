@@ -39,19 +39,17 @@ impl<'a> JsonParser<'a> {
             _ => {
                 if self.text.starts_with(NUMBER_START_PATTERN) {
                     self.parse_number()
+                } else if self.text.starts_with(['+', '.']) {
+                    Err(self.invalid_number())
+                } else if self.text.starts_with([']']) {
+                    let position = self.position();
+                    Err(JsonParseError::UnmatchedArrayClose { position })
+                } else if self.text.starts_with(['}']) {
+                    let position = self.position();
+                    Err(JsonParseError::UnmatchedObjectClose { position })
                 } else {
-                    if self.text.starts_with(['+', '.']) {
-                        Err(self.invalid_number())
-                    } else if self.text.starts_with([']']) {
-                        let position = self.position();
-                        Err(JsonParseError::UnmatchedArrayClose { position })
-                    } else if self.text.starts_with(['}']) {
-                        let position = self.position();
-                        Err(JsonParseError::UnmatchedObjectClose { position })
-                    } else {
-                        let position = self.position();
-                        Err(JsonParseError::UnexpectedChar { position })
-                    }
+                    let position = self.position();
+                    Err(JsonParseError::UnexpectedLeadingChar { position })
                 }
             }
         }
@@ -88,17 +86,11 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    fn malformed_value(&self, kind: JsonValueKind, len: usize) -> JsonParseError {
-        JsonParseError::MalformedValue {
+    fn malformed_value(&self, kind: JsonValueKind, offset: usize) -> JsonParseError {
+        JsonParseError::UnexpectedValueChar {
             kind,
-            position_range: self.position_range(len),
+            position: self.position() + offset,
         }
-    }
-
-    fn position_range(&self, len: usize) -> Range<usize> {
-        let start = self.position();
-        let end = start + len;
-        Range { start, end }
     }
 
     // number = [ minus ] int [ frac ] [ exp ]
@@ -231,34 +223,37 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_string(&mut self, mut s: &'a str) -> Result<(), JsonParseError> {
+        let kind = JsonValueKind::String;
         let mut escaped = false;
-
         loop {
             s = s.trim_start_matches(|c| !(matches!(c, '"' | '\\') || c.is_ascii_control()));
             if let Some(s) = s.strip_prefix('"') {
-                self.push_value(JsonValueKind::String, self.text.len() - s.len());
+                self.push_value(kind, self.offset(s));
                 self.values.last_mut().expect("infallible").escaped = escaped;
                 return Ok(());
             }
-            if s.is_empty() {
+            if s.len() < 2 {
                 return Err(self.unexpected_eos());
             }
 
             escaped = true;
-            s = s.strip_prefix('\\').ok_or_else(|| self.invalid_string())?;
-            match s.chars().next().ok_or_else(|| self.unexpected_eos())? {
-                '"' | '\\' | '/' | 'n' | 't' | 'r' | 'b' | 'f' => s = &s[1..],
-                'u' => {
-                    if s.len() < 5 {
-                        return Err(self.unexpected_eos());
-                    }
-                    s.get(1..5)
-                        .and_then(|code| u32::from_str_radix(code, 16).ok())
-                        .and_then(char::from_u32)
-                        .ok_or_else(|| self.invalid_string())?;
-                    s = &s[5..];
+            s = s
+                .strip_prefix('\\')
+                .ok_or_else(|| self.malformed_value(kind, self.offset(s)))?;
+            if let Some(suffix) = s.strip_prefix(['"', '\\', '/', 'n', 't', 'r', 'b', 'f']) {
+                s = suffix;
+            } else {
+                s = s
+                    .strip_prefix('u')
+                    .ok_or_else(|| self.malformed_value(kind, self.offset(s)))?;
+                if s.len() < 4 {
+                    return Err(self.unexpected_eos());
                 }
-                _ => return Err(self.invalid_string()),
+                s.get(0..4)
+                    .and_then(|code| u32::from_str_radix(code, 16).ok())
+                    .and_then(char::from_u32)
+                    .ok_or_else(|| self.malformed_value(kind, self.offset(s)))?;
+                s = &s[4..];
             }
         }
     }
@@ -301,12 +296,6 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    fn invalid_string(&self) -> JsonParseError {
-        JsonParseError::InvalidString {
-            position: self.position(),
-        }
-    }
-
     pub fn check_eos(&mut self) -> Result<(), JsonParseError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         if self.text.starts_with(']') {
@@ -318,7 +307,7 @@ impl<'a> JsonParser<'a> {
                 position: self.position(),
             });
         } else if !self.text.is_empty() {
-            return Err(JsonParseError::UnexpectedTrailingChars {
+            return Err(JsonParseError::UnexpectedTrailingChar {
                 position: self.position(),
             });
         }
@@ -342,6 +331,10 @@ impl<'a> JsonParser<'a> {
 
     fn position(&self) -> usize {
         self.original_text.len() - self.text.len()
+    }
+
+    fn offset(&self, s: &str) -> usize {
+        self.text.len() - s.len()
     }
 
     fn unexpected_eos(&mut self) -> JsonParseError {

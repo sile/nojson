@@ -9,15 +9,15 @@ pub enum JsonParseError {
     UnexpectedEos {
         position: usize,
     },
-    UnexpectedChar {
+    UnexpectedLeadingChar {
         position: usize,
     },
-    UnexpectedTrailingChars {
+    UnexpectedTrailingChar {
         position: usize,
     },
-    MalformedValue {
+    UnexpectedValueChar {
         kind: JsonValueKind,
-        position_range: Range<usize>,
+        position: usize,
     },
 
     // TODO: remove?
@@ -31,6 +31,7 @@ pub enum JsonParseError {
         position: usize,
         // TODO: error_position? or range
     },
+    // TODO: remove
     InvalidString {
         position: usize,
         // TODO: error_position? or range
@@ -62,10 +63,6 @@ pub enum JsonParseError {
     MissingRequiredMember {
         member_names: Vec<String>,
         position: usize,
-    },
-    Other {
-        position: usize,
-        error: Box<dyn Send + Sync + std::error::Error>,
     },
 }
 
@@ -370,9 +367,9 @@ mod tests {
 
         assert!(matches!(
             JsonTextStr::parse("nuL"),
-            Err(JsonParseError::MalformedValue {
+            Err(JsonParseError::UnexpectedValueChar {
                 kind: JsonValueKind::Null,
-                position_range: Range { start: 0, end: 2 }
+                position: 2
             })
         ));
         assert!(matches!(
@@ -381,7 +378,7 @@ mod tests {
         ));
         assert!(matches!(
             JsonTextStr::parse("nulla"),
-            Err(JsonParseError::UnexpectedTrailingChars { position: 4 })
+            Err(JsonParseError::UnexpectedTrailingChar { position: 4 })
         ));
 
         Ok(())
@@ -403,13 +400,13 @@ mod tests {
 
         assert!(matches!(
             JsonTextStr::parse("false true"),
-            Err(JsonParseError::UnexpectedTrailingChars { position: 6 })
+            Err(JsonParseError::UnexpectedTrailingChar { position: 6 })
         ));
         assert!(matches!(
             JsonTextStr::parse("fale"),
-            Err(JsonParseError::MalformedValue {
+            Err(JsonParseError::UnexpectedValueChar {
                 kind: JsonValueKind::Bool,
-                position_range: Range { start: 0, end: 3 }
+                position: 3
             })
         ));
         assert!(matches!(
@@ -459,7 +456,7 @@ mod tests {
             assert!(
                 matches!(
                     JsonTextStr::parse(text),
-                    Err(JsonParseError::UnexpectedChar { position: 0 })
+                    Err(JsonParseError::UnexpectedLeadingChar { position: 0 })
                 ),
                 "text={text}, error={:?}",
                 JsonTextStr::parse(text)
@@ -512,7 +509,7 @@ mod tests {
             assert!(
                 matches!(
                     JsonTextStr::parse(text),
-                    Err(JsonParseError::InvalidString { position: 1 })
+                    Err(JsonParseError::InvalidString { position: 2 })
                 ),
                 "text={text}, error={:?}",
                 JsonTextStr::parse(text)
