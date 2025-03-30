@@ -20,12 +20,8 @@ pub struct JsonTextStr<'a> {
 
 impl<'a> JsonTextStr<'a> {
     pub fn parse(text: &'a str) -> Result<Self, JsonParseError> {
-        let mut parser = JsonParser::new(text);
-        parser.parse()?;
-        Ok(Self {
-            text,
-            values: parser.values,
-        })
+        let values = JsonParser::new(text).parse()?;
+        Ok(Self { text, values })
     }
 
     pub fn value(&self) -> JsonValueStr {

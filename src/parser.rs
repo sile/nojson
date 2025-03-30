@@ -13,7 +13,7 @@ pub(crate) struct JsonParser<'a> {
     original_text: &'a str,
     text: &'a str,
     kind: Option<JsonValueKind>,
-    pub values: Vec<JsonValueIndexEntry>,
+    values: Vec<JsonValueIndexEntry>,
 }
 
 impl<'a> JsonParser<'a> {
@@ -26,7 +26,7 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<(), JsonParseError> {
+    pub fn parse(mut self) -> Result<Vec<JsonValueIndexEntry>, JsonParseError> {
         self.parse_value()?;
 
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
@@ -37,7 +37,7 @@ impl<'a> JsonParser<'a> {
             });
         }
 
-        Ok(())
+        Ok(self.values)
     }
 
     fn parse_value(&mut self) -> Result<(), JsonParseError> {
