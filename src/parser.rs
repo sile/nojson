@@ -32,16 +32,13 @@ impl<'a> JsonParser<'a> {
             Some('n') => self.parse_null(&self.text[1..]),
             Some('t') => self.parse_true(&self.text[1..]),
             Some('f') => self.parse_false(&self.text[1..]),
+            Some('"') => self.parse_string(&self.text[1..]),
+            Some('[') => self.parse_array(&self.text[1..]),
+            Some('{') => self.parse_object(s),
             None => Err(self.unexpected_eos()),
             _ => {
                 if self.text.starts_with(NUMBER_START_PATTERN) {
                     self.parse_number()
-                } else if let Some(s) = self.text.strip_prefix('"') {
-                    self.parse_string(s)
-                } else if let Some(s) = self.text.strip_prefix('[') {
-                    self.parse_array(s)
-                } else if let Some(s) = self.text.strip_prefix('{') {
-                    self.parse_object(s)
                 } else {
                     if self.text.starts_with(['+', '.']) {
                         Err(self.invalid_number())
