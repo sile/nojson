@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{
     JsonValueKind,
-    str::{JsonError, JsonValueIndexEntry},
+    str::{JsonParseError, JsonValueIndexEntry},
 };
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
@@ -26,7 +26,7 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    pub fn parse_value(&mut self) -> Result<(), JsonError> {
+    pub fn parse_value(&mut self) -> Result<(), JsonParseError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         if self.text.starts_with("null") {
             self.push_value(JsonValueKind::Null, "null".len());
@@ -47,13 +47,13 @@ impl<'a> JsonParser<'a> {
                 return Err(self.invalid_number());
             } else if self.text.starts_with([']']) {
                 let position = self.position();
-                return Err(JsonError::UnmatchedArrayClose { position });
+                return Err(JsonParseError::UnmatchedArrayClose { position });
             } else if self.text.starts_with(['}']) {
                 let position = self.position();
-                return Err(JsonError::UnmatchedObjectClose { position });
+                return Err(JsonParseError::UnmatchedObjectClose { position });
             } else {
                 let position = self.position();
-                return Err(JsonError::InvalidValue { position });
+                return Err(JsonParseError::InvalidValue { position });
             }
         } else {
             return Err(self.unexpected_eos());
@@ -62,7 +62,7 @@ impl<'a> JsonParser<'a> {
     }
 
     // number = [ minus ] int [ frac ] [ exp ]
-    fn parse_number(&mut self) -> Result<(), JsonError> {
+    fn parse_number(&mut self) -> Result<(), JsonParseError> {
         let mut kind = JsonValueKind::Integer;
 
         // [ minus ]
@@ -112,7 +112,7 @@ impl<'a> JsonParser<'a> {
         Ok(())
     }
 
-    fn parse_object(&mut self, s: &'a str) -> Result<(), JsonError> {
+    fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix('}') {
             self.push_value(JsonValueKind::Object, self.text.len() - s.len());
@@ -152,7 +152,7 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    fn parse_array(&mut self, s: &'a str) -> Result<(), JsonError> {
+    fn parse_array(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix(']') {
             self.push_value(JsonValueKind::Array, self.text.len() - s.len());
@@ -183,14 +183,14 @@ impl<'a> JsonParser<'a> {
             } else if s.starts_with(['}']) {
                 self.text = s;
                 let position = self.position();
-                return Err(JsonError::UnmatchedObjectClose { position });
+                return Err(JsonParseError::UnmatchedObjectClose { position });
             } else {
                 return Err(self.invalid_array());
             }
         }
     }
 
-    fn parse_string(&mut self, mut s: &'a str) -> Result<(), JsonError> {
+    fn parse_string(&mut self, mut s: &'a str) -> Result<(), JsonParseError> {
         let mut escaped = false;
 
         loop {
@@ -223,7 +223,7 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    fn eos_or_number_error(&mut self, eos: bool) -> JsonError {
+    fn eos_or_number_error(&mut self, eos: bool) -> JsonParseError {
         if eos {
             self.unexpected_eos()
         } else {
@@ -232,53 +232,53 @@ impl<'a> JsonParser<'a> {
     }
 
     // TODO: rename
-    fn eos_or_invalid_object(&mut self) -> JsonError {
+    fn eos_or_invalid_object(&mut self) -> JsonParseError {
         if self.text.is_empty() {
             self.unexpected_eos()
         } else if self.text.starts_with(']') {
             let position = self.position();
-            JsonError::UnmatchedArrayClose { position }
+            JsonParseError::UnmatchedArrayClose { position }
         } else {
             self.invalid_object()
         }
     }
 
-    fn invalid_object(&self) -> JsonError {
-        JsonError::InvalidObject {
+    fn invalid_object(&self) -> JsonParseError {
+        JsonParseError::InvalidObject {
             position: self.position(),
         }
     }
 
-    fn invalid_array(&self) -> JsonError {
-        JsonError::InvalidArray {
+    fn invalid_array(&self) -> JsonParseError {
+        JsonParseError::InvalidArray {
             position: self.position(),
         }
     }
 
-    fn invalid_number(&self) -> JsonError {
-        JsonError::InvalidNumber {
+    fn invalid_number(&self) -> JsonParseError {
+        JsonParseError::InvalidNumber {
             position: self.position(),
         }
     }
 
-    fn invalid_string(&self) -> JsonError {
-        JsonError::InvalidString {
+    fn invalid_string(&self) -> JsonParseError {
+        JsonParseError::InvalidString {
             position: self.position(),
         }
     }
 
-    pub fn check_eos(&mut self) -> Result<(), JsonError> {
+    pub fn check_eos(&mut self) -> Result<(), JsonParseError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         if self.text.starts_with(']') {
-            return Err(JsonError::UnmatchedArrayClose {
+            return Err(JsonParseError::UnmatchedArrayClose {
                 position: self.position(),
             });
         } else if self.text.starts_with('}') {
-            return Err(JsonError::UnmatchedObjectClose {
+            return Err(JsonParseError::UnmatchedObjectClose {
                 position: self.position(),
             });
         } else if !self.text.is_empty() {
-            return Err(JsonError::NotEos {
+            return Err(JsonParseError::NotEos {
                 position: self.position(),
             });
         }
@@ -304,9 +304,9 @@ impl<'a> JsonParser<'a> {
         self.original_text.len() - self.text.len()
     }
 
-    fn unexpected_eos(&mut self) -> JsonError {
+    fn unexpected_eos(&mut self) -> JsonParseError {
         self.text = &self.text[self.text.len()..];
-        JsonError::UnexpectedEos {
+        JsonParseError::UnexpectedEos {
             position: self.position(),
         }
     }
