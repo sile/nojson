@@ -6,7 +6,6 @@ use crate::{
 };
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
-const DIGIT_PATTERN: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 #[derive(Debug)]
 pub(crate) struct JsonParser<'a> {
@@ -132,10 +131,16 @@ impl<'a> JsonParser<'a> {
         Ok(())
     }
 
-    fn strip_one_or_more_digits(&self, s: &'a str) -> Result<&'a str, JsonParseError> {
-        s.strip_prefix(DIGIT_PATTERN)
+    fn strip_char(&self, s: &'a str, c: char) -> Result<&'a str, JsonParseError> {
+        s.strip_prefix(c)
             .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
-            .map(|s| s.trim_start_matches(DIGIT_PATTERN))
+    }
+
+    fn strip_one_or_more_digits(&self, s: &'a str) -> Result<&'a str, JsonParseError> {
+        let digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        s.strip_prefix(digits)
+            .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
+            .map(|s| s.trim_start_matches(digits))
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
@@ -153,19 +158,13 @@ impl<'a> JsonParser<'a> {
 
         loop {
             // Key.
-            let s = self
-                .text
-                .strip_prefix('"')
-                .ok_or_else(|| self.unexpected_value_char(0))?;
+            let s = self.strip_char(self.text, '"')?;
             self.parse_string(s)?;
             self.kind = Some(JsonValueKind::Object);
 
             // Value.
             self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
-            self.text = self
-                .text
-                .strip_prefix(':')
-                .ok_or_else(|| self.unexpected_value_char(0))?;
+            self.text = self.strip_char(self.text, ':')?;
             self.parse_value()?;
             self.kind = Some(JsonValueKind::Object);
 
@@ -176,10 +175,7 @@ impl<'a> JsonParser<'a> {
                 return Ok(());
             }
 
-            self.text = self
-                .text
-                .strip_prefix(',')
-                .ok_or_else(|| self.unexpected_value_char(0))?;
+            self.text = self.strip_char(self.text, ',')?;
             self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         }
     }
@@ -205,10 +201,8 @@ impl<'a> JsonParser<'a> {
                 self.text = s;
                 self.finalize_entry(index);
                 return Ok(());
-            } else if let Some(s) = s.strip_prefix(',') {
-                self.text = s;
             } else {
-                return Err(self.unexpected_value_char(self.offset(s)));
+                self.text = self.strip_char(s, ',')?;
             }
         }
     }
@@ -226,15 +220,11 @@ impl<'a> JsonParser<'a> {
             }
 
             escaped = true;
-            s = s
-                .strip_prefix('\\')
-                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
+            s = self.strip_char(s, '\\')?;
             if let Some(suffix) = s.strip_prefix(['"', '\\', '/', 'n', 't', 'r', 'b', 'f']) {
                 s = suffix;
             } else {
-                s = s
-                    .strip_prefix('u')
-                    .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
+                s = self.strip_char(s, 'u')?;
                 if s.len() < 4 {
                     return Err(self.unexpected_eos());
                 }
