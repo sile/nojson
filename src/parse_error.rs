@@ -15,17 +15,13 @@ pub enum JsonParseError {
         position: usize,
     },
 
-    // TODO: remove?
-    InvalidNumber {
-        position: usize,
-        // TODO: error_position? or range
-    },
     UnexpectedKind {
         expected_kinds: &'static [JsonValueKind],
         actual_kind: JsonValueKind,
         position: usize, // TODO: range
     },
     // Valid JSON value, but the content was unexpected.
+    // TODO rename
     UnexpectedValue {
         kind: JsonValueKind,
         position: usize,
@@ -48,7 +44,6 @@ impl JsonParseError {
             JsonParseError::UnexpectedEos { position }
             | JsonParseError::UnexpectedTrailingChar { position }
             | JsonParseError::UnexpectedValueChar { position, .. }
-            | JsonParseError::InvalidNumber { position }
             | JsonParseError::UnexpectedKind { position, .. }
             | JsonParseError::UnexpectedValue { position, .. }
             | JsonParseError::UnexpectedArraySize { position, .. }

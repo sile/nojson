@@ -375,22 +375,40 @@ mod tests {
             assert_eq!(value.position(), 0);
         }
 
-        // Invalid nubmers.
-        for text in [
-            "--1", "+2", "0123", "00", ".123", "1..2", "1ee2", "1e+-3", "123.4.5",
-        ] {
+        // Malformed integers.
+        for (text, position) in [("--1", 1), ("0123", 1), ("00", 1)] {
+            let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
-                    Err(JsonParseError::InvalidNumber { position: 0 })
+                    e,
+                    JsonParseError::UnexpectedValueChar {
+                        kind: Some(JsonValueKind::Integer),
+                        ..
+                    }
                 ),
-                "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                "text={text}, error={e:?}"
             );
+            assert_eq!(e.position(), position);
         }
 
-        // Invalid values.
-        for text in ["e123"] {
+        // Malformed floats.
+        for (text, position) in [("1..2", 2), ("1ee2", 2), ("1e+-3", 3)] {
+            let e = JsonTextStr::parse(text).expect_err("error");
+            assert!(
+                matches!(
+                    e,
+                    JsonParseError::UnexpectedValueChar {
+                        kind: Some(JsonValueKind::Float),
+                        ..
+                    }
+                ),
+                "text={text}, error={e:?}"
+            );
+            assert_eq!(e.position(), position);
+        }
+
+        // Malformed values.
+        for text in ["e123", "+2", ".123"] {
             assert!(
                 matches!(
                     JsonTextStr::parse(text),
@@ -401,6 +419,15 @@ mod tests {
                 ),
                 "text={text}, error={:?}",
                 JsonTextStr::parse(text)
+            );
+        }
+
+        // Unexpected trailing char.
+        for text in ["123.4.5"] {
+            let e = JsonTextStr::parse(text).expect_err("error");
+            assert!(
+                matches!(e, JsonParseError::UnexpectedTrailingChar { position: 5 }),
+                "text={text}, error={e:?}"
             );
         }
 
@@ -445,7 +472,7 @@ mod tests {
             assert!(value.entry().escaped);
         }
 
-        // Invalid strings.
+        // Malformed strings.
         for (text, error_position) in [(r#" "ab\xc" "#, 5), (r#" "ab\uXyz0c" "#, 6)] {
             let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
@@ -500,7 +527,7 @@ mod tests {
             assert_eq!(value.position(), 0);
         }
 
-        // Invalid arrays.
+        // Malformed arrays.
         for (text, position) in [("[,]", 1), ("[1,2,]", 5)] {
             let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
@@ -578,7 +605,7 @@ mod tests {
             assert_eq!(value.position(), 0);
         }
 
-        // Invalid objects.
+        // Malformed objects.
         for (text, position) in [
             ("{,}", 1),
             ("{:}", 1),

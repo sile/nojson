@@ -6,15 +6,13 @@ use crate::{
 };
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
-const NUMBER_START_PATTERN: [char; 11] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-'];
-const NUMBER_END_PATTERN: [char; 7] = [' ', '\t', '\r', '\n', ',', ']', '}'];
 const DIGIT_PATTERN: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 #[derive(Debug)]
 pub(crate) struct JsonParser<'a> {
     original_text: &'a str,
     text: &'a str,
-    current: Option<JsonValueKind>,
+    current: Option<JsonValueKind>, // TODO: remove Option
     pub values: Vec<JsonValueIndexEntry>,
 }
 
@@ -37,16 +35,9 @@ impl<'a> JsonParser<'a> {
             Some('"') => self.parse_string(&self.text[1..]),
             Some('[') => self.parse_array(&self.text[1..]),
             Some('{') => self.parse_object(&self.text[1..]),
+            Some('0'..='9' | '-') => self.parse_number(),
+            Some(_) => Err(self.unexpected_value_char(0)),
             None => Err(self.unexpected_eos()),
-            _ => {
-                if self.text.starts_with(NUMBER_START_PATTERN) {
-                    self.parse_number()
-                } else if self.text.starts_with(['+', '.']) {
-                    Err(self.invalid_number())
-                } else {
-                    return Err(self.unexpected_value_char(0));
-                }
-            }
         }
     }
 
@@ -97,6 +88,7 @@ impl<'a> JsonParser<'a> {
     // number = [ minus ] int [ frac ] [ exp ]
     fn parse_number(&mut self) -> Result<(), JsonParseError> {
         let mut kind = JsonValueKind::Integer;
+        self.current = Some(kind);
 
         // [ minus ]
         let s = self.text.strip_prefix('-').unwrap_or(self.text);
@@ -107,20 +99,21 @@ impl<'a> JsonParser<'a> {
         // int
         let s = if let Some(s) = s.strip_prefix('0') {
             if s.starts_with(DIGIT_PATTERN) {
-                return Err(self.invalid_number());
+                return Err(self.unexpected_value_char(self.offset(s)));
             }
             s
         } else {
             s.strip_prefix(DIGIT_PATTERN)
-                .ok_or_else(|| self.eos_or_number_error(s.is_empty()))
+                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
                 .map(|s| s.trim_start_matches(DIGIT_PATTERN))?
         };
 
         // [ frac ]
         let s = if let Some(s) = s.strip_prefix('.') {
             kind = JsonValueKind::Float;
+            self.current = Some(kind);
             s.strip_prefix(DIGIT_PATTERN)
-                .ok_or_else(|| self.eos_or_number_error(s.is_empty()))
+                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
                 .map(|s| s.trim_start_matches(DIGIT_PATTERN))?
         } else {
             s
@@ -129,19 +122,16 @@ impl<'a> JsonParser<'a> {
         // [ exp ]
         let s = if let Some(s) = s.strip_prefix(['e', 'E']) {
             kind = JsonValueKind::Float;
+            self.current = Some(kind);
             let s = s.strip_prefix(['-', '+']).unwrap_or(s);
             s.strip_prefix(DIGIT_PATTERN)
-                .ok_or_else(|| self.eos_or_number_error(s.is_empty()))
+                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
                 .map(|s| s.trim_start_matches(DIGIT_PATTERN))?
         } else {
             s
         };
 
-        if !(s.is_empty() || s.starts_with(NUMBER_END_PATTERN)) {
-            return Err(self.invalid_number());
-        }
-
-        self.push_entry(kind, self.text.len() - s.len());
+        self.push_entry(kind, self.offset(s));
         Ok(())
     }
 
@@ -254,20 +244,6 @@ impl<'a> JsonParser<'a> {
                     .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
                 s = &s[4..];
             }
-        }
-    }
-
-    fn eos_or_number_error(&mut self, eos: bool) -> JsonParseError {
-        if eos {
-            self.unexpected_eos()
-        } else {
-            self.invalid_number()
-        }
-    }
-
-    fn invalid_number(&self) -> JsonParseError {
-        JsonParseError::InvalidNumber {
-            position: self.position(),
         }
     }
 
