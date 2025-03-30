@@ -4,7 +4,7 @@ mod parser;
 pub mod str;
 mod value;
 
-pub use value::JsonValue;
+pub use value::{JsonValue, JsonValueKind};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);

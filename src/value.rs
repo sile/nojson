@@ -13,6 +13,20 @@ pub enum JsonValue {
     Object(BTreeMap<String, JsonValue>),
 }
 
+impl JsonValue {
+    pub fn kind(&self) -> JsonValueKind {
+        match self {
+            JsonValue::Null => JsonValueKind::Null,
+            JsonValue::Bool(_) => JsonValueKind::Bool,
+            JsonValue::Integer(_) => JsonValueKind::Integer,
+            JsonValue::Float(_) => JsonValueKind::Float,
+            JsonValue::String(_) => JsonValueKind::String,
+            JsonValue::Array(_) => JsonValueKind::Array,
+            JsonValue::Object(_) => JsonValueKind::Object,
+        }
+    }
+}
+
 impl DisplayJson for JsonValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -34,3 +48,48 @@ impl Display for JsonValue {
 }
 
 // TODO:  FromStr
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum JsonValueKind {
+    Null,
+    Bool,
+    Integer,
+    Float,
+    String,
+    Array,
+    Object,
+}
+
+impl JsonValueKind {
+    pub const fn is_null(self) -> bool {
+        matches!(self, Self::Null)
+    }
+
+    pub const fn is_bool(self) -> bool {
+        matches!(self, Self::Bool)
+    }
+
+    pub const fn is_integer(self) -> bool {
+        matches!(self, Self::Integer)
+    }
+
+    pub const fn is_float(self) -> bool {
+        matches!(self, Self::Float)
+    }
+
+    pub const fn is_number(self) -> bool {
+        matches!(self, Self::Integer | Self::Float)
+    }
+
+    pub const fn is_string(self) -> bool {
+        matches!(self, Self::String)
+    }
+
+    pub const fn is_array(self) -> bool {
+        matches!(self, Self::Array)
+    }
+
+    pub const fn is_object(self) -> bool {
+        matches!(self, Self::Object)
+    }
+}
