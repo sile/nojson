@@ -533,14 +533,19 @@ mod tests {
             "text={text}, error={e:?}",
         );
 
-        // TODO:
-        // let text = r#"{"foo":[]]}"#;
-        // let e = JsonTextStr::parse(text).expect_err("error");
-        // assert!(
-        //     matches!(e, JsonParseError::UnexpectedValueChar { kind: None, .. }),
-        //     "text={text}, error={e:?}",
-        // );
-        // assert_eq!(e.position(), 0);
+        let text = r#"{"foo":[]]}"#;
+        let e = JsonTextStr::parse(text).expect_err("error");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::UnexpectedValueChar {
+                    kind: Some(JsonValueKind::Object),
+                    ..
+                }
+            ),
+            "text={text}, error={e:?}",
+        );
+        assert_eq!(e.position(), 9);
 
         // Unexpected EOS.
         for text in ["[", "[1,2", "[1,2,"] {
@@ -574,28 +579,55 @@ mod tests {
         }
 
         // Invalid objects.
-        for text in ["{,}", "{:}", r#"{"foo","bar"}"#, r#"{"foo":"bar",}"#] {
+        for (text, position) in [
+            ("{,}", 1),
+            ("{:}", 1),
+            (r#"{"foo","bar"}"#, 6),
+            (r#"{"foo":"bar",}"#, 13),
+        ] {
+            let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
-                    Err(JsonParseError::InvalidObject { .. })
+                    e,
+                    JsonParseError::UnexpectedValueChar {
+                        kind: Some(JsonValueKind::Object),
+                        ..
+                    }
                 ),
-                "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                "text={text}, error={e:?}",
             );
+            assert_eq!(e.position(), position);
         }
 
         // Unmatched '}'.
-        for text in ["}", r#"{"1":2}}"#, "[{}}]"] {
-            assert!(
-                matches!(
-                    JsonTextStr::parse(text),
-                    Err(JsonParseError::UnmatchedObjectClose { .. })
-                ),
-                "text={text}, error={:?}",
-                JsonTextStr::parse(text)
-            );
-        }
+        let text = "}";
+        let e = JsonTextStr::parse(text).expect_err("error");
+        assert!(
+            matches!(e, JsonParseError::UnexpectedValueChar { kind: None, .. }),
+            "text={text}, error={e:?}",
+        );
+        assert_eq!(e.position(), 0);
+
+        let text = r#"{"1":2}}"#;
+        let e = JsonTextStr::parse(text).expect_err("error");
+        assert!(
+            matches!(e, JsonParseError::UnexpectedTrailingChar { position: 7 }),
+            "text={text}, error={e:?}",
+        );
+
+        let text = "[{}}]";
+        let e = JsonTextStr::parse(text).expect_err("error");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::UnexpectedValueChar {
+                    kind: Some(JsonValueKind::Array),
+                    ..
+                }
+            ),
+            "text={text}, error={e:?}",
+        );
+        assert_eq!(e.position(), 3);
 
         // Unexpected EOS.
         for text in ["{", r#"{"1" "#, r#"{"1": "#, r#"{"1": 2"#] {

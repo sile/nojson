@@ -16,14 +16,7 @@ pub enum JsonParseError {
     },
 
     // TODO: remove?
-    UnmatchedObjectClose {
-        position: usize,
-    },
     InvalidNumber {
-        position: usize,
-        // TODO: error_position? or range
-    },
-    InvalidObject {
         position: usize,
         // TODO: error_position? or range
     },
@@ -55,9 +48,7 @@ impl JsonParseError {
             JsonParseError::UnexpectedEos { position }
             | JsonParseError::UnexpectedTrailingChar { position }
             | JsonParseError::UnexpectedValueChar { position, .. }
-            | JsonParseError::UnmatchedObjectClose { position }
             | JsonParseError::InvalidNumber { position }
-            | JsonParseError::InvalidObject { position }
             | JsonParseError::UnexpectedKind { position, .. }
             | JsonParseError::UnexpectedValue { position, .. }
             | JsonParseError::UnexpectedArraySize { position, .. }

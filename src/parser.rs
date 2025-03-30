@@ -43,9 +43,6 @@ impl<'a> JsonParser<'a> {
                     self.parse_number()
                 } else if self.text.starts_with(['+', '.']) {
                     Err(self.invalid_number())
-                } else if self.text.starts_with(['}']) {
-                    let position = self.position();
-                    Err(JsonParseError::UnmatchedObjectClose { position })
                 } else {
                     return Err(self.unexpected_value_char(0));
                 }
@@ -86,9 +83,14 @@ impl<'a> JsonParser<'a> {
     }
 
     fn unexpected_value_char(&self, offset: usize) -> JsonParseError {
-        JsonParseError::UnexpectedValueChar {
-            kind: self.current,
-            position: self.position() + offset,
+        let position = self.position() + offset;
+        if position == self.original_text.len() {
+            JsonParseError::UnexpectedEos { position }
+        } else {
+            JsonParseError::UnexpectedValueChar {
+                kind: self.current,
+                position,
+            }
         }
     }
 
@@ -144,42 +146,49 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
+        let kind = JsonValueKind::Object;
+        self.current = Some(kind);
+
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix('}') {
-            self.push_entry(JsonValueKind::Object, self.text.len() - s.len());
+            self.push_entry(kind, self.offset(s));
             return Ok(());
         }
 
         let index = self.values.len();
-        self.push_entry(JsonValueKind::Object, self.text.len() - s.len());
+        self.push_entry(kind, self.offset(s)); // Push a placeholder entry
         self.text = s;
 
         loop {
-            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            // Key.
             let s = self
                 .text
                 .strip_prefix('"')
-                .ok_or_else(|| self.eos_or_invalid_object())?;
+                .ok_or_else(|| self.unexpected_value_char(0))?;
             self.parse_string(s)?;
+            self.current = Some(kind);
 
+            // Value.
             self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
             self.text = self
                 .text
                 .strip_prefix(':')
-                .ok_or_else(|| self.eos_or_invalid_object())?;
+                .ok_or_else(|| self.unexpected_value_char(0))?;
             self.parse_value()?;
+            self.current = Some(kind);
 
             self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
             if let Some(s) = self.text.strip_prefix('}') {
                 self.text = s;
-                self.values[index].text.end = self.position();
-                self.values[index].end_index = self.values.len();
+                self.finalize_entry(index);
                 return Ok(());
             }
+
             self.text = self
                 .text
                 .strip_prefix(',')
-                .ok_or_else(|| self.eos_or_invalid_object())?;
+                .ok_or_else(|| self.unexpected_value_char(0))?;
+            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         }
     }
 
@@ -207,13 +216,6 @@ impl<'a> JsonParser<'a> {
                 return Ok(());
             } else if let Some(s) = s.strip_prefix(',') {
                 self.text = s;
-            } else if s.is_empty() {
-                return Err(self.unexpected_eos());
-            } else if s.starts_with(['}']) {
-                self.text = s;
-                let position = self.position();
-                // TODO: remove
-                return Err(JsonParseError::UnmatchedObjectClose { position });
             } else {
                 return Err(self.unexpected_value_char(self.offset(s)));
             }
@@ -266,21 +268,6 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    // TODO: rename
-    fn eos_or_invalid_object(&mut self) -> JsonParseError {
-        if self.text.is_empty() {
-            self.unexpected_eos()
-        } else {
-            self.invalid_object()
-        }
-    }
-
-    fn invalid_object(&self) -> JsonParseError {
-        JsonParseError::InvalidObject {
-            position: self.position(),
-        }
-    }
-
     fn invalid_number(&self) -> JsonParseError {
         JsonParseError::InvalidNumber {
             position: self.position(),
@@ -289,11 +276,7 @@ impl<'a> JsonParser<'a> {
 
     pub fn check_eos(&mut self) -> Result<(), JsonParseError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
-        if self.text.starts_with('}') {
-            return Err(JsonParseError::UnmatchedObjectClose {
-                position: self.position(),
-            });
-        } else if !self.text.is_empty() {
+        if !self.text.is_empty() {
             return Err(JsonParseError::UnexpectedTrailingChar {
                 position: self.position(),
             });
@@ -329,6 +312,7 @@ impl<'a> JsonParser<'a> {
         self.text.len() - s.len()
     }
 
+    // TODO: remove mut
     fn unexpected_eos(&mut self) -> JsonParseError {
         self.text = &self.text[self.text.len()..];
         JsonParseError::UnexpectedEos {
