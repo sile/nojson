@@ -234,9 +234,6 @@ impl<'a> JsonParser<'a> {
                 self.values.last_mut().expect("infallible").escaped = escaped;
                 return Ok(());
             }
-            if s.len() < 2 {
-                return Err(self.unexpected_eos());
-            }
 
             escaped = true;
             s = s
@@ -312,11 +309,9 @@ impl<'a> JsonParser<'a> {
         self.text.len() - s.len()
     }
 
-    // TODO: remove mut
-    fn unexpected_eos(&mut self) -> JsonParseError {
-        self.text = &self.text[self.text.len()..];
+    fn unexpected_eos(&self) -> JsonParseError {
         JsonParseError::UnexpectedEos {
-            position: self.position(),
+            position: self.original_text.len(),
         }
     }
 }
