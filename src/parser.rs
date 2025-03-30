@@ -73,7 +73,7 @@ impl<'a> JsonParser<'a> {
     ) -> Result<(), JsonParseError> {
         self.current = Some(kind);
         if s.starts_with(literal_suffix) {
-            self.push_value(kind, 1 + literal_suffix.len());
+            self.push_entry(kind, 1 + literal_suffix.len());
             Ok(())
         } else {
             for (i, (c0, c1)) in s.chars().zip(literal_suffix.chars()).enumerate() {
@@ -139,19 +139,19 @@ impl<'a> JsonParser<'a> {
             return Err(self.invalid_number());
         }
 
-        self.push_value(kind, self.text.len() - s.len());
+        self.push_entry(kind, self.text.len() - s.len());
         Ok(())
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix('}') {
-            self.push_value(JsonValueKind::Object, self.text.len() - s.len());
+            self.push_entry(JsonValueKind::Object, self.text.len() - s.len());
             return Ok(());
         }
 
         let index = self.values.len();
-        self.push_value(JsonValueKind::Object, self.text.len() - s.len());
+        self.push_entry(JsonValueKind::Object, self.text.len() - s.len());
         self.text = s;
 
         loop {
@@ -189,12 +189,12 @@ impl<'a> JsonParser<'a> {
 
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix(']') {
-            self.push_value(kind, self.offset(s));
+            self.push_entry(kind, self.offset(s));
             return Ok(());
         }
 
         let index = self.values.len();
-        self.push_value(kind, self.offset(s)); // Push a placeholder entry
+        self.push_entry(kind, self.offset(s)); // Push a placeholder entry
 
         loop {
             self.parse_value()?;
@@ -203,8 +203,7 @@ impl<'a> JsonParser<'a> {
             let s = self.text.trim_start_matches(WHITESPACE_PATTERN);
             if let Some(s) = s.strip_prefix(']') {
                 self.text = s;
-                self.values[index].text.end = self.position();
-                self.values[index].end_index = self.values.len();
+                self.finalize_entry(index);
                 return Ok(());
             } else if let Some(s) = s.strip_prefix(',') {
                 self.text = s;
@@ -229,7 +228,7 @@ impl<'a> JsonParser<'a> {
         loop {
             s = s.trim_start_matches(|c| !(matches!(c, '"' | '\\') || c.is_ascii_control()));
             if let Some(s) = s.strip_prefix('"') {
-                self.push_value(kind, self.offset(s));
+                self.push_entry(kind, self.offset(s));
                 self.values.last_mut().expect("infallible").escaped = escaped;
                 return Ok(());
             }
@@ -302,7 +301,7 @@ impl<'a> JsonParser<'a> {
         Ok(())
     }
 
-    fn push_value(&mut self, kind: JsonValueKind, len: usize) {
+    fn push_entry(&mut self, kind: JsonValueKind, len: usize) {
         let position = self.position();
         let entry = JsonValueIndexEntry {
             kind,
@@ -315,6 +314,11 @@ impl<'a> JsonParser<'a> {
         };
         self.values.push(entry);
         self.text = &self.text[len..];
+    }
+
+    fn finalize_entry(&mut self, index: usize) {
+        self.values[index].text.end = self.position();
+        self.values[index].end_index = self.values.len();
     }
 
     fn position(&self) -> usize {
