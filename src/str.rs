@@ -443,15 +443,20 @@ mod tests {
         }
 
         // Invalid strings.
-        for text in [r#" "ab\xc" "#, r#" "ab\uXyz0c" "#] {
+        for (text, error_position) in [(r#" "ab\xc" "#, 5), (r#" "ab\uXyz0c" "#, 6)] {
+            let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
-                    Err(JsonParseError::InvalidString { position: 2 })
+                    e,
+                    JsonParseError::UnexpectedValueChar {
+                        kind: JsonValueKind::String,
+                        ..
+                    }
                 ),
                 "text={text}, error={:?}",
                 JsonTextStr::parse(text)
             );
+            assert_eq!(e.position(), error_position);
         }
 
         // Unexpected EOS.
