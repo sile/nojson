@@ -16,18 +16,17 @@ pub enum JsonParseError {
         kind: Option<JsonValueKind>,
         position: usize,
     },
-
+    /// Proper JSON value, but the content is invalid.
+    InvalidValue {
+        kind: JsonValueKind,
+        position: usize,
+        error: Box<dyn Send + Sync + std::error::Error>,
+    },
+    // TODO: remove
     UnexpectedKind {
         expected_kinds: &'static [JsonValueKind],
         actual_kind: JsonValueKind,
         position: usize, // TODO: range
-    },
-    // Valid JSON value, but the content was unexpected.
-    // TODO rename
-    UnexpectedValue {
-        kind: JsonValueKind,
-        position: usize,
-        error: Box<dyn Send + Sync + std::error::Error>,
     },
     UnexpectedArraySize {
         expected: usize,
@@ -47,7 +46,7 @@ impl JsonParseError {
             | JsonParseError::UnexpectedTrailingChar { position, .. }
             | JsonParseError::UnexpectedValueChar { position, .. }
             | JsonParseError::UnexpectedKind { position, .. }
-            | JsonParseError::UnexpectedValue { position, .. }
+            | JsonParseError::InvalidValue { position, .. }
             | JsonParseError::UnexpectedArraySize { position, .. }
             | JsonParseError::MissingRequiredMember { position, .. } => *position,
         }

@@ -56,6 +56,17 @@ impl<'a> JsonValueStr<'a> {
         self.json.values[self.index].text.start
     }
 
+    pub fn to_invalid_value_error<E>(self, error: E) -> JsonParseError
+    where
+        E: Into<Box<dyn Send + Sync + std::error::Error>>,
+    {
+        JsonParseError::InvalidValue {
+            kind: self.kind(),
+            position: self.position(),
+            error: error.into(),
+        }
+    }
+
     pub fn to_unquoted_str(self) -> Cow<'a, str> {
         if self.entry().escaped {
             let mut unescaped = String::with_capacity(self.text().len());
@@ -118,7 +129,7 @@ impl<'a> JsonValueStr<'a> {
         F: FnOnce(&str) -> Result<T, E>,
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
-        f(&self.to_unquoted_str()).map_err(|e| JsonParseError::UnexpectedValue {
+        f(&self.to_unquoted_str()).map_err(|e| JsonParseError::InvalidValue {
             kind: self.kind(),
             position: self.position(),
             error: e.into(),
