@@ -498,15 +498,20 @@ mod tests {
         }
 
         // Invalid arrays.
-        for text in ["[,]", "[1,2,]"] {
+        for (text, position) in [("[,]", 1), ("[1,2,]", 5)] {
+            let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
-                    Err(JsonParseError::InvalidArray { .. })
+                    e,
+                    JsonParseError::UnexpectedValueChar {
+                        kind: JsonValueKind::Array,
+                        ..
+                    }
                 ),
                 "text={text}, error={:?}",
                 JsonTextStr::parse(text)
             );
+            assert_eq!(e.position(), position);
         }
 
         // Unmatched ']'.

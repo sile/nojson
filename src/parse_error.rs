@@ -29,10 +29,6 @@ pub enum JsonParseError {
         position: usize,
         // TODO: error_position? or range
     },
-    InvalidArray {
-        position: usize,
-        // TODO: error_position? or range
-    },
     InvalidObject {
         position: usize,
         // TODO: error_position? or range
@@ -69,7 +65,6 @@ impl JsonParseError {
             | JsonParseError::UnmatchedArrayClose { position }
             | JsonParseError::UnmatchedObjectClose { position }
             | JsonParseError::InvalidNumber { position }
-            | JsonParseError::InvalidArray { position }
             | JsonParseError::InvalidObject { position }
             | JsonParseError::UnexpectedKind { position, .. }
             | JsonParseError::UnexpectedValue { position, .. }
