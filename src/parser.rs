@@ -14,6 +14,7 @@ const DIGIT_PATTERN: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', 
 pub(crate) struct JsonParser<'a> {
     original_text: &'a str,
     text: &'a str,
+    current: Option<JsonValueKind>,
     pub values: Vec<JsonValueIndexEntry>,
 }
 
@@ -22,6 +23,7 @@ impl<'a> JsonParser<'a> {
         Self {
             original_text: text,
             text,
+            current: None,
             values: Vec::new(),
         }
     }
@@ -41,15 +43,11 @@ impl<'a> JsonParser<'a> {
                     self.parse_number()
                 } else if self.text.starts_with(['+', '.']) {
                     Err(self.invalid_number())
-                } else if self.text.starts_with([']']) {
-                    let position = self.position();
-                    Err(JsonParseError::UnmatchedArrayClose { position })
                 } else if self.text.starts_with(['}']) {
                     let position = self.position();
                     Err(JsonParseError::UnmatchedObjectClose { position })
                 } else {
-                    let position = self.position();
-                    Err(JsonParseError::UnexpectedLeadingChar { position })
+                    return Err(self.unexpected_value_char(0));
                 }
             }
         }
@@ -73,22 +71,23 @@ impl<'a> JsonParser<'a> {
         literal_suffix: &str,
         s: &'a str,
     ) -> Result<(), JsonParseError> {
+        self.current = Some(kind);
         if s.starts_with(literal_suffix) {
             self.push_value(kind, 1 + literal_suffix.len());
             Ok(())
         } else {
             for (i, (c0, c1)) in s.chars().zip(literal_suffix.chars()).enumerate() {
                 if c0 != c1 {
-                    return Err(self.unexpected_value_char(kind, 1 + i));
+                    return Err(self.unexpected_value_char(1 + i));
                 }
             }
             Err(self.unexpected_eos())
         }
     }
 
-    fn unexpected_value_char(&self, kind: JsonValueKind, offset: usize) -> JsonParseError {
+    fn unexpected_value_char(&self, offset: usize) -> JsonParseError {
         JsonParseError::UnexpectedValueChar {
-            kind,
+            kind: self.current,
             position: self.position() + offset,
         }
     }
@@ -186,6 +185,8 @@ impl<'a> JsonParser<'a> {
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         let kind = JsonValueKind::Array;
+        self.current = Some(kind);
+
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
         if let Some(s) = s.strip_prefix(']') {
             self.push_value(kind, self.offset(s));
@@ -196,13 +197,8 @@ impl<'a> JsonParser<'a> {
         self.push_value(kind, self.offset(s)); // Push a placeholder entry
 
         loop {
-            // TODO: remove this check?
-            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
-            if self.text.starts_with([',', ']']) {
-                return Err(self.unexpected_value_char(kind, self.offset(self.text)));
-            }
-
             self.parse_value()?;
+            self.current = Some(kind);
 
             let s = self.text.trim_start_matches(WHITESPACE_PATTERN);
             if let Some(s) = s.strip_prefix(']') {
@@ -220,14 +216,16 @@ impl<'a> JsonParser<'a> {
                 // TODO: remove
                 return Err(JsonParseError::UnmatchedObjectClose { position });
             } else {
-                return Err(self.unexpected_value_char(kind, self.offset(s)));
+                return Err(self.unexpected_value_char(self.offset(s)));
             }
         }
     }
 
     fn parse_string(&mut self, mut s: &'a str) -> Result<(), JsonParseError> {
-        let kind = JsonValueKind::String;
         let mut escaped = false;
+        let kind = JsonValueKind::String;
+        self.current = Some(kind);
+
         loop {
             s = s.trim_start_matches(|c| !(matches!(c, '"' | '\\') || c.is_ascii_control()));
             if let Some(s) = s.strip_prefix('"') {
@@ -242,20 +240,20 @@ impl<'a> JsonParser<'a> {
             escaped = true;
             s = s
                 .strip_prefix('\\')
-                .ok_or_else(|| self.unexpected_value_char(kind, self.offset(s)))?;
+                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
             if let Some(suffix) = s.strip_prefix(['"', '\\', '/', 'n', 't', 'r', 'b', 'f']) {
                 s = suffix;
             } else {
                 s = s
                     .strip_prefix('u')
-                    .ok_or_else(|| self.unexpected_value_char(kind, self.offset(s)))?;
+                    .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
                 if s.len() < 4 {
                     return Err(self.unexpected_eos());
                 }
                 s.get(0..4)
                     .and_then(|code| u32::from_str_radix(code, 16).ok())
                     .and_then(char::from_u32)
-                    .ok_or_else(|| self.unexpected_value_char(kind, self.offset(s)))?;
+                    .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
                 s = &s[4..];
             }
         }
@@ -273,9 +271,6 @@ impl<'a> JsonParser<'a> {
     fn eos_or_invalid_object(&mut self) -> JsonParseError {
         if self.text.is_empty() {
             self.unexpected_eos()
-        } else if self.text.starts_with(']') {
-            let position = self.position();
-            JsonParseError::UnmatchedArrayClose { position }
         } else {
             self.invalid_object()
         }
@@ -295,11 +290,7 @@ impl<'a> JsonParser<'a> {
 
     pub fn check_eos(&mut self) -> Result<(), JsonParseError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
-        if self.text.starts_with(']') {
-            return Err(JsonParseError::UnmatchedArrayClose {
-                position: self.position(),
-            });
-        } else if self.text.starts_with('}') {
+        if self.text.starts_with('}') {
             return Err(JsonParseError::UnmatchedObjectClose {
                 position: self.position(),
             });

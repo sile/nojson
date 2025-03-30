@@ -7,21 +7,15 @@ pub enum JsonParseError {
     UnexpectedEos {
         position: usize,
     },
-    UnexpectedLeadingChar {
-        position: usize,
-    },
     UnexpectedTrailingChar {
         position: usize,
     },
     UnexpectedValueChar {
-        kind: JsonValueKind,
+        kind: Option<JsonValueKind>,
         position: usize,
     },
 
     // TODO: remove?
-    UnmatchedArrayClose {
-        position: usize,
-    },
     UnmatchedObjectClose {
         position: usize,
     },
@@ -59,10 +53,8 @@ impl JsonParseError {
     pub fn position(&self) -> usize {
         match self {
             JsonParseError::UnexpectedEos { position }
-            | JsonParseError::UnexpectedLeadingChar { position }
             | JsonParseError::UnexpectedTrailingChar { position }
             | JsonParseError::UnexpectedValueChar { position, .. }
-            | JsonParseError::UnmatchedArrayClose { position }
             | JsonParseError::UnmatchedObjectClose { position }
             | JsonParseError::InvalidNumber { position }
             | JsonParseError::InvalidObject { position }
