@@ -2,24 +2,29 @@ use std::{borrow::Cow, ops::Range, str::FromStr};
 
 use crate::{JsonValueKind, parser::JsonParser};
 
+/// JSON parse error.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum JsonParseError {
     UnexpectedEos {
         position: usize,
     },
-    // TODO: rename
-    NotEos {
+    UnexpectedChar {
         position: usize,
     },
+    UnexpectedTrailingChars {
+        position: usize,
+    },
+    MalformedValue {
+        kind: JsonValueKind,
+        position_range: Range<usize>,
+    },
+
     // TODO: remove?
     UnmatchedArrayClose {
         position: usize,
     },
     UnmatchedObjectClose {
-        position: usize,
-    },
-    InvalidValue {
         position: usize,
     },
     InvalidNumber {
@@ -362,12 +367,19 @@ mod tests {
         assert_eq!(value.position(), 1);
 
         assert!(matches!(
+            JsonTextStr::parse("nuL"),
+            Err(JsonParseError::MalformedValue {
+                kind: JsonValueKind::Null,
+                position_range: Range { start: 0, end: 2 }
+            })
+        ));
+        assert!(matches!(
             JsonTextStr::parse("nul"),
-            Err(JsonParseError::InvalidValue { position: 0 })
+            Err(JsonParseError::UnexpectedEos { position: 3 })
         ));
         assert!(matches!(
             JsonTextStr::parse("nulla"),
-            Err(JsonParseError::NotEos { position: 4 })
+            Err(JsonParseError::UnexpectedTrailingChars { position: 4 })
         ));
 
         Ok(())
@@ -389,7 +401,7 @@ mod tests {
 
         assert!(matches!(
             JsonTextStr::parse("false true"),
-            Err(JsonParseError::NotEos { position: 6 })
+            Err(JsonParseError::UnexpectedTrailingChars { position: 6 })
         ));
 
         Ok(())
@@ -434,7 +446,7 @@ mod tests {
             assert!(
                 matches!(
                     JsonTextStr::parse(text),
-                    Err(JsonParseError::InvalidValue { position: 0 })
+                    Err(JsonParseError::UnexpectedChar { position: 0 })
                 ),
                 "text={text}, error={:?}",
                 JsonTextStr::parse(text)

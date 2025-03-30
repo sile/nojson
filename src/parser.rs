@@ -28,37 +28,69 @@ impl<'a> JsonParser<'a> {
 
     pub fn parse_value(&mut self) -> Result<(), JsonParseError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
-        if self.text.starts_with("null") {
-            self.push_value(JsonValueKind::Null, "null".len());
-        } else if self.text.starts_with("true") {
-            self.push_value(JsonValueKind::Bool, "true".len());
-        } else if self.text.starts_with("false") {
-            self.push_value(JsonValueKind::Bool, "false".len());
-        } else if self.text.starts_with(NUMBER_START_PATTERN) {
-            self.parse_number()?;
-        } else if let Some(s) = self.text.strip_prefix('"') {
-            self.parse_string(s)?;
-        } else if let Some(s) = self.text.strip_prefix('[') {
-            self.parse_array(s)?;
-        } else if let Some(s) = self.text.strip_prefix('{') {
-            self.parse_object(s)?;
-        } else if !self.text.is_empty() {
-            if self.text.starts_with(['+', '.']) {
-                return Err(self.invalid_number());
-            } else if self.text.starts_with([']']) {
-                let position = self.position();
-                return Err(JsonParseError::UnmatchedArrayClose { position });
-            } else if self.text.starts_with(['}']) {
-                let position = self.position();
-                return Err(JsonParseError::UnmatchedObjectClose { position });
-            } else {
-                let position = self.position();
-                return Err(JsonParseError::InvalidValue { position });
+        match self.text.chars().next() {
+            Some('n') => self.parse_null(&self.text[1..]),
+            _ => {
+                if self.text.starts_with("true") {
+                    self.push_value(JsonValueKind::Bool, "true".len());
+                    Ok(())
+                } else if self.text.starts_with("false") {
+                    self.push_value(JsonValueKind::Bool, "false".len());
+                    Ok(())
+                } else if self.text.starts_with(NUMBER_START_PATTERN) {
+                    self.parse_number()
+                } else if let Some(s) = self.text.strip_prefix('"') {
+                    self.parse_string(s)
+                } else if let Some(s) = self.text.strip_prefix('[') {
+                    self.parse_array(s)
+                } else if let Some(s) = self.text.strip_prefix('{') {
+                    self.parse_object(s)
+                } else if !self.text.is_empty() {
+                    if self.text.starts_with(['+', '.']) {
+                        Err(self.invalid_number())
+                    } else if self.text.starts_with([']']) {
+                        let position = self.position();
+                        Err(JsonParseError::UnmatchedArrayClose { position })
+                    } else if self.text.starts_with(['}']) {
+                        let position = self.position();
+                        Err(JsonParseError::UnmatchedObjectClose { position })
+                    } else {
+                        let position = self.position();
+                        Err(JsonParseError::UnexpectedChar { position })
+                    }
+                } else {
+                    Err(self.unexpected_eos())
+                }
             }
-        } else {
-            return Err(self.unexpected_eos());
         }
-        Ok(())
+    }
+
+    fn parse_null(&mut self, s: &'a str) -> Result<(), JsonParseError> {
+        let kind = JsonValueKind::Null;
+        if s.starts_with("ull") {
+            self.push_value(kind, 4);
+            Ok(())
+        } else {
+            for (i, (c0, c1)) in s.chars().zip("ull".chars()).enumerate() {
+                if c0 != c1 {
+                    return Err(self.malformed_value(kind, 1 + i));
+                }
+            }
+            Err(self.unexpected_eos())
+        }
+    }
+
+    fn malformed_value(&self, kind: JsonValueKind, len: usize) -> JsonParseError {
+        JsonParseError::MalformedValue {
+            kind,
+            position_range: self.position_range(len),
+        }
+    }
+
+    fn position_range(&self, len: usize) -> Range<usize> {
+        let start = self.position();
+        let end = start + len;
+        Range { start, end }
     }
 
     // number = [ minus ] int [ frac ] [ exp ]
@@ -278,7 +310,7 @@ impl<'a> JsonParser<'a> {
                 position: self.position(),
             });
         } else if !self.text.is_empty() {
-            return Err(JsonParseError::NotEos {
+            return Err(JsonParseError::UnexpectedTrailingChars {
                 position: self.position(),
             });
         }
