@@ -103,28 +103,18 @@ impl<'a> JsonParser<'a> {
 
         // [ minus ]
         let s = self.text.strip_prefix('-').unwrap_or(self.text);
-        if s.is_empty() {
-            return Err(self.unexpected_eos());
-        }
 
         // int
         let s = if let Some(s) = s.strip_prefix('0') {
-            if s.starts_with(DIGIT_PATTERN) {
-                return Err(self.unexpected_value_char(self.offset(s)));
-            }
             s
         } else {
-            s.strip_prefix(DIGIT_PATTERN)
-                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
-                .map(|s| s.trim_start_matches(DIGIT_PATTERN))?
+            self.strip_one_or_more_digits(s)?
         };
 
         // [ frac ]
         let s = if let Some(s) = s.strip_prefix('.') {
             self.kind = Some(JsonValueKind::Float);
-            s.strip_prefix(DIGIT_PATTERN)
-                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
-                .map(|s| s.trim_start_matches(DIGIT_PATTERN))?
+            self.strip_one_or_more_digits(s)?
         } else {
             s
         };
@@ -133,15 +123,19 @@ impl<'a> JsonParser<'a> {
         let s = if let Some(s) = s.strip_prefix(['e', 'E']) {
             self.kind = Some(JsonValueKind::Float);
             let s = s.strip_prefix(['-', '+']).unwrap_or(s);
-            s.strip_prefix(DIGIT_PATTERN)
-                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
-                .map(|s| s.trim_start_matches(DIGIT_PATTERN))?
+            self.strip_one_or_more_digits(s)?
         } else {
             s
         };
 
         self.push_entry(self.offset(s));
         Ok(())
+    }
+
+    fn strip_one_or_more_digits(&self, s: &'a str) -> Result<&'a str, JsonParseError> {
+        s.strip_prefix(DIGIT_PATTERN)
+            .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
+            .map(|s| s.trim_start_matches(DIGIT_PATTERN))
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {

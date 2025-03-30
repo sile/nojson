@@ -393,7 +393,7 @@ mod tests {
         }
 
         // Malformed integers.
-        for (text, position) in [("--1", 1), ("0123", 1), ("00", 1)] {
+        for (text, position) in [("--1", 1)] {
             let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
                 matches!(
@@ -440,18 +440,19 @@ mod tests {
         }
 
         // Unexpected trailing char.
-        for text in ["123.4.5"] {
+        for (text, position) in [("123.4.5", 5), ("0123", 1), ("00", 1)] {
             let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
                 matches!(
                     e,
                     JsonParseError::UnexpectedTrailingChar {
-                        kind: JsonValueKind::Float,
-                        position: 5
+                        kind: JsonValueKind::Float | JsonValueKind::Integer,
+                        ..
                     }
                 ),
                 "text={text}, error={e:?}"
             );
+            assert_eq!(e.position(), position);
         }
 
         // Unexpected EOS.
