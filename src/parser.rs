@@ -26,7 +26,21 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    pub fn parse_value(&mut self) -> Result<(), JsonParseError> {
+    pub fn parse(&mut self) -> Result<(), JsonParseError> {
+        self.parse_value()?;
+
+        self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+        if !self.text.is_empty() {
+            return Err(JsonParseError::UnexpectedTrailingChar {
+                kind: self.kind.expect("infallible"),
+                position: self.position(),
+            });
+        }
+
+        Ok(())
+    }
+
+    fn parse_value(&mut self) -> Result<(), JsonParseError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         match self.text.chars().next() {
             Some('n') => self.parse_null(&self.text[1..]),
@@ -237,16 +251,6 @@ impl<'a> JsonParser<'a> {
                 s = &s[4..];
             }
         }
-    }
-
-    pub fn check_eos(&mut self) -> Result<(), JsonParseError> {
-        self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
-        if !self.text.is_empty() {
-            return Err(JsonParseError::UnexpectedTrailingChar {
-                position: self.position(),
-            });
-        }
-        Ok(())
     }
 
     fn push_entry(&mut self, len: usize) {

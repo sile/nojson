@@ -21,8 +21,7 @@ pub struct JsonTextStr<'a> {
 impl<'a> JsonTextStr<'a> {
     pub fn parse(text: &'a str) -> Result<Self, JsonParseError> {
         let mut parser = JsonParser::new(text);
-        parser.parse_value()?;
-        parser.check_eos()?;
+        parser.parse()?;
         Ok(Self {
             text,
             values: parser.values,
@@ -325,7 +324,10 @@ mod tests {
         ));
         assert!(matches!(
             JsonTextStr::parse("nulla"),
-            Err(JsonParseError::UnexpectedTrailingChar { position: 4 })
+            Err(JsonParseError::UnexpectedTrailingChar {
+                kind: JsonValueKind::Null,
+                position: 4
+            })
         ));
 
         Ok(())
@@ -347,7 +349,10 @@ mod tests {
 
         assert!(matches!(
             JsonTextStr::parse("false true"),
-            Err(JsonParseError::UnexpectedTrailingChar { position: 6 })
+            Err(JsonParseError::UnexpectedTrailingChar {
+                kind: JsonValueKind::Bool,
+                position: 6
+            })
         ));
         assert!(matches!(
             JsonTextStr::parse("fale"),
@@ -438,7 +443,13 @@ mod tests {
         for text in ["123.4.5"] {
             let e = JsonTextStr::parse(text).expect_err("error");
             assert!(
-                matches!(e, JsonParseError::UnexpectedTrailingChar { position: 5 }),
+                matches!(
+                    e,
+                    JsonParseError::UnexpectedTrailingChar {
+                        kind: JsonValueKind::Float,
+                        position: 5
+                    }
+                ),
                 "text={text}, error={e:?}"
             );
         }
@@ -568,7 +579,13 @@ mod tests {
         let text = "[1,2]]";
         let e = JsonTextStr::parse(text).expect_err("error");
         assert!(
-            matches!(e, JsonParseError::UnexpectedTrailingChar { position: 5 }),
+            matches!(
+                e,
+                JsonParseError::UnexpectedTrailingChar {
+                    kind: JsonValueKind::Array,
+                    position: 5
+                }
+            ),
             "text={text}, error={e:?}",
         );
 
@@ -650,7 +667,13 @@ mod tests {
         let text = r#"{"1":2}}"#;
         let e = JsonTextStr::parse(text).expect_err("error");
         assert!(
-            matches!(e, JsonParseError::UnexpectedTrailingChar { position: 7 }),
+            matches!(
+                e,
+                JsonParseError::UnexpectedTrailingChar {
+                    kind: JsonValueKind::Object,
+                    position: 7
+                }
+            ),
             "text={text}, error={e:?}",
         );
 

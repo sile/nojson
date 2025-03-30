@@ -9,7 +9,7 @@ pub enum JsonParseError {
         position: usize,
     },
     UnexpectedTrailingChar {
-        // TODO: kind
+        kind: JsonValueKind,
         position: usize,
     },
     UnexpectedValueChar {
@@ -44,7 +44,7 @@ impl JsonParseError {
     pub fn position(&self) -> usize {
         match self {
             JsonParseError::UnexpectedEos { position, .. }
-            | JsonParseError::UnexpectedTrailingChar { position }
+            | JsonParseError::UnexpectedTrailingChar { position, .. }
             | JsonParseError::UnexpectedValueChar { position, .. }
             | JsonParseError::UnexpectedKind { position, .. }
             | JsonParseError::UnexpectedValue { position, .. }
