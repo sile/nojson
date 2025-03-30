@@ -195,6 +195,8 @@ impl<'a> JsonValueStr<'a> {
         })
     }
 
+    // TODO: fn invalid_value()
+
     pub fn expect(self, kinds: &'static [JsonValueKind]) -> Result<Self, JsonParseError> {
         if kinds.contains(&self.kind()) {
             Ok(self)
@@ -402,6 +404,17 @@ mod tests {
         assert!(matches!(
             JsonTextStr::parse("false true"),
             Err(JsonParseError::UnexpectedTrailingChars { position: 6 })
+        ));
+        assert!(matches!(
+            JsonTextStr::parse("fale"),
+            Err(JsonParseError::MalformedValue {
+                kind: JsonValueKind::Bool,
+                position_range: Range { start: 0, end: 3 }
+            })
+        ));
+        assert!(matches!(
+            JsonTextStr::parse("tr"),
+            Err(JsonParseError::UnexpectedEos { position: 2 })
         ));
 
         Ok(())

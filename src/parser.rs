@@ -30,14 +30,11 @@ impl<'a> JsonParser<'a> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         match self.text.chars().next() {
             Some('n') => self.parse_null(&self.text[1..]),
+            Some('t') => self.parse_true(&self.text[1..]),
+            Some('f') => self.parse_false(&self.text[1..]),
+            None => Err(self.unexpected_eos()),
             _ => {
-                if self.text.starts_with("true") {
-                    self.push_value(JsonValueKind::Bool, "true".len());
-                    Ok(())
-                } else if self.text.starts_with("false") {
-                    self.push_value(JsonValueKind::Bool, "false".len());
-                    Ok(())
-                } else if self.text.starts_with(NUMBER_START_PATTERN) {
+                if self.text.starts_with(NUMBER_START_PATTERN) {
                     self.parse_number()
                 } else if let Some(s) = self.text.strip_prefix('"') {
                     self.parse_string(s)
@@ -45,7 +42,7 @@ impl<'a> JsonParser<'a> {
                     self.parse_array(s)
                 } else if let Some(s) = self.text.strip_prefix('{') {
                     self.parse_object(s)
-                } else if !self.text.is_empty() {
+                } else {
                     if self.text.starts_with(['+', '.']) {
                         Err(self.invalid_number())
                     } else if self.text.starts_with([']']) {
@@ -58,20 +55,34 @@ impl<'a> JsonParser<'a> {
                         let position = self.position();
                         Err(JsonParseError::UnexpectedChar { position })
                     }
-                } else {
-                    Err(self.unexpected_eos())
                 }
             }
         }
     }
 
     fn parse_null(&mut self, s: &'a str) -> Result<(), JsonParseError> {
-        let kind = JsonValueKind::Null;
-        if s.starts_with("ull") {
-            self.push_value(kind, 4);
+        self.parse_literal(JsonValueKind::Null, "ull", s)
+    }
+
+    fn parse_true(&mut self, s: &'a str) -> Result<(), JsonParseError> {
+        self.parse_literal(JsonValueKind::Bool, "rue", s)
+    }
+
+    fn parse_false(&mut self, s: &'a str) -> Result<(), JsonParseError> {
+        self.parse_literal(JsonValueKind::Bool, "alse", s)
+    }
+
+    fn parse_literal(
+        &mut self,
+        kind: JsonValueKind,
+        literal_suffix: &str,
+        s: &'a str,
+    ) -> Result<(), JsonParseError> {
+        if s.starts_with(literal_suffix) {
+            self.push_value(kind, 1 + literal_suffix.len());
             Ok(())
         } else {
-            for (i, (c0, c1)) in s.chars().zip("ull".chars()).enumerate() {
+            for (i, (c0, c1)) in s.chars().zip(literal_suffix.chars()).enumerate() {
                 if c0 != c1 {
                     return Err(self.malformed_value(kind, 1 + i));
                 }
