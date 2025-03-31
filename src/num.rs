@@ -3,7 +3,7 @@ use std::{fmt::Display, hash::Hash};
 
 use crate::{
     fmt::DisplayJson,
-    str::{JsonParseError, JsonValueStr},
+    str::{JsonParseError, RawJsonValue},
 };
 
 /// A variant of [`f64`] representing finite floating-point values.
@@ -62,10 +62,10 @@ impl Display for FiniteF64 {
 }
 
 // TODO: Add FromJsonValueStr
-impl TryFrom<JsonValueStr<'_>> for FiniteF64 {
+impl TryFrom<RawJsonValue<'_>> for FiniteF64 {
     type Error = JsonParseError;
 
-    fn try_from(value: JsonValueStr<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: RawJsonValue<'_>) -> Result<Self, Self::Error> {
         value.as_number()?.parse().map(Self)
     }
 }

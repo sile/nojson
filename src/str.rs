@@ -13,19 +13,19 @@ pub(crate) struct JsonValueIndexEntry {
 }
 
 #[derive(Debug)]
-pub struct JsonTextStr<'a> {
+pub struct JsonText<'a> {
     text: &'a str,
     values: Vec<JsonValueIndexEntry>,
 }
 
-impl<'a> JsonTextStr<'a> {
+impl<'a> JsonText<'a> {
     pub fn parse(text: &'a str) -> Result<Self, JsonParseError> {
         let values = JsonParser::new(text).parse()?;
         Ok(Self { text, values })
     }
 
-    pub fn value(&self) -> JsonValueStr {
-        JsonValueStr {
+    pub fn raw_value(&self) -> RawJsonValue {
+        RawJsonValue {
             json: self,
             index: 0,
         }
@@ -33,12 +33,12 @@ impl<'a> JsonTextStr<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct JsonValueStr<'a> {
-    json: &'a JsonTextStr<'a>,
+pub struct RawJsonValue<'a> {
+    json: &'a JsonText<'a>,
     index: usize,
 }
 
-impl<'a> JsonValueStr<'a> {
+impl<'a> RawJsonValue<'a> {
     pub fn kind(self) -> JsonValueKind {
         self.json.values[self.index].kind
     }
@@ -168,11 +168,11 @@ impl<'a> JsonValueStr<'a> {
         self.expect(&[JsonValueKind::String])
     }
 
-    pub fn to_array_values(self) -> Result<impl Iterator<Item = JsonValueStr<'a>>, JsonParseError> {
+    pub fn to_array_values(self) -> Result<impl Iterator<Item = RawJsonValue<'a>>, JsonParseError> {
         self.expect(&[JsonValueKind::Array]).map(JsonValues::new)
     }
 
-    pub fn to_fixed_array<const N: usize>(self) -> Result<[JsonValueStr<'a>; N], JsonParseError> {
+    pub fn to_fixed_array<const N: usize>(self) -> Result<[RawJsonValue<'a>; N], JsonParseError> {
         let mut values = self.to_array_values()?;
         let mut fixed_array = [self; N];
         for (i, v) in fixed_array.iter_mut().enumerate() {
@@ -196,7 +196,7 @@ impl<'a> JsonValueStr<'a> {
 
     pub fn to_object_members(
         self,
-    ) -> Result<impl Iterator<Item = (JsonValueStr<'a>, JsonValueStr<'a>)>, JsonParseError> {
+    ) -> Result<impl Iterator<Item = (RawJsonValue<'a>, RawJsonValue<'a>)>, JsonParseError> {
         self.expect(&[JsonValueKind::Object])
             .map(JsonKeyValuePairs::new)
     }
@@ -205,7 +205,7 @@ impl<'a> JsonValueStr<'a> {
         self,
         required_member_names: [&str; N],
         optional_member_names: [&str; M],
-    ) -> Result<([JsonValueStr<'a>; N], [Option<JsonValueStr<'a>>; M]), JsonParseError> {
+    ) -> Result<([RawJsonValue<'a>; N], [Option<RawJsonValue<'a>>; M]), JsonParseError> {
         let mut required = [self; N];
         let mut optional = [None; M];
         for (k, v) in self.to_object_members()? {
@@ -234,12 +234,12 @@ impl<'a> JsonValueStr<'a> {
 
 #[derive(Debug)]
 struct JsonValues<'a> {
-    value: JsonValueStr<'a>,
+    value: RawJsonValue<'a>,
     end_index: usize,
 }
 
 impl<'a> JsonValues<'a> {
-    fn new(mut value: JsonValueStr<'a>) -> Self {
+    fn new(mut value: RawJsonValue<'a>) -> Self {
         let end_index = value.entry().end_index;
         value.index += 1;
         Self { value, end_index }
@@ -247,7 +247,7 @@ impl<'a> JsonValues<'a> {
 }
 
 impl<'a> Iterator for JsonValues<'a> {
-    type Item = JsonValueStr<'a>;
+    type Item = RawJsonValue<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.value.index == self.end_index {
@@ -265,7 +265,7 @@ struct JsonKeyValuePairs<'a> {
 }
 
 impl<'a> JsonKeyValuePairs<'a> {
-    fn new(object: JsonValueStr<'a>) -> Self {
+    fn new(object: RawJsonValue<'a>) -> Self {
         Self {
             inner: JsonValues::new(object),
         }
@@ -273,7 +273,7 @@ impl<'a> JsonKeyValuePairs<'a> {
 }
 
 impl<'a> Iterator for JsonKeyValuePairs<'a> {
-    type Item = (JsonValueStr<'a>, JsonValueStr<'a>);
+    type Item = (RawJsonValue<'a>, RawJsonValue<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let key = self.inner.next()?;
@@ -289,14 +289,14 @@ mod tests {
     #[test]
     fn parse_empty_text() {
         assert!(matches!(
-            JsonTextStr::parse(""),
+            JsonText::parse(""),
             Err(JsonParseError::UnexpectedEos {
                 kind: None,
                 position: 0
             })
         ));
         assert!(matches!(
-            JsonTextStr::parse("    "),
+            JsonText::parse("    "),
             Err(JsonParseError::UnexpectedEos {
                 kind: None,
                 position: 4
@@ -306,28 +306,28 @@ mod tests {
 
     #[test]
     fn parse_nulls() -> Result<(), JsonParseError> {
-        let json = JsonTextStr::parse(" null ")?;
-        let value = json.value();
+        let json = JsonText::parse(" null ")?;
+        let value = json.raw_value();
         assert_eq!(value.kind(), JsonValueKind::Null);
         assert_eq!(value.text(), "null");
         assert_eq!(value.position(), 1);
 
         assert!(matches!(
-            JsonTextStr::parse("nuL"),
+            JsonText::parse("nuL"),
             Err(JsonParseError::UnexpectedValueChar {
                 kind: Some(JsonValueKind::Null),
                 position: 2
             })
         ));
         assert!(matches!(
-            JsonTextStr::parse("nul"),
+            JsonText::parse("nul"),
             Err(JsonParseError::UnexpectedEos {
                 kind: Some(JsonValueKind::Null),
                 position: 3
             })
         ));
         assert!(matches!(
-            JsonTextStr::parse("nulla"),
+            JsonText::parse("nulla"),
             Err(JsonParseError::UnexpectedTrailingChar {
                 kind: JsonValueKind::Null,
                 position: 4
@@ -339,34 +339,34 @@ mod tests {
 
     #[test]
     fn parse_bools() -> Result<(), JsonParseError> {
-        let json = JsonTextStr::parse("true")?;
-        let value = json.value();
+        let json = JsonText::parse("true")?;
+        let value = json.raw_value();
         assert_eq!(value.kind(), JsonValueKind::Bool);
         assert_eq!(value.text(), "true");
         assert_eq!(value.position(), 0);
 
-        let json = JsonTextStr::parse(" false ")?;
-        let value = json.value();
+        let json = JsonText::parse(" false ")?;
+        let value = json.raw_value();
         assert_eq!(value.kind(), JsonValueKind::Bool);
         assert_eq!(value.text(), "false");
         assert_eq!(value.position(), 1);
 
         assert!(matches!(
-            JsonTextStr::parse("false true"),
+            JsonText::parse("false true"),
             Err(JsonParseError::UnexpectedTrailingChar {
                 kind: JsonValueKind::Bool,
                 position: 6
             })
         ));
         assert!(matches!(
-            JsonTextStr::parse("fale"),
+            JsonText::parse("fale"),
             Err(JsonParseError::UnexpectedValueChar {
                 kind: Some(JsonValueKind::Bool),
                 position: 3
             })
         ));
         assert!(matches!(
-            JsonTextStr::parse("tr"),
+            JsonText::parse("tr"),
             Err(JsonParseError::UnexpectedEos {
                 kind: Some(JsonValueKind::Bool),
                 position: 2
@@ -380,8 +380,8 @@ mod tests {
     fn parse_numbers() -> Result<(), JsonParseError> {
         // Integers.
         for text in ["0", "-12"] {
-            let json = JsonTextStr::parse(text)?;
-            let value = json.value();
+            let json = JsonText::parse(text)?;
+            let value = json.raw_value();
             assert_eq!(value.kind(), JsonValueKind::Integer);
             assert_eq!(value.text(), text);
             assert_eq!(value.position(), 0);
@@ -389,8 +389,8 @@ mod tests {
 
         // Floats.
         for text in ["12.3", "12.3e4", "12.3e-4", "-0.3e+4", "12E034"] {
-            let json = JsonTextStr::parse(text)?;
-            let value = json.value();
+            let json = JsonText::parse(text)?;
+            let value = json.raw_value();
             assert_eq!(value.kind(), JsonValueKind::Float);
             assert_eq!(value.text(), text);
             assert_eq!(value.position(), 0);
@@ -398,7 +398,7 @@ mod tests {
 
         // Malformed integers.
         for (text, position) in [("--1", 1)] {
-            let e = JsonTextStr::parse(text).expect_err("error");
+            let e = JsonText::parse(text).expect_err("error");
             assert!(
                 matches!(
                     e,
@@ -414,7 +414,7 @@ mod tests {
 
         // Malformed floats.
         for (text, position) in [("1..2", 2), ("1ee2", 2), ("1e+-3", 3)] {
-            let e = JsonTextStr::parse(text).expect_err("error");
+            let e = JsonText::parse(text).expect_err("error");
             assert!(
                 matches!(
                     e,
@@ -432,20 +432,20 @@ mod tests {
         for text in ["e123", "+2", ".123"] {
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
+                    JsonText::parse(text),
                     Err(JsonParseError::UnexpectedValueChar {
                         kind: None,
                         position: 0
                     })
                 ),
                 "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                JsonText::parse(text)
             );
         }
 
         // Unexpected trailing char.
         for (text, position) in [("123.4.5", 5), ("0123", 1), ("00", 1)] {
-            let e = JsonTextStr::parse(text).expect_err("error");
+            let e = JsonText::parse(text).expect_err("error");
             assert!(
                 matches!(
                     e,
@@ -463,11 +463,11 @@ mod tests {
         for text in ["123.", "-", "123e", "123e-"] {
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
+                    JsonText::parse(text),
                     Err(JsonParseError::UnexpectedEos { .. })
                 ),
                 "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                JsonText::parse(text)
             );
         }
 
@@ -478,8 +478,8 @@ mod tests {
     fn parse_strings() -> Result<(), JsonParseError> {
         // Non-escaped strings.
         for text in [r#" "" "#, r#" "abc" "#] {
-            let json = JsonTextStr::parse(text)?;
-            let value = json.value();
+            let json = JsonText::parse(text)?;
+            let value = json.raw_value();
             assert_eq!(value.kind(), JsonValueKind::String);
             assert_eq!(value.text(), text.trim());
             assert_eq!(value.position(), 1);
@@ -492,8 +492,8 @@ mod tests {
             r#" "\n\\a\r\nb\b\"\fc" "#,
             r#" "ab\uF20ac" "#,
         ] {
-            let json = JsonTextStr::parse(text)?;
-            let value = json.value();
+            let json = JsonText::parse(text)?;
+            let value = json.raw_value();
             assert_eq!(value.kind(), JsonValueKind::String);
             assert_eq!(value.text(), text.trim());
             assert_eq!(value.position(), 1);
@@ -502,7 +502,7 @@ mod tests {
 
         // Malformed strings.
         for (text, error_position) in [(r#" "ab\xc" "#, 5), (r#" "ab\uXyz0c" "#, 6)] {
-            let e = JsonTextStr::parse(text).expect_err("error");
+            let e = JsonText::parse(text).expect_err("error");
             assert!(
                 matches!(
                     e,
@@ -512,7 +512,7 @@ mod tests {
                     }
                 ),
                 "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                JsonText::parse(text)
             );
             assert_eq!(e.position(), error_position);
         }
@@ -528,11 +528,11 @@ mod tests {
         ] {
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
+                    JsonText::parse(text),
                     Err(JsonParseError::UnexpectedEos { .. })
                 ),
                 "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                JsonText::parse(text)
             );
         }
 
@@ -548,8 +548,8 @@ mod tests {
             "[1  ,null, \"foo\"  ]",
             "[ 1, [[ 2 ], 3,null ],false]",
         ] {
-            let json = JsonTextStr::parse(text)?;
-            let value = json.value();
+            let json = JsonText::parse(text)?;
+            let value = json.raw_value();
             assert_eq!(value.kind(), JsonValueKind::Array);
             assert_eq!(value.text(), text);
             assert_eq!(value.position(), 0);
@@ -557,7 +557,7 @@ mod tests {
 
         // Malformed arrays.
         for (text, position) in [("[,]", 1), ("[1,2,]", 5)] {
-            let e = JsonTextStr::parse(text).expect_err("error");
+            let e = JsonText::parse(text).expect_err("error");
             assert!(
                 matches!(
                     e,
@@ -567,14 +567,14 @@ mod tests {
                     }
                 ),
                 "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                JsonText::parse(text)
             );
             assert_eq!(e.position(), position);
         }
 
         // Unmatched ']'.
         let text = "]";
-        let e = JsonTextStr::parse(text).expect_err("error");
+        let e = JsonText::parse(text).expect_err("error");
         assert!(
             matches!(e, JsonParseError::UnexpectedValueChar { kind: None, .. }),
             "text={text}, error={e:?}",
@@ -582,7 +582,7 @@ mod tests {
         assert_eq!(e.position(), 0);
 
         let text = "[1,2]]";
-        let e = JsonTextStr::parse(text).expect_err("error");
+        let e = JsonText::parse(text).expect_err("error");
         assert!(
             matches!(
                 e,
@@ -595,7 +595,7 @@ mod tests {
         );
 
         let text = r#"{"foo":[]]}"#;
-        let e = JsonTextStr::parse(text).expect_err("error");
+        let e = JsonText::parse(text).expect_err("error");
         assert!(
             matches!(
                 e,
@@ -612,11 +612,11 @@ mod tests {
         for text in ["[", "[1,2", "[1,2,"] {
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
+                    JsonText::parse(text),
                     Err(JsonParseError::UnexpectedEos { .. })
                 ),
                 "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                JsonText::parse(text)
             );
         }
 
@@ -632,8 +632,8 @@ mod tests {
             r#"{"foo":1  ,"null": null, "foo" :"bar" }"#,
             r#"{"foo": {}, "bar":[{"a":null}]}"#,
         ] {
-            let json = JsonTextStr::parse(text)?;
-            let value = json.value();
+            let json = JsonText::parse(text)?;
+            let value = json.raw_value();
             assert_eq!(value.kind(), JsonValueKind::Object);
             assert_eq!(value.text(), text);
             assert_eq!(value.position(), 0);
@@ -646,7 +646,7 @@ mod tests {
             (r#"{"foo","bar"}"#, 6),
             (r#"{"foo":"bar",}"#, 13),
         ] {
-            let e = JsonTextStr::parse(text).expect_err("error");
+            let e = JsonText::parse(text).expect_err("error");
             assert!(
                 matches!(
                     e,
@@ -662,7 +662,7 @@ mod tests {
 
         // Unmatched '}'.
         let text = "}";
-        let e = JsonTextStr::parse(text).expect_err("error");
+        let e = JsonText::parse(text).expect_err("error");
         assert!(
             matches!(e, JsonParseError::UnexpectedValueChar { kind: None, .. }),
             "text={text}, error={e:?}",
@@ -670,7 +670,7 @@ mod tests {
         assert_eq!(e.position(), 0);
 
         let text = r#"{"1":2}}"#;
-        let e = JsonTextStr::parse(text).expect_err("error");
+        let e = JsonText::parse(text).expect_err("error");
         assert!(
             matches!(
                 e,
@@ -683,7 +683,7 @@ mod tests {
         );
 
         let text = "[{}}]";
-        let e = JsonTextStr::parse(text).expect_err("error");
+        let e = JsonText::parse(text).expect_err("error");
         assert!(
             matches!(
                 e,
@@ -700,11 +700,11 @@ mod tests {
         for text in ["{", r#"{"1" "#, r#"{"1": "#, r#"{"1": 2"#] {
             assert!(
                 matches!(
-                    JsonTextStr::parse(text),
+                    JsonText::parse(text),
                     Err(JsonParseError::UnexpectedEos { .. })
                 ),
                 "text={text}, error={:?}",
-                JsonTextStr::parse(text)
+                JsonText::parse(text)
             );
         }
 
