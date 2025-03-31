@@ -28,11 +28,6 @@ pub enum JsonParseError {
         actual_kind: JsonValueKind,
         position: usize, // TODO: range
     },
-    UnexpectedArraySize {
-        expected: usize,
-        actual: usize,
-        position: usize,
-    },
     MissingRequiredMember {
         member_names: Vec<String>,
         position: usize,
@@ -47,7 +42,6 @@ impl JsonParseError {
             | JsonParseError::UnexpectedValueChar { position, .. }
             | JsonParseError::UnexpectedKind { position, .. }
             | JsonParseError::InvalidValue { position, .. }
-            | JsonParseError::UnexpectedArraySize { position, .. }
             | JsonParseError::MissingRequiredMember { position, .. } => *position,
         }
     }

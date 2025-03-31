@@ -174,22 +174,19 @@ impl<'a> JsonValueStr<'a> {
         let mut values = self.to_array_values()?;
         let mut fixed_array = [self; N];
         for (i, v) in fixed_array.iter_mut().enumerate() {
-            *v = values
-                .next()
-                .ok_or_else(|| JsonParseError::UnexpectedArraySize {
-                    expected: N,
-                    actual: i,
-                    position: self.position(),
-                })?;
+            *v = values.next().ok_or_else(|| {
+                self.to_invalid_value_error(format!(
+                    "expected an array with {N} elements, but got only {i} elements"
+                ))
+            })?;
         }
 
         let extra = values.count();
         if extra > 0 {
-            return Err(JsonParseError::UnexpectedArraySize {
-                expected: N,
-                actual: N + extra,
-                position: self.position(),
-            });
+            return Err(self.to_invalid_value_error(format!(
+                "expected an array with {N} elements, but got {} elements",
+                N + extra
+            )));
         }
 
         Ok(fixed_array)
