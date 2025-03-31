@@ -169,32 +169,22 @@ impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for HashMap<K, V> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonArrayValues<T>(pub T);
-
-impl<F, I> DisplayJson for JsonArrayValues<F>
+pub fn value<F>(f: F) -> impl DisplayJson
 where
-    F: Fn() -> I,
-    I: Iterator,
-    I::Item: DisplayJson,
+    F: Fn(&mut std::fmt::Formatter<'_>) -> std::fmt::Result,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        JsonArrayFormatter::new(f).values(self.0()).finish()
-    }
+    JsonValueWith(f)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JsonObjectMembers<T>(pub T);
+// TODO: rename
+struct JsonValueWith<F>(F);
 
-impl<F, I, K, V> DisplayJson for JsonObjectMembers<F>
+impl<F> DisplayJson for JsonValueWith<F>
 where
-    F: Fn() -> I,
-    I: Iterator<Item = (K, V)>,
-    K: DisplayJsonString,
-    V: DisplayJson,
+    F: Fn(&mut std::fmt::Formatter<'_>) -> std::fmt::Result,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        JsonObjectFormatter::new(f).members(self.0()).finish()
+        self.0(f)
     }
 }
 
