@@ -5,6 +5,7 @@ mod parser;
 pub mod str;
 mod value;
 
+use str::{JsonParseError, JsonTextStr, JsonValueStr};
 pub use value::{JsonValue, JsonValueKind};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -16,11 +17,14 @@ impl<T: fmt::DisplayJson> std::fmt::Display for Json<T> {
     }
 }
 
-// impl<T: str::FromJsonStr> std::str::FromStr for Json<T> {
-//     type Err = str::Error;
+impl<T> std::str::FromStr for Json<T>
+where
+    T: for<'a> TryFrom<JsonValueStr<'a>, Error = JsonParseError>,
+{
+    type Err = JsonParseError;
 
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         let s = str::JsonStr::new(s)?;
-//         T::from_json_str(&s).map(Self)
-//     }
-// }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let json = JsonTextStr::parse(s)?;
+        json.value().try_into().map(Self)
+    }
+}

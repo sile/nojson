@@ -1,11 +1,19 @@
+//! Number types for JSON.
 use std::{fmt::Display, hash::Hash};
 
-use crate::fmt::DisplayJson;
+use crate::{
+    fmt::DisplayJson,
+    str::{JsonParseError, JsonValueStr},
+};
 
+/// A variant of [`f64`] representing finite floating-point values.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct FiniteF64(f64);
 
 impl FiniteF64 {
+    /// Makes a new [`FiniteF64`] instance.
+    ///
+    /// If the given value is NaN or infinite, this function returns [`None`].
     pub const fn new(v: f64) -> Option<Self> {
         if v.is_finite() {
             // Normalize negative zero for hashing purposes.
@@ -15,6 +23,7 @@ impl FiniteF64 {
         }
     }
 
+    /// Returns the value of this number.
     pub const fn get(self) -> f64 {
         self.0
     }
@@ -52,4 +61,25 @@ impl Display for FiniteF64 {
     }
 }
 
-// TODO:  FromStr
+// TODO: Add FromJsonValueStr
+impl TryFrom<JsonValueStr<'_>> for FiniteF64 {
+    type Error = JsonParseError;
+
+    fn try_from(value: JsonValueStr<'_>) -> Result<Self, Self::Error> {
+        value.as_number()?.parse().map(Self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Json;
+
+    use super::*;
+
+    #[test]
+    fn finite_f64() {
+        let v: Json<FiniteF64> = "3.14".parse().expect("ok");
+        assert_eq!(v.0.get(), 3.14);
+        assert_eq!(v.to_string(), "3.14");
+    }
+}
