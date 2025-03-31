@@ -2,6 +2,12 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crate::Json;
 
+#[derive(Debug, Default)]
+pub struct JsonFormatterConfig {
+    pub indent: usize,
+    pub space: usize,
+}
+
 // TODO: Formatter and PrettyJson for pretty-print
 
 pub trait DisplayJson {
