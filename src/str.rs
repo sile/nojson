@@ -136,17 +136,19 @@ impl<'a> JsonValueStr<'a> {
         })
     }
 
-    // TODO: fn invalid_value()
-
     pub fn expect(self, kinds: &'static [JsonValueKind]) -> Result<Self, JsonParseError> {
         if kinds.contains(&self.kind()) {
             Ok(self)
         } else {
-            Err(JsonParseError::UnexpectedKind {
-                expected_kinds: kinds,
-                actual_kind: self.kind(),
-                position: self.position(),
-            })
+            Err(self.to_invalid_value_error(format!(
+                "expected {:?}, but found {:?}",
+                if kinds.len() == 1 {
+                    format!("{:?}", kinds[0])
+                } else {
+                    format!("one of {:?}", kinds)
+                },
+                self.kind()
+            )))
         }
     }
 

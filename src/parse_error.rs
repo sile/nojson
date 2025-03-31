@@ -2,7 +2,6 @@ use crate::JsonValueKind;
 
 /// JSON parse error.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum JsonParseError {
     UnexpectedEos {
         kind: Option<JsonValueKind>,
@@ -22,12 +21,6 @@ pub enum JsonParseError {
         position: usize,
         error: Box<dyn Send + Sync + std::error::Error>,
     },
-    // TODO: remove
-    UnexpectedKind {
-        expected_kinds: &'static [JsonValueKind],
-        actual_kind: JsonValueKind,
-        position: usize, // TODO: range
-    },
 }
 
 impl JsonParseError {
@@ -36,7 +29,6 @@ impl JsonParseError {
             JsonParseError::UnexpectedEos { position, .. }
             | JsonParseError::UnexpectedTrailingChar { position, .. }
             | JsonParseError::UnexpectedValueChar { position, .. }
-            | JsonParseError::UnexpectedKind { position, .. }
             | JsonParseError::InvalidValue { position, .. } => *position,
         }
     }
