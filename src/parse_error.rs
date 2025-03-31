@@ -24,6 +24,15 @@ pub enum JsonParseError {
 }
 
 impl JsonParseError {
+    pub fn kind(&self) -> Option<JsonValueKind> {
+        match self {
+            JsonParseError::UnexpectedEos { kind, .. } => *kind,
+            JsonParseError::UnexpectedTrailingChar { kind, .. } => Some(*kind),
+            JsonParseError::UnexpectedValueChar { kind, .. } => *kind,
+            JsonParseError::InvalidValue { kind, .. } => Some(*kind),
+        }
+    }
+
     pub fn position(&self) -> usize {
         match self {
             JsonParseError::UnexpectedEos { position, .. }
@@ -35,4 +44,20 @@ impl JsonParseError {
 
     // TODO: row_column_line()
     // TDOO: get_value()
+}
+
+impl std::fmt::Display for JsonParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl std::error::Error for JsonParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        if let Self::InvalidValue { error, .. } = self {
+            Some(&**error)
+        } else {
+            None
+        }
+    }
 }
