@@ -28,10 +28,6 @@ pub enum JsonParseError {
         actual_kind: JsonValueKind,
         position: usize, // TODO: range
     },
-    MissingRequiredMember {
-        member_names: Vec<String>,
-        position: usize,
-    },
 }
 
 impl JsonParseError {
@@ -41,8 +37,7 @@ impl JsonParseError {
             | JsonParseError::UnexpectedTrailingChar { position, .. }
             | JsonParseError::UnexpectedValueChar { position, .. }
             | JsonParseError::UnexpectedKind { position, .. }
-            | JsonParseError::InvalidValue { position, .. }
-            | JsonParseError::MissingRequiredMember { position, .. } => *position,
+            | JsonParseError::InvalidValue { position, .. } => *position,
         }
     }
 

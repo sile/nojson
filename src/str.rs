@@ -215,17 +215,15 @@ impl<'a> JsonValueStr<'a> {
             }
         }
 
-        let missing_members = required_member_names
-            .iter()
-            .zip(required.iter())
-            .filter(|(_, value)| value.index != self.index)
-            .map(|(&name, _)| name.to_owned())
-            .collect::<Vec<_>>();
-        if !missing_members.is_empty() {
-            return Err(JsonParseError::MissingRequiredMember {
-                member_names: missing_members,
-                position: self.position(),
-            });
+        if required.iter().any(|v| v.index == self.index) {
+            let missings = required_member_names
+                .iter()
+                .zip(required.iter())
+                .filter(|(_, value)| value.index != self.index)
+                .map(|(name, _)| name)
+                .collect::<Vec<_>>();
+            return Err(self
+                .to_invalid_value_error(format!("missing required object members: {missings:?}")));
         }
 
         Ok((required, optional))
