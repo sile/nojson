@@ -48,7 +48,52 @@ impl JsonParseError {
 
 impl std::fmt::Display for JsonParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        match self {
+            JsonParseError::UnexpectedEos { kind, position } => {
+                if let Some(kind) = kind {
+                    let kind = kind.name();
+                    write!(
+                        f,
+                        "unexpected EOS while parsing {} at byte position {}",
+                        kind, position
+                    )
+                } else {
+                    write!(f, "unexpected EOS at byte position {}", position)
+                }
+            }
+            JsonParseError::UnexpectedTrailingChar { kind, position } => {
+                let kind = kind.name();
+                write!(
+                    f,
+                    "unexpected trailing char after parsing {} at byte position {}",
+                    kind, position
+                )
+            }
+            JsonParseError::UnexpectedValueChar { kind, position } => {
+                if let Some(kind) = kind {
+                    let kind = kind.name();
+                    write!(
+                        f,
+                        "unexpected char while parsing {} at byte position {}",
+                        kind, position
+                    )
+                } else {
+                    write!(f, "unexpected char at byte position {}", position)
+                }
+            }
+            JsonParseError::InvalidValue {
+                kind,
+                position,
+                error,
+            } => {
+                let kind = kind.name();
+                write!(
+                    f,
+                    "JSON {} at byte position {} is invalid: {}",
+                    kind, position, error
+                )
+            }
+        }
     }
 }
 
