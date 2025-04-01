@@ -4,6 +4,10 @@ use crate::{JsonValueKind, parser::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
+pub trait FromRawJsonValue<'a>: Sized {
+    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError>;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct JsonValueIndexEntry {
     pub kind: JsonValueKind,
@@ -31,7 +35,7 @@ impl<'a> JsonText<'a> {
         }
     }
 
-    pub fn find_raw_value_by_position(&self, position: usize) -> Option<RawJsonValue> {
+    pub fn get_raw_value_by_position(&self, position: usize) -> Option<RawJsonValue> {
         let mut value = self.raw_value();
         if !value.entry().text.contains(&position) {
             return None;

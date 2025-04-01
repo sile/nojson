@@ -2,7 +2,7 @@ pub mod fmt;
 pub mod num;
 mod parse_error;
 mod parser;
-pub mod str;
+pub mod str; // TODO: rename
 mod value;
 
 use str::{JsonParseError, JsonText, RawJsonValue};
