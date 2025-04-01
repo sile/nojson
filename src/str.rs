@@ -32,10 +32,14 @@ impl<'a> JsonText<'a> {
     }
 
     pub fn find_raw_value_by_position(&self, position: usize) -> Option<RawJsonValue> {
-        self.values
-            .iter()
-            .rposition(|v| v.text.contains(&position))
-            .map(|index| RawJsonValue { json: self, index })
+        let mut value = self.raw_value();
+        if !value.entry().text.contains(&position) {
+            return None;
+        }
+        while let Some(child) = Children::new(value).find(|c| c.entry().text.contains(&position)) {
+            value = child;
+        }
+        Some(value)
     }
 }
 
@@ -176,7 +180,7 @@ impl<'a> RawJsonValue<'a> {
     }
 
     pub fn to_array_values(self) -> Result<impl Iterator<Item = RawJsonValue<'a>>, JsonParseError> {
-        self.expect(&[JsonValueKind::Array]).map(JsonValues::new)
+        self.expect(&[JsonValueKind::Array]).map(Children::new)
     }
 
     pub fn to_fixed_array<const N: usize>(self) -> Result<[RawJsonValue<'a>; N], JsonParseError> {
@@ -240,12 +244,12 @@ impl<'a> RawJsonValue<'a> {
 }
 
 #[derive(Debug)]
-struct JsonValues<'a> {
+struct Children<'a> {
     value: RawJsonValue<'a>,
     end_index: usize,
 }
 
-impl<'a> JsonValues<'a> {
+impl<'a> Children<'a> {
     fn new(mut value: RawJsonValue<'a>) -> Self {
         let end_index = value.entry().end_index;
         value.index += 1;
@@ -253,7 +257,7 @@ impl<'a> JsonValues<'a> {
     }
 }
 
-impl<'a> Iterator for JsonValues<'a> {
+impl<'a> Iterator for Children<'a> {
     type Item = RawJsonValue<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -268,13 +272,13 @@ impl<'a> Iterator for JsonValues<'a> {
 
 #[derive(Debug)]
 struct JsonKeyValuePairs<'a> {
-    inner: JsonValues<'a>,
+    inner: Children<'a>,
 }
 
 impl<'a> JsonKeyValuePairs<'a> {
     fn new(object: RawJsonValue<'a>) -> Self {
         Self {
-            inner: JsonValues::new(object),
+            inner: Children::new(object),
         }
     }
 }
