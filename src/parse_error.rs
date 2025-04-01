@@ -1,3 +1,5 @@
+use std::num::NonZeroUsize;
+
 use crate::JsonValueKind;
 
 /// JSON parse error.
@@ -42,8 +44,44 @@ impl JsonParseError {
         }
     }
 
-    // TODO: row_column_line()
-    // TDOO: get_value()
+    pub fn get_line_and_column_numbers(&self, text: &str) -> Option<(NonZeroUsize, NonZeroUsize)> {
+        let position = self.position();
+        let mut line = 0;
+        let mut column = 0;
+        for (i, c) in text.char_indices().take_while(|(i, _)| *i <= position) {
+            if i == position {
+                let line = NonZeroUsize::MIN.saturating_add(line);
+                let column = NonZeroUsize::MIN.saturating_add(column);
+                return Some((line, column));
+            }
+
+            if c == '\n' {
+                column = 0;
+                line += 1;
+            } else {
+                // [NOTE] Multi-byte chars are not taken into account.
+                column += 1;
+            }
+        }
+        None
+    }
+
+    pub fn get_line<'a>(&self, text: &'a str) -> Option<&'a str> {
+        let position = self.position();
+        if !text.is_char_boundary(position) {
+            return None;
+        }
+
+        let start = text[..position]
+            .rfind('\n')
+            .map(|i| position - i)
+            .unwrap_or(0);
+        let end = text[position..]
+            .find('\n')
+            .map(|i| position + i)
+            .unwrap_or_else(|| text.len());
+        Some(&text[start..end])
+    }
 }
 
 impl std::fmt::Display for JsonParseError {

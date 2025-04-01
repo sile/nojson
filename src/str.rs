@@ -30,6 +30,13 @@ impl<'a> JsonText<'a> {
             index: 0,
         }
     }
+
+    pub fn find_raw_value_by_position(&self, position: usize) -> Option<RawJsonValue> {
+        self.values
+            .iter()
+            .rposition(|v| v.text.contains(&position))
+            .map(|index| RawJsonValue { json: self, index })
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
