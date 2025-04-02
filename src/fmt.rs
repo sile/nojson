@@ -11,6 +11,42 @@ pub struct JsonFormatter {
     pub space: usize,
 }
 
+impl JsonFormatter {
+    // TODO:
+    // pub fn array<I>(&mut self, _values: I) -> std::fmt::Result
+    // where
+    //     I: IntoIterator,
+    //     I::Item: DisplayJson,
+    // {
+    //     todo!()
+    // }
+
+    // pub fn object<I, K, V>(&mut self, _members: I) -> std::fmt::Result
+    // where
+    //     I: IntoIterator<Item = (K, V)>,
+    //     K: Display,
+    //     V: DisplayJson,
+    // {
+    //     todo!()
+    // }
+
+    // pub fn array_with<F>(&mut self, _f: F) -> std::fmt::Result
+    // where
+    //     F: Fn(&dyn DisplayJson) -> std::fmt::Result,
+    // {
+    //     todo!()
+    // }
+
+    // pub fn object_with<F, K, V>(&mut self, _f: F) -> std::fmt::Result
+    // where
+    //     F: Fn(K, V) -> std::fmt::Result,
+    //     K: Display,
+    //     V: DisplayJson,
+    // {
+    //     todo!()
+    // }
+}
+
 // TODO: Formatter and PrettyJson for pretty-print
 
 pub trait DisplayJson {
