@@ -1,9 +1,13 @@
-pub mod fmt;
+mod fmt;
 mod kind;
 mod parse_error;
 mod parser;
 mod str; // TODO: rename
 
+pub use fmt::{
+    DisplayJsonString, DisplayJsonValue, JsonArrayFormatter, JsonObjectFormatter,
+    JsonValueFormatter,
+};
 pub use kind::JsonValueKind;
 pub use str::{FromRawJsonValue, JsonParseError, JsonText, RawJsonValue};
 
