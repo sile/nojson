@@ -3,116 +3,115 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use crate::Json;
 
 #[derive(Debug, Default)]
-pub struct JsonFormatterConfig {
+pub struct JsonValueFormatter {
     pub indent: usize,
     pub space: usize,
 }
 
 // TODO: Formatter and PrettyJson for pretty-print
 
-// TODO: DisplayJsonValue
-pub trait DisplayJson {
+pub trait DisplayJsonValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
 }
 
 // TODO: DisplayJsonObjectMemberName? or reuse Display
-pub trait DisplayJsonString: DisplayJson {}
+pub trait DisplayJsonString: DisplayJsonValue {}
 
-impl<T: DisplayJson> DisplayJson for &T {
+impl<T: DisplayJsonValue> DisplayJsonValue for &T {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         (*self).fmt(f)
     }
 }
 
-impl<T: DisplayJson> DisplayJsonString for Box<T> {}
+impl<T: DisplayJsonValue> DisplayJsonString for Box<T> {}
 
-impl<T: DisplayJson> DisplayJsonString for &T {}
+impl<T: DisplayJsonValue> DisplayJsonString for &T {}
 
-impl<T: DisplayJson> DisplayJson for Box<T> {
+impl<T: DisplayJsonValue> DisplayJsonValue for Box<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         (**self).fmt(f)
     }
 }
 
-impl DisplayJson for bool {
+impl DisplayJsonValue for bool {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for i8 {
+impl DisplayJsonValue for i8 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for u8 {
+impl DisplayJsonValue for u8 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for i16 {
+impl DisplayJsonValue for i16 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for u16 {
+impl DisplayJsonValue for u16 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for i32 {
+impl DisplayJsonValue for i32 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for u32 {
+impl DisplayJsonValue for u32 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for i64 {
+impl DisplayJsonValue for i64 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for u64 {
+impl DisplayJsonValue for u64 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for i128 {
+impl DisplayJsonValue for i128 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for u128 {
+impl DisplayJsonValue for u128 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for isize {
+impl DisplayJsonValue for isize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for usize {
+impl DisplayJsonValue for usize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl DisplayJson for &str {
+impl DisplayJsonValue for &str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\"")?;
         for c in self.chars() {
@@ -133,7 +132,7 @@ impl DisplayJson for &str {
     }
 }
 
-impl DisplayJson for String {
+impl DisplayJsonValue for String {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.as_str().fmt(f)
     }
@@ -141,62 +140,43 @@ impl DisplayJson for String {
 
 impl DisplayJsonString for String {}
 
-impl<T: DisplayJson> DisplayJson for &[T] {
+impl<T: DisplayJsonValue> DisplayJsonValue for &[T] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
-impl<T: DisplayJson, const N: usize> DisplayJson for [T; N] {
+impl<T: DisplayJsonValue, const N: usize> DisplayJsonValue for [T; N] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
-impl<T: DisplayJson> DisplayJson for Vec<T> {
+impl<T: DisplayJsonValue> DisplayJsonValue for Vec<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
-impl<T: DisplayJson> DisplayJson for VecDeque<T> {
+impl<T: DisplayJsonValue> DisplayJsonValue for VecDeque<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonArrayFormatter::new(f).values(self.iter()).finish()
     }
 }
 
-impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for BTreeMap<K, V> {
+impl<K: DisplayJsonString, V: DisplayJsonValue> DisplayJsonValue for BTreeMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonObjectFormatter::new(f).members(self.iter()).finish()
     }
 }
 
-impl<K: DisplayJsonString, V: DisplayJson> DisplayJson for HashMap<K, V> {
+impl<K: DisplayJsonString, V: DisplayJsonValue> DisplayJsonValue for HashMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonObjectFormatter::new(f).members(self.iter()).finish()
     }
 }
 
-pub fn value<F>(f: F) -> impl DisplayJson
-where
-    F: Fn(&mut std::fmt::Formatter<'_>) -> std::fmt::Result,
-{
-    JsonValueWith(f)
-}
-
-// TODO: rename
-struct JsonValueWith<F>(F);
-
-impl<F> DisplayJson for JsonValueWith<F>
-where
-    F: Fn(&mut std::fmt::Formatter<'_>) -> std::fmt::Result,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0(f)
-    }
-}
-
-impl<T: DisplayJson> DisplayJson for Option<T> {
+impl<T: DisplayJsonValue> DisplayJsonValue for Option<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(v) = self {
             write!(f, "{}", Json(v))
@@ -249,7 +229,7 @@ impl<'a, 'b> JsonArrayFormatter<'a, 'b> {
 
     pub fn value<T>(&mut self, value: T) -> &mut Self
     where
-        T: DisplayJson,
+        T: DisplayJsonValue,
     {
         self.value_with(|f| write!(f, "{}", Json(value)))
     }
@@ -257,7 +237,7 @@ impl<'a, 'b> JsonArrayFormatter<'a, 'b> {
     pub fn values<I>(&mut self, iter: I) -> &mut Self
     where
         I: IntoIterator,
-        I::Item: DisplayJson,
+        I::Item: DisplayJsonValue,
     {
         if self.error.is_some() {
             return self;
@@ -326,7 +306,7 @@ impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
     pub fn member<K, V>(&mut self, key: K, value: V) -> &mut Self
     where
         K: DisplayJsonString,
-        V: DisplayJson,
+        V: DisplayJsonValue,
     {
         self.member_with(key, |f| write!(f, "{}", Json(value)))
     }
@@ -335,7 +315,7 @@ impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
     where
         I: IntoIterator<Item = (K, V)>,
         K: DisplayJsonString,
-        V: DisplayJson,
+        V: DisplayJsonValue,
     {
         if self.error.is_some() {
             return self;

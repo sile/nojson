@@ -10,7 +10,7 @@ pub use str::{FromRawJsonValue, JsonParseError, JsonText, RawJsonValue};
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);
 
-impl<T: fmt::DisplayJson> std::fmt::Display for Json<T> {
+impl<T: fmt::DisplayJsonValue> std::fmt::Display for Json<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
