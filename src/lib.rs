@@ -1,6 +1,5 @@
 pub mod fmt;
 mod kind;
-pub mod num;
 mod parse_error;
 mod parser;
 pub mod str; // TODO: rename
