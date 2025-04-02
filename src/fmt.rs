@@ -6,7 +6,7 @@ use std::{
 use crate::Json;
 
 #[derive(Debug, Default)]
-pub struct JsonValueFormatter {
+pub struct JsonFormatter {
     pub indent: usize,
     pub space: usize,
 }
