@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::{
+    collections::{BTreeMap, HashMap, VecDeque},
+    fmt::Display,
+};
 
 use crate::Json;
 
@@ -14,18 +17,11 @@ pub trait DisplayJsonValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
 }
 
-// TODO: DisplayJsonObjectMemberName? or reuse Display
-pub trait DisplayJsonString: DisplayJsonValue {}
-
 impl<T: DisplayJsonValue> DisplayJsonValue for &T {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         (*self).fmt(f)
     }
 }
-
-impl<T: DisplayJsonValue> DisplayJsonString for Box<T> {}
-
-impl<T: DisplayJsonValue> DisplayJsonString for &T {}
 
 impl<T: DisplayJsonValue> DisplayJsonValue for Box<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -138,8 +134,6 @@ impl DisplayJsonValue for String {
     }
 }
 
-impl DisplayJsonString for String {}
-
 impl<T: DisplayJsonValue> DisplayJsonValue for &[T] {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonArrayFormatter::new(f).values(self.iter()).finish()
@@ -164,13 +158,13 @@ impl<T: DisplayJsonValue> DisplayJsonValue for VecDeque<T> {
     }
 }
 
-impl<K: DisplayJsonString, V: DisplayJsonValue> DisplayJsonValue for BTreeMap<K, V> {
+impl<K: Display, V: DisplayJsonValue> DisplayJsonValue for BTreeMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonObjectFormatter::new(f).members(self.iter()).finish()
     }
 }
 
-impl<K: DisplayJsonString, V: DisplayJsonValue> DisplayJsonValue for HashMap<K, V> {
+impl<K: Display, V: DisplayJsonValue> DisplayJsonValue for HashMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         JsonObjectFormatter::new(f).members(self.iter()).finish()
     }
@@ -277,7 +271,7 @@ impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
 
     pub fn member_with<K, F>(&mut self, key: K, f: F) -> &mut Self
     where
-        K: DisplayJsonString,
+        K: Display,
         F: FnOnce(&mut std::fmt::Formatter<'b>) -> std::fmt::Result,
     {
         if self.error.is_some() {
@@ -293,7 +287,8 @@ impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
             self.first = false;
         }
 
-        self.error = write!(self.inner, "{}:", Json(key))
+        // TODO: escape `key` if need
+        self.error = write!(self.inner, "\"{}\":", key)
             .and_then(|()| f(self.inner))
             .err();
         if self.error.is_some() {
@@ -305,7 +300,7 @@ impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
 
     pub fn member<K, V>(&mut self, key: K, value: V) -> &mut Self
     where
-        K: DisplayJsonString,
+        K: Display,
         V: DisplayJsonValue,
     {
         self.member_with(key, |f| write!(f, "{}", Json(value)))
@@ -314,7 +309,7 @@ impl<'a, 'b> JsonObjectFormatter<'a, 'b> {
     pub fn members<I, K, V>(&mut self, iter: I) -> &mut Self
     where
         I: IntoIterator<Item = (K, V)>,
-        K: DisplayJsonString,
+        K: Display,
         V: DisplayJsonValue,
     {
         if self.error.is_some() {
