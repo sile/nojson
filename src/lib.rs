@@ -2,10 +2,10 @@ pub mod fmt;
 mod kind;
 mod parse_error;
 mod parser;
-pub mod str; // TODO: rename
+mod str; // TODO: rename
 
 pub use kind::JsonValueKind;
-use str::{JsonParseError, JsonText, RawJsonValue};
+pub use str::{FromRawJsonValue, JsonParseError, JsonText, RawJsonValue};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);

@@ -10,10 +10,12 @@ pub struct JsonFormatterConfig {
 
 // TODO: Formatter and PrettyJson for pretty-print
 
+// TODO: DisplayJsonValue
 pub trait DisplayJson {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
 }
 
+// TODO: DisplayJsonObjectMemberName? or reuse Display
 pub trait DisplayJsonString: DisplayJson {}
 
 impl<T: DisplayJson> DisplayJson for &T {
