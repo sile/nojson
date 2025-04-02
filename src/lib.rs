@@ -6,7 +6,7 @@ mod str; // TODO: rename
 
 pub use fmt::{DisplayJsonValue, JsonArrayFormatter, JsonObjectFormatter, JsonValueFormatter};
 pub use kind::JsonValueKind;
-pub use str::{FromRawJsonValue, JsonParseError, JsonText, RawJsonValue};
+pub use str::{FromRawJsonValue, JsonParseError, RawJson, RawJsonValue};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);
@@ -24,7 +24,7 @@ where
     type Err = JsonParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let json = JsonText::parse(s)?;
-        json.raw_value().try_into().map(Self)
+        let json = RawJson::parse(s)?;
+        json.value().try_into().map(Self)
     }
 }
