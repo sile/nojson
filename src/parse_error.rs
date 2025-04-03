@@ -1,26 +1,54 @@
 use std::num::NonZeroUsize;
 
 use crate::JsonValueKind;
+#[cfg(doc)]
+use crate::RawJson;
 
 /// JSON parse error.
+///
+/// - [`JsonParseError::get_line()`]
+/// - [`JsonParseError::get_line_and_column_numbers()`]
+/// - [`RawJson::get_value_by_position()`]
 #[derive(Debug)]
 pub enum JsonParseError {
+    /// End of string was reached unexpectedly while parsing a JSON value.
     UnexpectedEos {
+        /// Expected kind of JSON value (if known).
         kind: Option<JsonValueKind>,
+
+        /// Byte position in the input string where the error occurred.
         position: usize,
     },
+
+    /// Additional characters were found after a complete JSON value was parsed.
+    ///
+    /// If it is intentional, you can re-parse the input by slicing the tail by using `position`.
     UnexpectedTrailingChar {
+        /// Kind of JSON value that was successfully parsed
         kind: JsonValueKind,
+
+        /// Byte position in the input string where the error occurred.
         position: usize,
     },
+
+    /// An unexpected character was encountered while parsing a JSON value.
     UnexpectedValueChar {
+        /// Expected kind of JSON value (if known).
         kind: Option<JsonValueKind>,
+
+        /// Byte position in the input string where the error occurred.
         position: usize,
     },
-    /// Proper JSON value, but the content is invalid.
+
+    /// A JSON value was syntaxtically correct, but invalid according to its application specific format rules.
     InvalidValue {
+        /// Kind of JSON value.
         kind: JsonValueKind,
+
+        /// Byte position in the input string where the JSON value starts.
         position: usize,
+
+        /// Concrete error reason.
         error: Box<dyn Send + Sync + std::error::Error>,
     },
 }
