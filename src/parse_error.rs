@@ -75,6 +75,7 @@ pub enum JsonParseError {
 }
 
 impl JsonParseError {
+    /// Returns the kind of JSON value associated with the error.
     pub fn kind(&self) -> Option<JsonValueKind> {
         match self {
             JsonParseError::UnexpectedEos { kind, .. } => *kind,
@@ -84,6 +85,7 @@ impl JsonParseError {
         }
     }
 
+    /// Returns the byte position in the input string where the error occurred.
     pub fn position(&self) -> usize {
         match self {
             JsonParseError::UnexpectedEos { position, .. }
@@ -93,6 +95,21 @@ impl JsonParseError {
         }
     }
 
+    /// Returns the line and column numbers for the error position in the input text.
+    ///
+    /// This method calculates the line and column numbers based on the error's
+    /// position within the provided text. This is useful for creating human-readable
+    /// error messages that can pinpoint the exact location of the error.
+    ///
+    /// Returns `None` if the position is outside the text boundaries or falls on an
+    /// invalid UTF-8 boundary.
+    ///
+    /// # Note
+    ///
+    /// The column value counts each character as 1 column, regardless of its
+    /// actual display width. For accurate display width calculation that accounts
+    /// for multi-width characters (like CJK characters or emoji), consider using
+    /// an external crate such as [`unicode-width`](https://crates.io/crate/unicode-width).
     pub fn get_line_and_column_numbers(&self, text: &str) -> Option<(NonZeroUsize, NonZeroUsize)> {
         let position = self.position();
         let mut line = 0;
@@ -108,13 +125,23 @@ impl JsonParseError {
                 column = 0;
                 line += 1;
             } else {
-                // [NOTE] Multi-byte chars are not taken into account.
+                // [NOTE]
+                // This counts each character as 1 column, regardless of display width.
+                // Multi-width characters (e.g., CJK, emoji) will be counted as 1 column.
                 column += 1;
             }
         }
+
+        // Position is beyond the end of the text or falls on an invalid UTF-8 boundary.
         None
     }
 
+    /// Returns the line of text where the error occurred.
+    ///
+    /// This method extracts the entire line from the input text that contains the error.
+    /// This is useful for error reporting as it provides context around the error location.
+    ///
+    /// Returns `None` if the position is outside the text boundaries.
     pub fn get_line<'a>(&self, text: &'a str) -> Option<&'a str> {
         let position = self.position();
         if !text.is_char_boundary(position) {
