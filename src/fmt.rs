@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
-    fmt::Display,
+    fmt::{Display, Write},
 };
 
 use crate::Json;
@@ -26,8 +26,18 @@ impl<'a> JsonFormatter<'a> {
 }
 
 impl<'a> JsonFormatter<'a> {
-    pub fn write_null(&mut self) -> std::fmt::Result {
-        write!(self.inner, "null")
+    pub fn write_value<T: Display>(&mut self, value: T) -> std::fmt::Result {
+        write!(self.inner, "{value}")
+    }
+
+    pub fn write_string<T: Display>(&mut self, content: T) -> std::fmt::Result {
+        write!(self.inner, "\"")?;
+        {
+            let mut fmt = JsonStringContentFormatter { inner: self.inner };
+            write!(fmt, "{content}")?;
+        }
+        write!(self.inner, "\"")?;
+        Ok(())
     }
 
     pub fn write_array_start(&mut self) -> std::fmt::Result {
@@ -61,6 +71,29 @@ impl<'a> JsonFormatter<'a> {
             write!(self.inner, "\n{:indent$}", "", indent = indent)?;
         }
         write!(self.inner, "]")?;
+        Ok(())
+    }
+}
+
+struct JsonStringContentFormatter<'a, 'b> {
+    inner: &'a mut std::fmt::Formatter<'b>,
+}
+
+impl<'a, 'b> std::fmt::Write for JsonStringContentFormatter<'a, 'b> {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        for c in s.chars() {
+            match c {
+                '"' => write!(self.inner, r#"\""#)?,
+                '\\' => write!(self.inner, r#"\\"#)?,
+                '\n' => write!(self.inner, r#"\n"#)?,
+                '\r' => write!(self.inner, r#"\r"#)?,
+                '\t' => write!(self.inner, r#"\t"#)?,
+                '\u{0008}' => write!(self.inner, r#"\b"#)?,
+                '\u{000C}' => write!(self.inner, r#"\f"#)?,
+                _ if c.is_ascii_control() => write!(self.inner, "\\u{:04x}", c as u32)?,
+                _ => write!(self.inner, "{c}")?,
+            }
+        }
         Ok(())
     }
 }
