@@ -2,22 +2,31 @@ use std::borrow::Cow;
 
 use nojson::{JsonParseError, JsonValueKind, RawJson};
 
+macro_rules! assert_parse_error_matches {
+    ($text:expr, $error_pattern:pat) => {{
+        let text = $text;
+        let e = RawJson::parse(text).expect_err("expected parsing to fail");
+        assert!(matches!(e, $error_pattern), "text={text}, error={e:?}");
+        e
+    }};
+}
+
 #[test]
 fn parse_empty_text() {
-    assert!(matches!(
-        RawJson::parse(""),
-        Err(JsonParseError::UnexpectedEos {
+    assert_parse_error_matches!(
+        "",
+        JsonParseError::UnexpectedEos {
             kind: None,
             position: 0
-        })
-    ));
-    assert!(matches!(
-        RawJson::parse("    "),
-        Err(JsonParseError::UnexpectedEos {
+        }
+    );
+    assert_parse_error_matches!(
+        "    ",
+        JsonParseError::UnexpectedEos {
             kind: None,
             position: 4
-        })
-    ));
+        }
+    );
 }
 
 #[test]
@@ -28,27 +37,27 @@ fn parse_nulls() -> Result<(), JsonParseError> {
     assert_eq!(value.text(), "null");
     assert_eq!(value.position(), 1);
 
-    assert!(matches!(
-        RawJson::parse("nuL"),
-        Err(JsonParseError::UnexpectedValueChar {
+    assert_parse_error_matches!(
+        "nuL",
+        JsonParseError::UnexpectedValueChar {
             kind: Some(JsonValueKind::Null),
             position: 2
-        })
-    ));
-    assert!(matches!(
-        RawJson::parse("nul"),
-        Err(JsonParseError::UnexpectedEos {
+        }
+    );
+    assert_parse_error_matches!(
+        "nul",
+        JsonParseError::UnexpectedEos {
             kind: Some(JsonValueKind::Null),
             position: 3
-        })
-    ));
-    assert!(matches!(
-        RawJson::parse("nulla"),
-        Err(JsonParseError::UnexpectedTrailingChar {
+        }
+    );
+    assert_parse_error_matches!(
+        "nulla",
+        JsonParseError::UnexpectedTrailingChar {
             kind: JsonValueKind::Null,
             position: 4
-        })
-    ));
+        }
+    );
 
     Ok(())
 }
@@ -67,27 +76,27 @@ fn parse_bools() -> Result<(), JsonParseError> {
     assert_eq!(value.text(), "false");
     assert_eq!(value.position(), 1);
 
-    assert!(matches!(
-        RawJson::parse("false true"),
-        Err(JsonParseError::UnexpectedTrailingChar {
+    assert_parse_error_matches!(
+        "false true",
+        JsonParseError::UnexpectedTrailingChar {
             kind: JsonValueKind::Bool,
             position: 6
-        })
-    ));
-    assert!(matches!(
-        RawJson::parse("fale"),
-        Err(JsonParseError::UnexpectedValueChar {
+        }
+    );
+    assert_parse_error_matches!(
+        "fale",
+        JsonParseError::UnexpectedValueChar {
             kind: Some(JsonValueKind::Bool),
             position: 3
-        })
-    ));
-    assert!(matches!(
-        RawJson::parse("tr"),
-        Err(JsonParseError::UnexpectedEos {
+        }
+    );
+    assert_parse_error_matches!(
+        "tr",
+        JsonParseError::UnexpectedEos {
             kind: Some(JsonValueKind::Bool),
             position: 2
-        })
-    ));
+        }
+    );
 
     Ok(())
 }
@@ -114,77 +123,54 @@ fn parse_numbers() -> Result<(), JsonParseError> {
 
     // Malformed integers.
     for (text, position) in [("--1", 1)] {
-        let e = RawJson::parse(text).expect_err("error");
-        assert!(
-            matches!(
-                e,
-                JsonParseError::UnexpectedValueChar {
-                    kind: Some(JsonValueKind::Integer),
-                    ..
-                }
-            ),
-            "text={text}, error={e:?}"
+        let e = assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedValueChar {
+                kind: Some(JsonValueKind::Integer),
+                ..
+            }
         );
         assert_eq!(e.position(), position);
     }
 
     // Malformed floats.
     for (text, position) in [("1..2", 2), ("1ee2", 2), ("1e+-3", 3)] {
-        let e = RawJson::parse(text).expect_err("error");
-        assert!(
-            matches!(
-                e,
-                JsonParseError::UnexpectedValueChar {
-                    kind: Some(JsonValueKind::Float),
-                    ..
-                }
-            ),
-            "text={text}, error={e:?}"
+        let e = assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedValueChar {
+                kind: Some(JsonValueKind::Float),
+                ..
+            }
         );
         assert_eq!(e.position(), position);
     }
 
     // Malformed values.
     for text in ["e123", "+2", ".123"] {
-        assert!(
-            matches!(
-                RawJson::parse(text),
-                Err(JsonParseError::UnexpectedValueChar {
-                    kind: None,
-                    position: 0
-                })
-            ),
-            "text={text}, error={:?}",
-            RawJson::parse(text)
+        assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedValueChar {
+                kind: None,
+                position: 0
+            }
         );
     }
 
     // Unexpected trailing char.
     for (text, position) in [("123.4.5", 5), ("0123", 1), ("00", 1)] {
-        let e = RawJson::parse(text).expect_err("error");
-        assert!(
-            matches!(
-                e,
-                JsonParseError::UnexpectedTrailingChar {
-                    kind: JsonValueKind::Float | JsonValueKind::Integer,
-                    ..
-                }
-            ),
-            "text={text}, error={e:?}"
+        let e = assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedTrailingChar {
+                kind: JsonValueKind::Float | JsonValueKind::Integer,
+                ..
+            }
         );
         assert_eq!(e.position(), position);
     }
 
     // Unexpected EOS.
     for text in ["123.", "-", "123e", "123e-"] {
-        assert!(
-            matches!(
-                RawJson::parse(text),
-                Err(JsonParseError::UnexpectedEos { .. })
-            ),
-            "text={text}, error={:?}",
-            RawJson::parse(text)
-        );
+        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
@@ -218,17 +204,12 @@ fn parse_strings() -> Result<(), JsonParseError> {
 
     // Malformed strings.
     for (text, error_position) in [(r#" "ab\xc" "#, 5), (r#" "ab\uXyz0c" "#, 6)] {
-        let e = RawJson::parse(text).expect_err("error");
-        assert!(
-            matches!(
-                e,
-                JsonParseError::UnexpectedValueChar {
-                    kind: Some(JsonValueKind::String),
-                    ..
-                }
-            ),
-            "text={text}, error={:?}",
-            RawJson::parse(text)
+        let e = assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedValueChar {
+                kind: Some(JsonValueKind::String),
+                ..
+            }
         );
         assert_eq!(e.position(), error_position);
     }
@@ -242,14 +223,7 @@ fn parse_strings() -> Result<(), JsonParseError> {
         r#" "ab\u01"#,
         r#" "ab\u012"#,
     ] {
-        assert!(
-            matches!(
-                RawJson::parse(text),
-                Err(JsonParseError::UnexpectedEos { .. })
-            ),
-            "text={text}, error={:?}",
-            RawJson::parse(text)
-        );
+        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
@@ -273,67 +247,44 @@ fn parse_arrays() -> Result<(), JsonParseError> {
 
     // Malformed arrays.
     for (text, position) in [("[,]", 1), ("[1,2,]", 5)] {
-        let e = RawJson::parse(text).expect_err("error");
-        assert!(
-            matches!(
-                e,
-                JsonParseError::UnexpectedValueChar {
-                    kind: Some(JsonValueKind::Array),
-                    ..
-                }
-            ),
-            "text={text}, error={:?}",
-            RawJson::parse(text)
+        let e = assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedValueChar {
+                kind: Some(JsonValueKind::Array),
+                ..
+            }
         );
         assert_eq!(e.position(), position);
     }
 
     // Unmatched ']'.
-    let text = "]";
-    let e = RawJson::parse(text).expect_err("error");
-    assert!(
-        matches!(e, JsonParseError::UnexpectedValueChar { kind: None, .. }),
-        "text={text}, error={e:?}",
-    );
-    assert_eq!(e.position(), 0);
-
-    let text = "[1,2]]";
-    let e = RawJson::parse(text).expect_err("error");
-    assert!(
-        matches!(
-            e,
-            JsonParseError::UnexpectedTrailingChar {
-                kind: JsonValueKind::Array,
-                position: 5
-            }
-        ),
-        "text={text}, error={e:?}",
+    assert_parse_error_matches!(
+        "]",
+        JsonParseError::UnexpectedValueChar {
+            kind: None,
+            position: 0
+        }
     );
 
-    let text = r#"{"foo":[]]}"#;
-    let e = RawJson::parse(text).expect_err("error");
-    assert!(
-        matches!(
-            e,
-            JsonParseError::UnexpectedValueChar {
-                kind: Some(JsonValueKind::Object),
-                ..
-            }
-        ),
-        "text={text}, error={e:?}",
+    assert_parse_error_matches!(
+        "[1,2]]",
+        JsonParseError::UnexpectedTrailingChar {
+            kind: JsonValueKind::Array,
+            position: 5
+        }
     );
-    assert_eq!(e.position(), 9);
+
+    assert_parse_error_matches!(
+        r#"{"foo":[]]}"#,
+        JsonParseError::UnexpectedValueChar {
+            kind: Some(JsonValueKind::Object),
+            position: 9,
+        }
+    );
 
     // Unexpected EOS.
     for text in ["[", "[1,2", "[1,2,"] {
-        assert!(
-            matches!(
-                RawJson::parse(text),
-                Err(JsonParseError::UnexpectedEos { .. })
-            ),
-            "text={text}, error={:?}",
-            RawJson::parse(text)
-        );
+        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
@@ -362,66 +313,44 @@ fn parse_objects() -> Result<(), JsonParseError> {
         (r#"{"foo","bar"}"#, 6),
         (r#"{"foo":"bar",}"#, 13),
     ] {
-        let e = RawJson::parse(text).expect_err("error");
-        assert!(
-            matches!(
-                e,
-                JsonParseError::UnexpectedValueChar {
-                    kind: Some(JsonValueKind::Object),
-                    ..
-                }
-            ),
-            "text={text}, error={e:?}",
+        let e = assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedValueChar {
+                kind: Some(JsonValueKind::Object),
+                ..
+            }
         );
         assert_eq!(e.position(), position);
     }
 
     // Unmatched '}'.
-    let text = "}";
-    let e = RawJson::parse(text).expect_err("error");
-    assert!(
-        matches!(e, JsonParseError::UnexpectedValueChar { kind: None, .. }),
-        "text={text}, error={e:?}",
-    );
-    assert_eq!(e.position(), 0);
-
-    let text = r#"{"1":2}}"#;
-    let e = RawJson::parse(text).expect_err("error");
-    assert!(
-        matches!(
-            e,
-            JsonParseError::UnexpectedTrailingChar {
-                kind: JsonValueKind::Object,
-                position: 7
-            }
-        ),
-        "text={text}, error={e:?}",
+    assert_parse_error_matches!(
+        "}",
+        JsonParseError::UnexpectedValueChar {
+            kind: None,
+            position: 0
+        }
     );
 
-    let text = "[{}}]";
-    let e = RawJson::parse(text).expect_err("error");
-    assert!(
-        matches!(
-            e,
-            JsonParseError::UnexpectedValueChar {
-                kind: Some(JsonValueKind::Array),
-                ..
-            }
-        ),
-        "text={text}, error={e:?}",
+    assert_parse_error_matches!(
+        r#"{"1":2}}"#,
+        JsonParseError::UnexpectedTrailingChar {
+            kind: JsonValueKind::Object,
+            position: 7
+        }
     );
-    assert_eq!(e.position(), 3);
+
+    assert_parse_error_matches!(
+        "[{}}]",
+        JsonParseError::UnexpectedValueChar {
+            kind: Some(JsonValueKind::Array),
+            position: 3
+        }
+    );
 
     // Unexpected EOS.
     for text in ["{", r#"{"1" "#, r#"{"1": "#, r#"{"1": 2"#] {
-        assert!(
-            matches!(
-                RawJson::parse(text),
-                Err(JsonParseError::UnexpectedEos { .. })
-            ),
-            "text={text}, error={:?}",
-            RawJson::parse(text)
-        );
+        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
