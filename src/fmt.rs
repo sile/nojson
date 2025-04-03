@@ -5,49 +5,65 @@ use std::{
 
 use crate::Json;
 
-#[derive(Debug, Default)]
-pub struct JsonFormatter {
+// TODO: Debug
+pub struct JsonFormatter<'a> {
+    // TODO: private
+    pub inner: &'a mut std::fmt::Formatter<'a>,
     pub indent: usize,
     pub space: usize,
+    pub level: usize,
 }
 
-impl JsonFormatter {
-    // TODO:
-    // pub fn array<I>(&mut self, _values: I) -> std::fmt::Result
-    // where
-    //     I: IntoIterator,
-    //     I::Item: DisplayJson,
-    // {
-    //     todo!()
-    // }
-
-    // pub fn object<I, K, V>(&mut self, _members: I) -> std::fmt::Result
-    // where
-    //     I: IntoIterator<Item = (K, V)>,
-    //     K: Display,
-    //     V: DisplayJson,
-    // {
-    //     todo!()
-    // }
-
-    // pub fn array_with<F>(&mut self, _f: F) -> std::fmt::Result
-    // where
-    //     F: Fn(&dyn DisplayJson) -> std::fmt::Result,
-    // {
-    //     todo!()
-    // }
-
-    // pub fn object_with<F, K, V>(&mut self, _f: F) -> std::fmt::Result
-    // where
-    //     F: Fn(K, V) -> std::fmt::Result,
-    //     K: Display,
-    //     V: DisplayJson,
-    // {
-    //     todo!()
-    // }
+impl<'a> JsonFormatter<'a> {
+    pub fn new(fmt: &'a mut std::fmt::Formatter<'a>) -> Self {
+        Self {
+            inner: fmt,
+            indent: 0,
+            space: 0,
+            level: 0,
+        }
+    }
 }
 
-// TODO: Formatter and PrettyJson for pretty-print
+impl<'a> JsonFormatter<'a> {
+    pub fn write_null(&mut self) -> std::fmt::Result {
+        write!(self.inner, "null")
+    }
+
+    pub fn write_array_start(&mut self) -> std::fmt::Result {
+        write!(self.inner, "[")?;
+        self.level += 1;
+        Ok(())
+    }
+
+    pub fn write_array_element<T>(&mut self, _value: T, first: bool) -> std::fmt::Result
+    where
+        T: DisplayJson,
+    {
+        if !first {
+            write!(self.inner, ",")?;
+        }
+
+        if self.indent > 0 {
+            let indent = self.indent * self.level;
+            write!(self.inner, "\n{:indent$}", "", indent = indent)?;
+        }
+
+        // TODO: write value
+
+        Ok(())
+    }
+
+    pub fn write_array_end(&mut self, empty: bool) -> std::fmt::Result {
+        self.level -= 1;
+        if !empty && self.indent > 0 {
+            let indent = self.indent * self.level;
+            write!(self.inner, "\n{:indent$}", "", indent = indent)?;
+        }
+        write!(self.inner, "]")?;
+        Ok(())
+    }
+}
 
 pub trait DisplayJson {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;

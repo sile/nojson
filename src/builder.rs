@@ -2,11 +2,6 @@ use std::fmt::Display;
 
 use crate::DisplayJson;
 
-// pub fn value_with<F>(f:F) ->
-// pub fn array_with()
-// pub fn object_with()
-// Json(json_with(|f| ...)).to_string()
-
 pub struct JsonValue;
 
 impl JsonValue {
