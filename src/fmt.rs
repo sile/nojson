@@ -1,16 +1,22 @@
 use std::fmt::{Display, Write};
 
+// TODO: rename
+pub fn value() {}
+
+pub struct JsonArrayFormatter;
+pub struct JsonObjectFormatter;
+
 // TODO: Debug
-pub struct JsonFormatter<'a> {
+pub struct JsonFormatter<'a, 'b> {
     // TODO: private
-    pub inner: &'a mut std::fmt::Formatter<'a>,
+    pub inner: &'a mut std::fmt::Formatter<'b>,
     pub indent: usize,
     pub space: usize,
     pub level: usize,
 }
 
-impl<'a> JsonFormatter<'a> {
-    pub fn new(fmt: &'a mut std::fmt::Formatter<'a>) -> Self {
+impl<'a, 'b> JsonFormatter<'a, 'b> {
+    pub fn new(fmt: &'a mut std::fmt::Formatter<'b>) -> Self {
         Self {
             inner: fmt,
             indent: 0,
@@ -20,7 +26,8 @@ impl<'a> JsonFormatter<'a> {
     }
 }
 
-impl<'a> JsonFormatter<'a> {
+impl<'a, 'b> JsonFormatter<'a, 'b> {
+    //  value(), string(), array(), object(), raw_value()
     pub fn write_value<T: Display>(&mut self, value: T) -> std::fmt::Result {
         write!(self.inner, "{value}")
     }
@@ -94,29 +101,29 @@ impl<'a, 'b> std::fmt::Write for JsonStringContentFormatter<'a, 'b> {
 }
 
 pub trait DisplayJson {
-    fn fmt(&self, f: &mut JsonFormatter<'_>) -> std::fmt::Result;
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result;
 }
 
 impl<T: DisplayJson> DisplayJson for &T {
-    fn fmt(&self, f: &mut JsonFormatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         (*self).fmt(f)
     }
 }
 
 impl<T: DisplayJson> DisplayJson for Box<T> {
-    fn fmt(&self, f: &mut JsonFormatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         (**self).fmt(f)
     }
 }
 
 impl DisplayJson for bool {
-    fn fmt(&self, f: &mut JsonFormatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.write_value(self)
     }
 }
 
 impl DisplayJson for i8 {
-    fn fmt(&self, f: &mut JsonFormatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.write_value(self)
     }
 }
