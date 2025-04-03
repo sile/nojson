@@ -109,7 +109,7 @@ impl JsonParseError {
     /// The column value counts each character as 1 column, regardless of its
     /// actual display width. For accurate display width calculation that accounts
     /// for multi-width characters (like CJK characters or emoji), consider using
-    /// an external crate such as [`unicode-width`](https://crates.io/crate/unicode-width).
+    /// an external crate such as [`unicode-width`](https://crates.io/crates/unicode-width).
     pub fn get_line_and_column_numbers(&self, text: &str) -> Option<(NonZeroUsize, NonZeroUsize)> {
         let position = self.position();
         let mut line = 0;
