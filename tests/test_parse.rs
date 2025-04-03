@@ -355,3 +355,20 @@ fn parse_objects() -> Result<(), JsonParseError> {
 
     Ok(())
 }
+
+#[test]
+fn error_context() {
+    let text = r#"
+{
+  "foo": "bar"
+  "ba"
+}
+"#;
+    let e = assert_parse_error_matches!(text, JsonParseError::UnexpectedValueChar { .. });
+    assert_eq!(e.get_line(text), Some(r#"  "ba""#));
+    assert_eq!(
+        e.get_line_and_column_numbers(text)
+            .map(|(l, c)| (l.get(), c.get())),
+        Some((4, 3))
+    );
+}

@@ -148,10 +148,7 @@ impl JsonParseError {
             return None;
         }
 
-        let start = text[..position]
-            .rfind('\n')
-            .map(|i| position - i)
-            .unwrap_or(0);
+        let start = text[..position].rfind('\n').map(|i| i + 1).unwrap_or(0);
         let end = text[position..]
             .find('\n')
             .map(|i| position + i)
