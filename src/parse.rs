@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{
     JsonValueKind,
-    str::{JsonParseError, JsonValueIndexEntry},
+    raw::{JsonParseError, JsonValueIndexEntry},
 };
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];

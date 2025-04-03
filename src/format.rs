@@ -2,7 +2,6 @@ use std::fmt::{Display, Write};
 
 use crate::Json;
 
-// TODO: rename
 pub fn json<F>(f: F) -> impl DisplayJson + Display
 where
     F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,

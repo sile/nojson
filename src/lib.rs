@@ -1,12 +1,12 @@
-mod fmt;
+mod format;
 mod kind;
+mod parse;
 mod parse_error;
-mod parser;
-mod str; // TODO: rename
+mod raw;
 
-pub use fmt::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
+pub use format::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
 pub use kind::JsonValueKind;
-pub use str::{FromRawJsonValue, JsonParseError, RawJson, RawJsonValue};
+pub use raw::{FromRawJsonValue, JsonParseError, RawJson, RawJsonValue};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);

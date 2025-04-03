@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::Range, str::FromStr};
 
-use crate::{JsonValueKind, parser::JsonParser};
+use crate::{JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
