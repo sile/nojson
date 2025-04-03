@@ -1,3 +1,4 @@
+pub mod builder;
 mod fmt;
 mod kind;
 mod parse_error;
