@@ -1,7 +1,34 @@
 use std::fmt::{Display, Write};
 
+use crate::Json;
+
 // TODO: rename
-pub fn value() {}
+pub fn json<F>(f: F) -> impl DisplayJson + Display
+where
+    F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
+{
+    InplaceJson(f)
+}
+
+struct InplaceJson<F>(F);
+
+impl<F> Display for InplaceJson<F>
+where
+    F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Json(self))
+    }
+}
+
+impl<F> DisplayJson for InplaceJson<F>
+where
+    F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
+{
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        self.0(f)
+    }
+}
 
 pub struct JsonArrayFormatter;
 pub struct JsonObjectFormatter;

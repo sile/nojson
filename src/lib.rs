@@ -4,7 +4,7 @@ mod parse_error;
 mod parser;
 mod str; // TODO: rename
 
-pub use fmt::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, value};
+pub use fmt::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
 pub use kind::JsonValueKind;
 pub use str::{FromRawJsonValue, JsonParseError, RawJson, RawJsonValue};
 
