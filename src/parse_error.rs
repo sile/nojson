@@ -6,49 +6,70 @@ use crate::RawJson;
 
 /// JSON parse error.
 ///
+/// This enum represents various errors that can occur during JSON parsing.
+/// Each variant provides specific details about the error, including the position
+/// in the input string where the error occurred.
+///
+/// For generating more detailed error messages, you can use these methods:
 /// - [`JsonParseError::get_line()`]
 /// - [`JsonParseError::get_line_and_column_numbers()`]
 /// - [`RawJson::get_value_by_position()`]
+///
+/// These methods help provide context for debugging and error reporting.
 #[derive(Debug)]
 pub enum JsonParseError {
     /// End of string was reached unexpectedly while parsing a JSON value.
+    ///
+    /// This occurs when the parser reaches the end of the input string
+    /// before completing the parse of the current JSON value.
+    /// For example, a string that starts with a quote but doesn't have a closing quote.
     UnexpectedEos {
-        /// Expected kind of JSON value (if known).
+        /// Kind of JSON value that was being parsed when the unexpected end was encountered.
         kind: Option<JsonValueKind>,
 
-        /// Byte position in the input string where the error occurred.
+        /// Byte position in the input string where the unexpected end occurred.
         position: usize,
     },
 
-    /// Additional characters were found after a complete JSON value was parsed.
+    /// Additional non-whitespace characters were found after a complete JSON value was parsed.
     ///
-    /// If it is intentional, you can re-parse the input by slicing the tail by using `position`.
+    /// This happens when the input contains extra data after a valid JSON value.
+    /// For example, `{"key": "value"} extra`.
     UnexpectedTrailingChar {
-        /// Kind of JSON value that was successfully parsed
+        /// Kind of JSON value that was successfully parsed before the trailing characters.
         kind: JsonValueKind,
 
-        /// Byte position in the input string where the error occurred.
+        /// Byte position in the input string where the non-whitespace trailing characters begin.
         position: usize,
     },
 
     /// An unexpected character was encountered while parsing a JSON value.
+    ///
+    /// This occurs when the parser encounters a character that doesn't match
+    /// the expected syntax for the current context. For example, encountering
+    /// a letter when expecting a digit in a number, or an invalid escape sequence
+    /// in a string.
     UnexpectedValueChar {
-        /// Expected kind of JSON value (if known).
+        /// Kind of JSON value that was being parsed when the unexpected character was encountered.
         kind: Option<JsonValueKind>,
 
-        /// Byte position in the input string where the error occurred.
+        /// Byte position in the input string where the unexpected character was found.
         position: usize,
     },
 
-    /// A JSON value was syntaxtically correct, but invalid according to its application specific format rules.
+    /// A JSON value was syntactically correct, but invalid according to application-specific format rules.
+    ///
+    /// This happens when the JSON syntax is valid, but the value doesn't conform to
+    /// additional constraints. For example, an integer that exceeds the maximum
+    /// allowed value, or a string that doesn't match an expected pattern or format.
     InvalidValue {
-        /// Kind of JSON value.
+        /// Kind of JSON value that failed validation.
         kind: JsonValueKind,
 
-        /// Byte position in the input string where the JSON value starts.
+        /// Byte position in the input string where the invalid JSON value starts.
         position: usize,
 
-        /// Concrete error reason.
+        /// Error reason that describes why the value is invalid.
         error: Box<dyn Send + Sync + std::error::Error>,
     },
 }
