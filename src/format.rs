@@ -52,7 +52,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     }
 }
 
-impl<'a, 'b> JsonFormatter<'a, 'b> {
+impl JsonFormatter<'_, '_> {
     //  value(), string(), array(), object(), raw_value()
     pub fn write_value<T: Display>(&mut self, value: T) -> std::fmt::Result {
         write!(self.inner, "{value}")
@@ -107,7 +107,7 @@ struct JsonStringContentFormatter<'a, 'b> {
     inner: &'a mut std::fmt::Formatter<'b>,
 }
 
-impl<'a, 'b> std::fmt::Write for JsonStringContentFormatter<'a, 'b> {
+impl std::fmt::Write for JsonStringContentFormatter<'_, '_> {
     fn write_str(&mut self, s: &str) -> std::fmt::Result {
         for c in s.chars() {
             match c {
