@@ -61,8 +61,145 @@ impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Box<T> {
     }
 }
 
-// TODO: impl FromRawJsonValue for i8,u8,i16,u16,i32,i64,u64,i128,u128,isize,usize, and NonZero types
+impl<'a> FromRawJsonValue<'a> for i8 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for u8 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for i16 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for u16 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for i32 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
 impl<'a> FromRawJsonValue<'a> for u32 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for i64 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for u64 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for i128 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for u128 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for isize {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for usize {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI8 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU8 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI16 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU16 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI32 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU32 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI64 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU64 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI128 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU128 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroIsize {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for std::num::NonZeroUsize {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         value.as_integer()?.parse()
     }
