@@ -89,11 +89,11 @@ impl<'text> RawJson<'text> {
     /// let json = RawJson::parse(r#"{"name": "John", "age": 30}"#)?;
     ///
     /// // Position at "name" key
-    /// let name_value = json.get_value_by_position(2)?;
+    /// let name_value = json.get_value_by_position(2).expect("infallible");
     /// assert_eq!(name_value.as_raw_str(), r#""name""#);
     ///
     /// // Position at number value
-    /// let age_value = json.get_value_by_position(25)?;
+    /// let age_value = json.get_value_by_position(25).expect("infallible");
     /// assert_eq!(age_value.as_raw_str(), "30");
     /// # Ok(())
     /// # }
