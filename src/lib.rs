@@ -1,4 +1,5 @@
 mod format;
+mod from_raw_json_value;
 mod kind;
 mod parse;
 mod parse_error;
@@ -6,9 +7,10 @@ mod raw;
 
 use std::str::FromStr;
 
-pub use format::{json, DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
+pub use format::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
+pub use from_raw_json_value::FromRawJsonValue;
 pub use kind::JsonValueKind;
-pub use raw::{FromRawJsonValue, JsonParseError, RawJson, RawJsonValue};
+pub use raw::{JsonParseError, RawJson, RawJsonValue};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);
