@@ -1,8 +1,8 @@
 use std::num::NonZeroUsize;
 
-use crate::JsonValueKind;
 #[cfg(doc)]
 use crate::RawJson;
+use crate::{JsonValueKind, RawJsonValue};
 
 /// JSON parse error.
 ///
@@ -75,6 +75,18 @@ pub enum JsonParseError {
 }
 
 impl JsonParseError {
+    /// Makes a [`JsonParseError::InvalidValue`] error.
+    pub fn invalid_value<E>(value: RawJsonValue<'_>, error: E) -> JsonParseError
+    where
+        E: Into<Box<dyn Send + Sync + std::error::Error>>,
+    {
+        JsonParseError::InvalidValue {
+            kind: value.kind(),
+            position: value.position(),
+            error: error.into(),
+        }
+    }
+
     /// Returns the kind of JSON value associated with the error.
     pub fn kind(&self) -> Option<JsonValueKind> {
         match self {

@@ -68,18 +68,6 @@ impl<'a> RawJsonValue<'a> {
         self.json.values[self.index].text.start
     }
 
-    // TODO: move?
-    pub fn to_invalid_value_error<E>(self, error: E) -> JsonParseError
-    where
-        E: Into<Box<dyn Send + Sync + std::error::Error>>,
-    {
-        JsonParseError::InvalidValue {
-            kind: self.kind(),
-            position: self.position(),
-            error: error.into(),
-        }
-    }
-
     pub fn to_unquoted_text(self) -> Cow<'a, str> {
         if !self.kind().is_string() {
             return Cow::Borrowed(self.text());
@@ -164,15 +152,18 @@ impl<'a> RawJsonValue<'a> {
         if kinds.contains(&self.kind()) {
             Ok(self)
         } else {
-            Err(self.to_invalid_value_error(format!(
-                "expected {}, but found {:?}",
-                if kinds.len() == 1 {
-                    format!("{:?}", kinds[0])
-                } else {
-                    format!("one of {:?}", kinds)
-                },
-                self.kind()
-            )))
+            Err(JsonParseError::invalid_value(
+                self,
+                format!(
+                    "expected {}, but found {:?}",
+                    if kinds.len() == 1 {
+                        format!("{:?}", kinds[0])
+                    } else {
+                        format!("one of {:?}", kinds)
+                    },
+                    self.kind()
+                ),
+            ))
         }
     }
 
@@ -201,18 +192,22 @@ impl<'a> RawJsonValue<'a> {
         let mut fixed_array = [self; N];
         for (i, v) in fixed_array.iter_mut().enumerate() {
             *v = values.next().ok_or_else(|| {
-                self.to_invalid_value_error(format!(
-                    "expected an array with {N} elements, but got only {i} elements"
-                ))
+                JsonParseError::invalid_value(
+                    self,
+                    format!("expected an array with {N} elements, but got only {i} elements"),
+                )
             })?;
         }
 
         let extra = values.count();
         if extra > 0 {
-            return Err(self.to_invalid_value_error(format!(
-                "expected an array with {N} elements, but got {} elements",
-                N + extra
-            )));
+            return Err(JsonParseError::invalid_value(
+                self,
+                format!(
+                    "expected an array with {N} elements, but got {} elements",
+                    N + extra
+                ),
+            ));
         }
 
         Ok(fixed_array)
@@ -251,8 +246,10 @@ impl<'a> RawJsonValue<'a> {
                 .filter(|(_, value)| value.index == self.index)
                 .map(|(name, _)| name)
                 .collect::<Vec<_>>();
-            return Err(self
-                .to_invalid_value_error(format!("missing required object members: {missings:?}")));
+            return Err(JsonParseError::invalid_value(
+                self,
+                format!("missing required object members: {missings:?}"),
+            ));
         }
 
         Ok((required, optional))
