@@ -13,7 +13,7 @@ mod raw;
 
 use std::str::FromStr;
 
-pub use format::{json, DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
+pub use format::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
 pub use from_raw_json_value::FromRawJsonValue;
 pub use kind::JsonValueKind;
 pub use raw::{JsonParseError, RawJson, RawJsonValue};

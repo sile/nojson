@@ -415,12 +415,12 @@ impl<'a, T0: FromRawJsonValue<'a>, T1: FromRawJsonValue<'a>, T2: FromRawJsonValu
 }
 
 impl<
-        'a,
-        T0: FromRawJsonValue<'a>,
-        T1: FromRawJsonValue<'a>,
-        T2: FromRawJsonValue<'a>,
-        T3: FromRawJsonValue<'a>,
-    > FromRawJsonValue<'a> for (T0, T1, T2, T3)
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3)
 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3] = value.to_fixed_array()?;
@@ -429,13 +429,13 @@ impl<
 }
 
 impl<
-        'a,
-        T0: FromRawJsonValue<'a>,
-        T1: FromRawJsonValue<'a>,
-        T2: FromRawJsonValue<'a>,
-        T3: FromRawJsonValue<'a>,
-        T4: FromRawJsonValue<'a>,
-    > FromRawJsonValue<'a> for (T0, T1, T2, T3, T4)
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+    T4: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3, T4)
 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3, v4] = value.to_fixed_array()?;
@@ -450,14 +450,14 @@ impl<
 }
 
 impl<
-        'a,
-        T0: FromRawJsonValue<'a>,
-        T1: FromRawJsonValue<'a>,
-        T2: FromRawJsonValue<'a>,
-        T3: FromRawJsonValue<'a>,
-        T4: FromRawJsonValue<'a>,
-        T5: FromRawJsonValue<'a>,
-    > FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5)
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+    T4: FromRawJsonValue<'a>,
+    T5: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5)
 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3, v4, v5] = value.to_fixed_array()?;
@@ -473,15 +473,15 @@ impl<
 }
 
 impl<
-        'a,
-        T0: FromRawJsonValue<'a>,
-        T1: FromRawJsonValue<'a>,
-        T2: FromRawJsonValue<'a>,
-        T3: FromRawJsonValue<'a>,
-        T4: FromRawJsonValue<'a>,
-        T5: FromRawJsonValue<'a>,
-        T6: FromRawJsonValue<'a>,
-    > FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5, T6)
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+    T4: FromRawJsonValue<'a>,
+    T5: FromRawJsonValue<'a>,
+    T6: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5, T6)
 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3, v4, v5, v6] = value.to_fixed_array()?;
@@ -498,16 +498,16 @@ impl<
 }
 
 impl<
-        'a,
-        T0: FromRawJsonValue<'a>,
-        T1: FromRawJsonValue<'a>,
-        T2: FromRawJsonValue<'a>,
-        T3: FromRawJsonValue<'a>,
-        T4: FromRawJsonValue<'a>,
-        T5: FromRawJsonValue<'a>,
-        T6: FromRawJsonValue<'a>,
-        T7: FromRawJsonValue<'a>,
-    > FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5, T6, T7)
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+    T4: FromRawJsonValue<'a>,
+    T5: FromRawJsonValue<'a>,
+    T6: FromRawJsonValue<'a>,
+    T7: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5, T6, T7)
 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3, v4, v5, v6, v7] = value.to_fixed_array()?;
