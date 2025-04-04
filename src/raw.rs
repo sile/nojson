@@ -4,10 +4,10 @@ use crate::{FromRawJsonValue, JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
-/// Parsed JSON text.
+/// Parsed JSON text (syntactically correct, but not yet converted to Rust types).
 ///
 /// This struct holds a JSON text in its original form
-/// (i.e., JSON integers are not parsed into Rust's integers),
+/// (i.e., JSON integers are not converted to Rust's integers),
 /// while ensuring the text is valid JSON syntax.
 ///
 /// [`RawJson`] maintains index information about each JSON value in the text,
@@ -17,7 +17,7 @@ pub use crate::parse_error::JsonParseError;
 /// that provides methods to explore nested elements and convert them into Rust types.
 ///
 /// Note that, for simple use cases,
-/// using [`Json`](crate::Json), which internally uses [`RawJson`], is a more convenient way to parse JSON text.
+/// using [`Json`](crate::Json), which internally uses [`RawJson`], is a more convenient way to parse JSON text into Rust types.
 #[derive(Debug)]
 pub struct RawJson<'a> {
     text: &'a str,
@@ -72,6 +72,7 @@ impl<'a> RawJson<'a> {
         }
     }
 
+    // TODO: add doc and test
     pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue> {
         let mut value = self.value();
         if !value.entry().text.contains(&position) {
