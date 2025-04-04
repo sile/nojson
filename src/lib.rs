@@ -13,7 +13,7 @@ mod raw;
 
 use std::str::FromStr;
 
-pub use format::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
+pub use format::{json, DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
 pub use from_raw_json_value::FromRawJsonValue;
 pub use kind::JsonValueKind;
 pub use raw::{JsonParseError, RawJson, RawJsonValue};
@@ -36,7 +36,7 @@ where
     type Err = JsonParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let json = RawJson::parse(s)?;
-        T::from_raw_json_value(json.value()).map(Self)
+        let raw = RawJson::parse(s)?;
+        raw.value().try_to().map(Self)
     }
 }
