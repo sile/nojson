@@ -1,4 +1,4 @@
-use std::{borrow::Cow, ops::Range};
+use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
 use crate::{FromRawJsonValue, JsonValueKind, parse::JsonParser};
 
@@ -18,7 +18,7 @@ pub use crate::parse_error::JsonParseError;
 ///
 /// Note that, for simple use cases,
 /// using [`Json`](crate::Json), which internally uses [`RawJson`], is a more convenient way to parse JSON text into Rust types.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RawJson<'text> {
     text: &'text str,
     values: Vec<JsonValueIndexEntry>,
@@ -110,6 +110,40 @@ impl<'text> RawJson<'text> {
     }
 }
 
+impl<'text> PartialEq for RawJson<'text> {
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text
+    }
+}
+
+impl<'text> Eq for RawJson<'text> {}
+
+impl<'text> PartialOrd for RawJson<'text> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'text> Ord for RawJson<'text> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.text.cmp(other.text)
+    }
+}
+
+impl<'text> Hash for RawJson<'text> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.text.hash(state);
+    }
+}
+
+impl<'text> Display for RawJson<'text> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.text)
+    }
+}
+
+// TODO: impl DisplayJson
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct JsonValueIndexEntry {
     pub kind: JsonValueKind,
@@ -118,7 +152,7 @@ pub(crate) struct JsonValueIndexEntry {
     pub end_index: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawJsonValue<'text, 'a> {
     json: &'a RawJson<'text>,
     index: usize,
