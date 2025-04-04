@@ -185,7 +185,10 @@ fn parse_strings() -> Result<(), JsonParseError> {
         assert_eq!(value.kind(), JsonValueKind::String);
         assert_eq!(value.as_raw_str(), text.trim());
         assert_eq!(value.position(), 1);
-        assert!(matches!(value.to_unquoted_str(), Cow::Borrowed(_)));
+        assert!(matches!(
+            value.to_unquoted_string_str(),
+            Ok(Cow::Borrowed(_))
+        ));
     }
 
     // Escaped strings.
@@ -199,7 +202,7 @@ fn parse_strings() -> Result<(), JsonParseError> {
         assert_eq!(value.kind(), JsonValueKind::String);
         assert_eq!(value.as_raw_str(), text.trim());
         assert_eq!(value.position(), 1);
-        assert!(matches!(value.to_unquoted_str(), Cow::Owned(_)));
+        assert!(matches!(value.to_unquoted_string_str(), Ok(Cow::Owned(_))));
     }
 
     // Malformed strings.

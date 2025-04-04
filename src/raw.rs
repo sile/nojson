@@ -1,4 +1,4 @@
-use std::{borrow::Cow, ops::Range, str::FromStr};
+use std::{borrow::Cow, ops::Range};
 
 use crate::{FromRawJsonValue, JsonValueKind, parse::JsonParser};
 
@@ -94,8 +94,7 @@ impl<'a> RawJsonValue<'a> {
             .map(|v| v.to_unquoted_str())
     }
 
-    // TODO: private
-    pub fn to_unquoted_str(self) -> Cow<'a, str> {
+    fn to_unquoted_str(self) -> Cow<'a, str> {
         if !self.kind().is_string() {
             return Cow::Borrowed(self.as_raw_str());
         }
@@ -153,28 +152,6 @@ impl<'a> RawJsonValue<'a> {
         T::from_raw_json_value(self)
     }
 
-    // TODO: remove?
-    pub fn parse<T>(self) -> Result<T, JsonParseError>
-    where
-        T: FromStr,
-        T::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
-    {
-        self.parse_with(|text| text.parse())
-    }
-
-    // TODO: remove?
-    pub fn parse_with<F, T, E>(self, f: F) -> Result<T, JsonParseError>
-    where
-        F: FnOnce(&str) -> Result<T, E>,
-        E: Into<Box<dyn Send + Sync + std::error::Error>>,
-    {
-        f(&self.to_unquoted_str()).map_err(|e| JsonParseError::InvalidValue {
-            kind: self.kind(),
-            position: self.position(),
-            error: e.into(),
-        })
-    }
-
     pub fn expect(self, kinds: &'static [JsonValueKind]) -> Result<Self, JsonParseError> {
         if kinds.contains(&self.kind()) {
             Ok(self)
@@ -192,14 +169,6 @@ impl<'a> RawJsonValue<'a> {
                 ),
             ))
         }
-    }
-
-    pub fn as_bool(self) -> Result<Self, JsonParseError> {
-        self.expect(&[JsonValueKind::Bool])
-    }
-
-    pub fn as_string(self) -> Result<Self, JsonParseError> {
-        self.expect(&[JsonValueKind::String])
     }
 
     pub fn to_array_values(self) -> Result<impl Iterator<Item = RawJsonValue<'a>>, JsonParseError> {
