@@ -110,33 +110,33 @@ impl<'text> RawJson<'text> {
     }
 }
 
-impl<'text> PartialEq for RawJson<'text> {
+impl PartialEq for RawJson<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.text == other.text
     }
 }
 
-impl<'text> Eq for RawJson<'text> {}
+impl Eq for RawJson<'_> {}
 
-impl<'text> PartialOrd for RawJson<'text> {
+impl PartialOrd for RawJson<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'text> Ord for RawJson<'text> {
+impl Ord for RawJson<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.text.cmp(other.text)
     }
 }
 
-impl<'text> Hash for RawJson<'text> {
+impl Hash for RawJson<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.text.hash(state);
     }
 }
 
-impl<'text> Display for RawJson<'text> {
+impl Display for RawJson<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.text)
     }
@@ -359,7 +359,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     }
 }
 
-impl<'text> Display for RawJsonValue<'text, '_> {
+impl Display for RawJsonValue<'_, '_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_raw_str())
     }
