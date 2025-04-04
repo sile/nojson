@@ -470,11 +470,44 @@ impl<
     }
 }
 
-// impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for BTreeMap<T> {
-//     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-//         value
-//             .to_array_values()?
-//             .map(T::from_raw_json_value)
-//             .collect()
-//     }
-// }
+impl<'a, K, V> FromRawJsonValue<'a> for std::collections::BTreeMap<K, V>
+where
+    K: FromStr + Ord,
+    K::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
+    V: FromRawJsonValue<'a>,
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value
+            .to_object_members()?
+            .map(|(k, v)| {
+                Ok((
+                    k.to_unquoted_string_str()?
+                        .parse()
+                        .map_err(|e| JsonParseError::invalid_value(k, e))?,
+                    v.try_to()?,
+                ))
+            })
+            .collect()
+    }
+}
+
+impl<'a, K, V> FromRawJsonValue<'a> for std::collections::HashMap<K, V>
+where
+    K: FromStr + Eq + std::hash::Hash,
+    K::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
+    V: FromRawJsonValue<'a>,
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value
+            .to_object_members()?
+            .map(|(k, v)| {
+                Ok((
+                    k.to_unquoted_string_str()?
+                        .parse()
+                        .map_err(|e| JsonParseError::invalid_value(k, e))?,
+                    v.try_to()?,
+                ))
+            })
+            .collect()
+    }
+}
