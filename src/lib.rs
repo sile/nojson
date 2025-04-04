@@ -4,7 +4,9 @@ mod parse;
 mod parse_error;
 mod raw;
 
-pub use format::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
+use std::str::FromStr;
+
+pub use format::{json, DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
 pub use kind::JsonValueKind;
 pub use raw::{FromRawJsonValue, JsonParseError, RawJson, RawJsonValue};
 
@@ -19,14 +21,14 @@ impl<T: DisplayJson> std::fmt::Display for Json<T> {
     }
 }
 
-impl<T> std::str::FromStr for Json<T>
+impl<T> FromStr for Json<T>
 where
-    T: for<'a> TryFrom<RawJsonValue<'a>, Error = JsonParseError>,
+    T: for<'a> FromRawJsonValue<'a>,
 {
     type Err = JsonParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let json = RawJson::parse(s)?;
-        json.value().try_into().map(Self)
+        T::from_raw_json_value(json.value()).map(Self)
     }
 }

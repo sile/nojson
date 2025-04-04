@@ -1,12 +1,91 @@
 use std::{borrow::Cow, ops::Range, str::FromStr};
 
-use crate::{JsonValueKind, parse::JsonParser};
+#[cfg(doc)]
+use crate::Json;
+use crate::{parse::JsonParser, JsonValueKind};
 
 pub use crate::parse_error::JsonParseError;
 
+/// Converts a raw JSON value into a specific Rust type.
+///
+/// This trait allows for extracting typed values from untyped [`RawJsonValue`]
+/// representations, performing necessary type checking and conversions.
+///
+/// Implementing this trait enables a type to be deserialized from JSON data.
+/// Once a type implements [`FromRawJsonValue`], you can use [`Json`] to parse
+/// JSON text into that type through Rust's standard [`FromStr`] trait.
+///
+/// # Examples
+///
+/// Parse a JSON array into a vector of integers:
+///
+/// ```
+/// use nojson::Json;
+///
+/// # fn main() -> Result<(), nojson::JsonParseError> {
+/// let numbers: Json<Vec<u32>> = "[1, 2, 3]".parse()?;
+/// assert_eq!(numbers.0, [1, 2, 3]);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Parse a JSON object into a custom struct (requires implementing [`FromRawJsonValue`] for your struct):
+///
+/// ```
+/// use nojson::{Json, RawJsonValue, JsonParseError, FromRawJsonValue};
+///
+/// struct Person {
+///     name: String,
+///     age: u32,
+/// }
+///
+/// impl<'a> FromRawJsonValue<'a> for Person {
+///     fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+///         let ([name, age], []) = raw.to_fixed_object(["name","age"],[])?;
+///         Ok(Person {
+///             name: name.try_to()?,
+///             age: age.try_to()?,
+///         })
+///     }
+/// }
+///
+/// # fn main() -> Result<(), nojson::JsonParseError> {
+/// let person: Json<Person> = r#"{"name":"Alice","age":30}"#.parse()?;
+/// assert_eq!(person.0.name, "Alice");
+/// assert_eq!(person.0.age, 30);
+/// # Ok(())
+/// # }
+/// ```
 pub trait FromRawJsonValue<'a>: Sized {
+    /// Attempts to convert a raw JSON value into this type.
     fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError>;
 }
+
+impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Box<T> {
+    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        T::from_raw_json_value(raw).map(Box::new)
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for u32 {
+    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        raw.as_integer()?.parse()
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for String {
+    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        raw.as_string()?.parse()
+    }
+}
+
+impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Vec<T> {
+    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        raw.to_array_values()?.map(T::from_raw_json_value).collect()
+    }
+}
+
+// TODO: Add impl for Cow<'a, str>, String, u8, i8, f32, f64, Option<T>, Vec<T>, [T; N], HashMap etc
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct JsonValueIndexEntry {
@@ -71,6 +150,7 @@ impl<'a> RawJsonValue<'a> {
         self.json.values[self.index].text.start
     }
 
+    // TODO: move?
     pub fn to_invalid_value_error<E>(self, error: E) -> JsonParseError
     where
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
@@ -82,7 +162,7 @@ impl<'a> RawJsonValue<'a> {
         }
     }
 
-    pub fn to_unquoted_str(self) -> Cow<'a, str> {
+    pub fn to_unquoted_text(self) -> Cow<'a, str> {
         if self.entry().escaped {
             let mut unescaped = String::with_capacity(self.text().len());
             let mut chars = self.text().chars();
@@ -131,6 +211,10 @@ impl<'a> RawJsonValue<'a> {
         self.non_null_then(f).transpose()
     }
 
+    pub fn try_to<T: FromRawJsonValue<'a>>(self) -> Result<T, JsonParseError> {
+        T::from_raw_json_value(self)
+    }
+
     pub fn parse<T>(self) -> Result<T, JsonParseError>
     where
         T: FromStr,
@@ -144,7 +228,7 @@ impl<'a> RawJsonValue<'a> {
         F: FnOnce(&str) -> Result<T, E>,
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
-        f(&self.to_unquoted_str()).map_err(|e| JsonParseError::InvalidValue {
+        f(&self.to_unquoted_text()).map_err(|e| JsonParseError::InvalidValue {
             kind: self.kind(),
             position: self.position(),
             error: e.into(),
@@ -224,7 +308,7 @@ impl<'a> RawJsonValue<'a> {
         let mut required = [self; N];
         let mut optional = [None; M];
         for (k, v) in self.to_object_members()? {
-            let k = k.to_unquoted_str();
+            let k = k.to_unquoted_text();
             if let Some(i) = required_member_names.iter().position(|n| k == *n) {
                 required[i] = v;
             } else if let Some(i) = optional_member_names.iter().position(|n| k == *n) {
@@ -232,7 +316,7 @@ impl<'a> RawJsonValue<'a> {
             }
         }
 
-        if required.iter().any(|v| v.index == self.index) {
+        if required.iter().any(|v| v.index != self.index) {
             let missings = required_member_names
                 .iter()
                 .zip(required.iter())
