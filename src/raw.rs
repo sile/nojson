@@ -19,12 +19,12 @@ pub use crate::parse_error::JsonParseError;
 /// Note that, for simple use cases,
 /// using [`Json`](crate::Json), which internally uses [`RawJson`], is a more convenient way to parse JSON text into Rust types.
 #[derive(Debug)]
-pub struct RawJson<'a> {
-    text: &'a str,
+pub struct RawJson<'text> {
+    text: &'text str,
     values: Vec<JsonValueIndexEntry>,
 }
 
-impl<'a> RawJson<'a> {
+impl<'text> RawJson<'text> {
     /// Parses a JSON string into a [`RawJson`] instance.
     ///
     /// This validates the JSON syntax without converting values to Rust types.
@@ -39,13 +39,13 @@ impl<'a> RawJson<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn parse(text: &'a str) -> Result<Self, JsonParseError> {
+    pub fn parse(text: &'text str) -> Result<Self, JsonParseError> {
         let values = JsonParser::new(text).parse()?;
         Ok(Self { text, values })
     }
 
     /// Returns the original JSON text.
-    pub fn text(&self) -> &'a str {
+    pub fn text(&self) -> &'text str {
         self.text
     }
 
@@ -65,7 +65,7 @@ impl<'a> RawJson<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn value(&self) -> RawJsonValue {
+    pub fn value(&self) -> RawJsonValue<'_, 'text> {
         RawJsonValue {
             json: self,
             index: 0,
@@ -73,7 +73,7 @@ impl<'a> RawJson<'a> {
     }
 
     // TODO: add doc and test
-    pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue> {
+    pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue<'_, 'text>> {
         let mut value = self.value();
         if !value.entry().text.contains(&position) {
             return None;
@@ -94,12 +94,12 @@ pub(crate) struct JsonValueIndexEntry {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct RawJsonValue<'a> {
-    json: &'a RawJson<'a>,
+pub struct RawJsonValue<'a, 'text> {
+    json: &'a RawJson<'text>,
     index: usize,
 }
 
-impl<'a> RawJsonValue<'a> {
+impl<'a, 'text> RawJsonValue<'a, 'text> {
     pub fn kind(self) -> JsonValueKind {
         self.json.values[self.index].kind
     }
@@ -108,7 +108,7 @@ impl<'a> RawJsonValue<'a> {
         &self.json.values[self.index]
     }
 
-    pub fn json(self) -> &'a RawJson<'a> {
+    pub fn json(self) -> &'a RawJson<'text> {
         self.json
     }
 
@@ -116,35 +116,35 @@ impl<'a> RawJsonValue<'a> {
         self.json.values[self.index].text.start
     }
 
-    pub fn as_raw_str(self) -> &'a str {
+    pub fn as_raw_str(self) -> &'text str {
         let text = &self.json.values[self.index].text;
         &self.json.text[text.start..text.end]
     }
 
-    pub fn as_bool_str(self) -> Result<&'a str, JsonParseError> {
+    pub fn as_bool_str(self) -> Result<&'text str, JsonParseError> {
         self.expect(&[JsonValueKind::Bool]).map(|v| v.as_raw_str())
     }
 
-    pub fn as_integer_str(self) -> Result<&'a str, JsonParseError> {
+    pub fn as_integer_str(self) -> Result<&'text str, JsonParseError> {
         self.expect(&[JsonValueKind::Integer])
             .map(|v| v.as_raw_str())
     }
 
-    pub fn as_float_str(self) -> Result<&'a str, JsonParseError> {
+    pub fn as_float_str(self) -> Result<&'text str, JsonParseError> {
         self.expect(&[JsonValueKind::Float]).map(|v| v.as_raw_str())
     }
 
-    pub fn as_number_str(self) -> Result<&'a str, JsonParseError> {
+    pub fn as_number_str(self) -> Result<&'text str, JsonParseError> {
         self.expect(&[JsonValueKind::Integer, JsonValueKind::Float])
             .map(|v| v.as_raw_str())
     }
 
-    pub fn to_unquoted_string_str(self) -> Result<Cow<'a, str>, JsonParseError> {
+    pub fn to_unquoted_string_str(self) -> Result<Cow<'text, str>, JsonParseError> {
         self.expect(&[JsonValueKind::String])
             .map(|v| v.to_unquoted_str())
     }
 
-    fn to_unquoted_str(self) -> Cow<'a, str> {
+    fn to_unquoted_str(self) -> Cow<'text, str> {
         if !self.kind().is_string() {
             return Cow::Borrowed(self.as_raw_str());
         }
@@ -198,7 +198,7 @@ impl<'a> RawJsonValue<'a> {
         self.non_null_then(f).transpose()
     }
 
-    pub fn try_to<T: FromRawJsonValue<'a>>(self) -> Result<T, JsonParseError> {
+    pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
         T::from_raw_json_value(self)
     }
 
@@ -221,11 +221,15 @@ impl<'a> RawJsonValue<'a> {
         }
     }
 
-    pub fn to_array_values(self) -> Result<impl Iterator<Item = RawJsonValue<'a>>, JsonParseError> {
+    pub fn to_array_values(
+        self,
+    ) -> Result<impl Iterator<Item = RawJsonValue<'a, 'text>>, JsonParseError> {
         self.expect(&[JsonValueKind::Array]).map(Children::new)
     }
 
-    pub fn to_fixed_array<const N: usize>(self) -> Result<[RawJsonValue<'a>; N], JsonParseError> {
+    pub fn to_fixed_array<const N: usize>(
+        self,
+    ) -> Result<[RawJsonValue<'a, 'text>; N], JsonParseError> {
         let mut values = self.to_array_values()?;
         let mut fixed_array = [self; N];
         for (i, v) in fixed_array.iter_mut().enumerate() {
@@ -253,7 +257,10 @@ impl<'a> RawJsonValue<'a> {
 
     pub fn to_object_members(
         self,
-    ) -> Result<impl Iterator<Item = (RawJsonValue<'a>, RawJsonValue<'a>)>, JsonParseError> {
+    ) -> Result<
+        impl Iterator<Item = (RawJsonValue<'a, 'text>, RawJsonValue<'a, 'text>)>,
+        JsonParseError,
+    > {
         self.expect(&[JsonValueKind::Object])
             .map(JsonKeyValuePairs::new)
     }
@@ -262,7 +269,13 @@ impl<'a> RawJsonValue<'a> {
         self,
         required_member_names: [&str; N],
         optional_member_names: [&str; M],
-    ) -> Result<([RawJsonValue<'a>; N], [Option<RawJsonValue<'a>>; M]), JsonParseError> {
+    ) -> Result<
+        (
+            [RawJsonValue<'a, 'text>; N],
+            [Option<RawJsonValue<'a, 'text>>; M],
+        ),
+        JsonParseError,
+    > {
         let mut required = [self; N];
         let mut optional = [None; M];
         for (k, v) in self.to_object_members()? {
@@ -295,21 +308,21 @@ impl<'a> RawJsonValue<'a> {
 }
 
 #[derive(Debug)]
-struct Children<'a> {
-    value: RawJsonValue<'a>,
+struct Children<'a, 'text> {
+    value: RawJsonValue<'a, 'text>,
     end_index: usize,
 }
 
-impl<'a> Children<'a> {
-    fn new(mut value: RawJsonValue<'a>) -> Self {
+impl<'a, 'text> Children<'a, 'text> {
+    fn new(mut value: RawJsonValue<'a, 'text>) -> Self {
         let end_index = value.entry().end_index;
         value.index += 1;
         Self { value, end_index }
     }
 }
 
-impl<'a> Iterator for Children<'a> {
-    type Item = RawJsonValue<'a>;
+impl<'a, 'text> Iterator for Children<'a, 'text> {
+    type Item = RawJsonValue<'a, 'text>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.value.index == self.end_index {
@@ -322,20 +335,20 @@ impl<'a> Iterator for Children<'a> {
 }
 
 #[derive(Debug)]
-struct JsonKeyValuePairs<'a> {
-    inner: Children<'a>,
+struct JsonKeyValuePairs<'a, 'text> {
+    inner: Children<'a, 'text>,
 }
 
-impl<'a> JsonKeyValuePairs<'a> {
-    fn new(object: RawJsonValue<'a>) -> Self {
+impl<'a, 'text> JsonKeyValuePairs<'a, 'text> {
+    fn new(object: RawJsonValue<'a, 'text>) -> Self {
         Self {
             inner: Children::new(object),
         }
     }
 }
 
-impl<'a> Iterator for JsonKeyValuePairs<'a> {
-    type Item = (RawJsonValue<'a>, RawJsonValue<'a>);
+impl<'a, 'text> Iterator for JsonKeyValuePairs<'a, 'text> {
+    type Item = (RawJsonValue<'a, 'text>, RawJsonValue<'a, 'text>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let key = self.inner.next()?;

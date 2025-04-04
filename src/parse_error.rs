@@ -76,7 +76,7 @@ pub enum JsonParseError {
 
 impl JsonParseError {
     /// Makes a [`JsonParseError::InvalidValue`] error.
-    pub fn invalid_value<E>(value: RawJsonValue<'_>, error: E) -> JsonParseError
+    pub fn invalid_value<E>(value: RawJsonValue<'_, '_>, error: E) -> JsonParseError
     where
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
