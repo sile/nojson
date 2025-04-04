@@ -368,6 +368,14 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     }
 }
 
+impl<'text> Display for RawJsonValue<'text, '_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_raw_str())
+    }
+}
+
+// TODO: impl DisplayJson
+
 #[derive(Debug)]
 struct Children<'text, 'a> {
     value: RawJsonValue<'text, 'a>,
