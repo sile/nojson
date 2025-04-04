@@ -415,9 +415,9 @@ fn parse_std_types() {
     assert_eq!("[1,2,3]".parse().ok(), Some(Json(vec![1, 2, 3])));
     assert_eq!("[[1],[2],[3]]".parse().ok(), Some(Json([[1], [2], [3]])));
     assert_eq!(
-        r#"{"1":1,"2":2,"3":3}"#.parse().ok(),
+        r#"{"1":1,"2":null,"3":3}"#.parse().ok(),
         Some(Json(
-            [(1, 1), (2, 2), (3, 3)]
+            [(1, Some(1)), (2, None), (3, Some(3))]
                 .into_iter()
                 .collect::<BTreeMap<_, _>>()
         ))

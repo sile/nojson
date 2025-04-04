@@ -4,14 +4,20 @@ use crate::{FromRawJsonValue, JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct JsonValueIndexEntry {
-    pub kind: JsonValueKind,
-    pub escaped: bool,
-    pub text: Range<usize>,
-    pub end_index: usize,
-}
-
+/// Parsed JSON text.
+///
+/// This struct holds a JSON text in its original form
+/// (i.e., JSON integers are not parsed into Rust's integers),
+/// while ensuring the text is valid JSON syntax.
+///
+/// [`RawJson`] maintains index information about each JSON value in the text,
+/// including its type ([`JsonValueKind`]) and the start and end byte positions.
+/// You can traverse the JSON structure by accessing the top-level value
+/// via [`RawJson::value()`], which returns a [`RawJsonValue`]
+/// that provides methods to explore nested elements and convert them into Rust types.
+///
+/// Note that, for simple use cases,
+/// using [`Json`](crate::Json), which internally uses [`RawJson`], is a more convenient way to parse JSON text.
 #[derive(Debug)]
 pub struct RawJson<'a> {
     text: &'a str,
@@ -19,11 +25,46 @@ pub struct RawJson<'a> {
 }
 
 impl<'a> RawJson<'a> {
+    /// Parses a JSON string into a [`RawJson`] instance.
+    ///
+    /// This validates the JSON syntax without converting values to Rust types.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let text = r#"{"name": "John", "age": 30}"#;
+    /// let json = RawJson::parse(text)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn parse(text: &'a str) -> Result<Self, JsonParseError> {
         let values = JsonParser::new(text).parse()?;
         Ok(Self { text, values })
     }
 
+    /// Returns the original JSON text.
+    pub fn text(&self) -> &'a str {
+        self.text
+    }
+
+    /// Returns the top-level value of the JSON.
+    ///
+    /// This value can be used as an entry point to traverse the entire JSON structure
+    /// and convert it to Rust types.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let text = r#"{"name": "John", "age": 30}"#;
+    /// let json = RawJson::parse(text).unwrap();
+    /// let value = json.value();
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn value(&self) -> RawJsonValue {
         RawJsonValue {
             json: self,
@@ -41,6 +82,14 @@ impl<'a> RawJson<'a> {
         }
         Some(value)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct JsonValueIndexEntry {
+    pub kind: JsonValueKind,
+    pub escaped: bool,
+    pub text: Range<usize>,
+    pub end_index: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
