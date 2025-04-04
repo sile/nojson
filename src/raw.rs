@@ -65,7 +65,7 @@ impl<'text> RawJson<'text> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn value(&self) -> RawJsonValue<'_, 'text> {
+    pub fn value(&self) -> RawJsonValue<'text, '_> {
         RawJsonValue {
             json: self,
             index: 0,
@@ -98,7 +98,7 @@ impl<'text> RawJson<'text> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue<'_, 'text>> {
+    pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue<'text, '_>> {
         let mut value = self.value();
         if !value.entry().text.contains(&position) {
             return None;
@@ -167,7 +167,12 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         &self.json.values[self.index]
     }
 
-    // TODO: parent
+    pub fn parent(self) -> Option<Self> {
+        if self.index == 0 {
+            return None;
+        }
+        self.json.get_value_by_position(self.position() - 1)
+    }
 
     pub fn json(self) -> &'a RawJson<'text> {
         self.json
@@ -183,25 +188,25 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     }
 
     pub fn as_bool_str(self) -> Result<&'text str, JsonParseError> {
-        self.expect(&[JsonValueKind::Bool]).map(|v| v.as_raw_str())
+        self.expect([JsonValueKind::Bool]).map(|v| v.as_raw_str())
     }
 
     pub fn as_integer_str(self) -> Result<&'text str, JsonParseError> {
-        self.expect(&[JsonValueKind::Integer])
+        self.expect([JsonValueKind::Integer])
             .map(|v| v.as_raw_str())
     }
 
     pub fn as_float_str(self) -> Result<&'text str, JsonParseError> {
-        self.expect(&[JsonValueKind::Float]).map(|v| v.as_raw_str())
+        self.expect([JsonValueKind::Float]).map(|v| v.as_raw_str())
     }
 
     pub fn as_number_str(self) -> Result<&'text str, JsonParseError> {
-        self.expect(&[JsonValueKind::Integer, JsonValueKind::Float])
+        self.expect([JsonValueKind::Integer, JsonValueKind::Float])
             .map(|v| v.as_raw_str())
     }
 
     pub fn to_unquoted_string_str(self) -> Result<Cow<'text, str>, JsonParseError> {
-        self.expect(&[JsonValueKind::String])
+        self.expect([JsonValueKind::String])
             .map(|v| v.to_unquoted_str())
     }
 
@@ -245,25 +250,11 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         Cow::Owned(unescaped)
     }
 
-    pub fn non_null_then<F, T>(self, f: F) -> Option<T>
-    where
-        F: FnOnce(Self) -> T,
-    {
-        (self.kind() != JsonValueKind::Null).then(|| f(self))
-    }
-
-    pub fn non_null_then_try<F, T, E>(self, f: F) -> Result<Option<T>, E>
-    where
-        F: FnOnce(Self) -> Result<T, E>,
-    {
-        self.non_null_then(f).transpose()
-    }
-
     pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
         T::from_raw_json_value(self)
     }
 
-    pub fn expect(self, kinds: &'static [JsonValueKind]) -> Result<Self, JsonParseError> {
+    fn expect<const N: usize>(self, kinds: [JsonValueKind; N]) -> Result<Self, JsonParseError> {
         if kinds.contains(&self.kind()) {
             Ok(self)
         } else {
@@ -285,7 +276,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     pub fn to_array_values(
         self,
     ) -> Result<impl Iterator<Item = RawJsonValue<'text, 'a>>, JsonParseError> {
-        self.expect(&[JsonValueKind::Array]).map(Children::new)
+        self.expect([JsonValueKind::Array]).map(Children::new)
     }
 
     pub fn to_fixed_array<const N: usize>(
@@ -322,7 +313,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         impl Iterator<Item = (RawJsonValue<'text, 'a>, RawJsonValue<'text, 'a>)>,
         JsonParseError,
     > {
-        self.expect(&[JsonValueKind::Object])
+        self.expect([JsonValueKind::Object])
             .map(JsonKeyValuePairs::new)
     }
 
