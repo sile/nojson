@@ -1,4 +1,4 @@
-use std::{borrow::Cow, str::FromStr};
+use std::str::FromStr;
 
 use crate::{JsonParseError, RawJsonValue};
 
@@ -269,13 +269,46 @@ impl<'a> FromRawJsonValue<'a> for String {
     }
 }
 
-impl<'a> FromRawJsonValue<'a> for Cow<'a, str> {
+impl<'a> FromRawJsonValue<'a> for std::borrow::Cow<'a, str> {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         value.to_unquoted_string_str()
     }
 }
 
 impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Vec<T> {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value
+            .to_array_values()?
+            .map(T::from_raw_json_value)
+            .collect()
+    }
+}
+
+impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for std::collections::VecDeque<T> {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value
+            .to_array_values()?
+            .map(T::from_raw_json_value)
+            .collect()
+    }
+}
+
+impl<'a, T> FromRawJsonValue<'a> for std::collections::BTreeSet<T>
+where
+    T: FromRawJsonValue<'a> + Ord,
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value
+            .to_array_values()?
+            .map(T::from_raw_json_value)
+            .collect()
+    }
+}
+
+impl<'a, T> FromRawJsonValue<'a> for std::collections::HashSet<T>
+where
+    T: FromRawJsonValue<'a> + Eq + std::hash::Hash,
+{
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         value
             .to_array_values()?
@@ -436,3 +469,12 @@ impl<
         ))
     }
 }
+
+// impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for BTreeMap<T> {
+//     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+//         value
+//             .to_array_values()?
+//             .map(T::from_raw_json_value)
+//             .collect()
+//     }
+// }
