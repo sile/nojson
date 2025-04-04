@@ -94,12 +94,12 @@ pub(crate) struct JsonValueIndexEntry {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct RawJsonValue<'a, 'text> {
+pub struct RawJsonValue<'text, 'a> {
     json: &'a RawJson<'text>,
     index: usize,
 }
 
-impl<'a, 'text> RawJsonValue<'a, 'text> {
+impl<'text, 'a> RawJsonValue<'text, 'a> {
     pub fn kind(self) -> JsonValueKind {
         self.json.values[self.index].kind
     }
@@ -223,13 +223,13 @@ impl<'a, 'text> RawJsonValue<'a, 'text> {
 
     pub fn to_array_values(
         self,
-    ) -> Result<impl Iterator<Item = RawJsonValue<'a, 'text>>, JsonParseError> {
+    ) -> Result<impl Iterator<Item = RawJsonValue<'text, 'a>>, JsonParseError> {
         self.expect(&[JsonValueKind::Array]).map(Children::new)
     }
 
     pub fn to_fixed_array<const N: usize>(
         self,
-    ) -> Result<[RawJsonValue<'a, 'text>; N], JsonParseError> {
+    ) -> Result<[RawJsonValue<'text, 'a>; N], JsonParseError> {
         let mut values = self.to_array_values()?;
         let mut fixed_array = [self; N];
         for (i, v) in fixed_array.iter_mut().enumerate() {
@@ -258,7 +258,7 @@ impl<'a, 'text> RawJsonValue<'a, 'text> {
     pub fn to_object_members(
         self,
     ) -> Result<
-        impl Iterator<Item = (RawJsonValue<'a, 'text>, RawJsonValue<'a, 'text>)>,
+        impl Iterator<Item = (RawJsonValue<'text, 'a>, RawJsonValue<'text, 'a>)>,
         JsonParseError,
     > {
         self.expect(&[JsonValueKind::Object])
@@ -271,8 +271,8 @@ impl<'a, 'text> RawJsonValue<'a, 'text> {
         optional_member_names: [&str; M],
     ) -> Result<
         (
-            [RawJsonValue<'a, 'text>; N],
-            [Option<RawJsonValue<'a, 'text>>; M],
+            [RawJsonValue<'text, 'a>; N],
+            [Option<RawJsonValue<'text, 'a>>; M],
         ),
         JsonParseError,
     > {
@@ -308,21 +308,21 @@ impl<'a, 'text> RawJsonValue<'a, 'text> {
 }
 
 #[derive(Debug)]
-struct Children<'a, 'text> {
-    value: RawJsonValue<'a, 'text>,
+struct Children<'text, 'a> {
+    value: RawJsonValue<'text, 'a>,
     end_index: usize,
 }
 
-impl<'a, 'text> Children<'a, 'text> {
-    fn new(mut value: RawJsonValue<'a, 'text>) -> Self {
+impl<'text, 'a> Children<'text, 'a> {
+    fn new(mut value: RawJsonValue<'text, 'a>) -> Self {
         let end_index = value.entry().end_index;
         value.index += 1;
         Self { value, end_index }
     }
 }
 
-impl<'a, 'text> Iterator for Children<'a, 'text> {
-    type Item = RawJsonValue<'a, 'text>;
+impl<'text, 'a> Iterator for Children<'text, 'a> {
+    type Item = RawJsonValue<'text, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.value.index == self.end_index {
@@ -335,20 +335,20 @@ impl<'a, 'text> Iterator for Children<'a, 'text> {
 }
 
 #[derive(Debug)]
-struct JsonKeyValuePairs<'a, 'text> {
-    inner: Children<'a, 'text>,
+struct JsonKeyValuePairs<'text, 'a> {
+    inner: Children<'text, 'a>,
 }
 
-impl<'a, 'text> JsonKeyValuePairs<'a, 'text> {
-    fn new(object: RawJsonValue<'a, 'text>) -> Self {
+impl<'text, 'a> JsonKeyValuePairs<'text, 'a> {
+    fn new(object: RawJsonValue<'text, 'a>) -> Self {
         Self {
             inner: Children::new(object),
         }
     }
 }
 
-impl<'a, 'text> Iterator for JsonKeyValuePairs<'a, 'text> {
-    type Item = (RawJsonValue<'a, 'text>, RawJsonValue<'a, 'text>);
+impl<'text, 'a> Iterator for JsonKeyValuePairs<'text, 'a> {
+    type Item = (RawJsonValue<'text, 'a>, RawJsonValue<'text, 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let key = self.inner.next()?;
