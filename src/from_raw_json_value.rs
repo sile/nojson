@@ -2,18 +2,18 @@ use std::str::FromStr;
 
 use crate::{JsonParseError, RawJsonValue};
 
-/// Converts a raw JSON value into a specific Rust type.
+/// Converts a raw JSON value to a specific Rust type.
 ///
 /// This trait allows for extracting typed values from untyped [`RawJsonValue`]
 /// representations, performing necessary type checking and conversions.
 ///
 /// Implementing this trait enables a type to be deserialized from JSON data.
 /// Once a type implements [`FromRawJsonValue`], you can use [`Json`][crate::Json] to parse
-/// JSON text into that type through Rust's standard [`FromStr`] trait.
+/// JSON text to that type through Rust's standard [`FromStr`] trait.
 ///
 /// # Examples
 ///
-/// Parse a JSON array into a vector of integers:
+/// Parse a JSON array to a vector of integers:
 ///
 /// ```
 /// use nojson::Json;
@@ -25,7 +25,7 @@ use crate::{JsonParseError, RawJsonValue};
 /// # }
 /// ```
 ///
-/// Parse a JSON object into a custom struct (requires implementing [`FromRawJsonValue`] for your struct):
+/// Parse a JSON object to a custom struct (requires implementing [`FromRawJsonValue`] for your struct):
 ///
 /// ```
 /// use nojson::{Json, RawJsonValue, JsonParseError, FromRawJsonValue};
@@ -53,7 +53,7 @@ use crate::{JsonParseError, RawJsonValue};
 /// # }
 /// ```
 pub trait FromRawJsonValue<'a>: Sized {
-    /// Attempts to convert a raw JSON value into this type.
+    /// Attempts to convert a raw JSON value to this type.
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError>;
 }
 
