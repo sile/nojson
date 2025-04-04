@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use nojson::{FromRawJsonValue, Json, JsonParseError, JsonValueKind, RawJson, RawJsonValue};
 
@@ -398,4 +398,28 @@ fn to_fixed_object() -> Result<(), JsonParseError> {
     assert_eq!(person.0.age, 30);
 
     Ok(())
+}
+
+#[test]
+fn parse_std_types() {
+    assert_eq!("-1".parse().ok(), Some(Json(-1i8)));
+    assert_eq!("\"a\"".parse().ok(), Some(Json("a".to_owned())));
+    assert_eq!("123".parse().ok(), Some(Json(123u32)));
+    assert_eq!("3.14".parse().ok(), Some(Json(3.14f64)));
+    assert_eq!("true".parse().ok(), Some(Json(true)));
+    assert_eq!("false".parse().ok(), Some(Json(false)));
+    assert_eq!("null".parse::<Json<Option<bool>>>().ok(), Some(Json(None)));
+    assert_eq!("true".parse().ok(), Some(Json(Some(true))));
+    assert_eq!("[]".parse().ok(), Some(Json(())));
+    assert_eq!("[1,true,0.2]".parse().ok(), Some(Json((1, true, 0.2))));
+    assert_eq!("[1,2,3]".parse().ok(), Some(Json(vec![1, 2, 3])));
+    assert_eq!("[[1],[2],[3]]".parse().ok(), Some(Json([[1], [2], [3]])));
+    assert_eq!(
+        r#"{"1":1,"2":2,"3":3}"#.parse().ok(),
+        Some(Json(
+            [(1, 1), (2, 2), (3, 3)]
+                .into_iter()
+                .collect::<BTreeMap<_, _>>()
+        ))
+    );
 }
