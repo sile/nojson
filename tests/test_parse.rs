@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use nojson::{JsonParseError, JsonValueKind, RawJson};
+use nojson::{FromRawJsonValue, Json, JsonParseError, JsonValueKind, RawJson, RawJsonValue};
 
 macro_rules! assert_parse_error_matches {
     ($text:expr, $error_pattern:pat) => {{
@@ -371,4 +371,28 @@ fn error_context() {
             .map(|(l, c)| (l.get(), c.get())),
         Some((4, 3))
     );
+}
+
+#[test]
+fn to_fixed_object() -> Result<(), JsonParseError> {
+    struct Person {
+        name: String,
+        age: u32,
+    }
+
+    impl<'a> FromRawJsonValue<'a> for Person {
+        fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+            let ([name, age], []) = value.to_fixed_object(["name", "age"], [])?;
+            Ok(Person {
+                name: name.try_to()?,
+                age: age.try_to()?,
+            })
+        }
+    }
+
+    let person: Json<Person> = r#"{"name":"Alice","age":30}"#.parse()?;
+    assert_eq!(person.0.name, "Alice");
+    assert_eq!(person.0.age, 30);
+
+    Ok(())
 }

@@ -63,16 +63,4 @@ impl JsonValueKind {
     pub const fn is_object(self) -> bool {
         matches!(self, Self::Object)
     }
-
-    pub(crate) fn name(self) -> &'static str {
-        match self {
-            JsonValueKind::Null => "null",
-            JsonValueKind::Bool => "boolean",
-            JsonValueKind::Integer => "number",
-            JsonValueKind::Float => "float",
-            JsonValueKind::String => "string",
-            JsonValueKind::Array => "array",
-            JsonValueKind::Object => "object",
-        }
-    }
 }

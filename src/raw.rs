@@ -40,8 +40,8 @@ pub use crate::parse_error::JsonParseError;
 /// }
 ///
 /// impl<'a> FromRawJsonValue<'a> for Person {
-///     fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-///         let ([name, age], []) = raw.to_fixed_object(["name","age"],[])?;
+///     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+///         let ([name, age], []) = value.to_fixed_object(["name","age"],[])?;
 ///         Ok(Person {
 ///             name: name.try_to()?,
 ///             age: age.try_to()?,
@@ -58,30 +58,33 @@ pub use crate::parse_error::JsonParseError;
 /// ```
 pub trait FromRawJsonValue<'a>: Sized {
     /// Attempts to convert a raw JSON value into this type.
-    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError>;
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError>;
 }
 
 impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Box<T> {
-    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        T::from_raw_json_value(raw).map(Box::new)
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        T::from_raw_json_value(value).map(Box::new)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for u32 {
-    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        raw.as_integer()?.parse()
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_integer()?.parse()
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for String {
-    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        raw.as_string()?.parse()
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.as_string()?.parse()
     }
 }
 
 impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Vec<T> {
-    fn from_raw_json_value(raw: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        raw.to_array_values()?.map(T::from_raw_json_value).collect()
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value
+            .to_array_values()?
+            .map(T::from_raw_json_value)
+            .collect()
     }
 }
 
@@ -141,6 +144,7 @@ impl<'a> RawJsonValue<'a> {
         &self.json.values[self.index]
     }
 
+    // TODO: s/text/as_raw_str/
     pub fn text(self) -> &'a str {
         let text = &self.json.values[self.index].text;
         &self.json.text[text.start..text.end]
@@ -163,38 +167,43 @@ impl<'a> RawJsonValue<'a> {
     }
 
     pub fn to_unquoted_text(self) -> Cow<'a, str> {
-        if self.entry().escaped {
-            let mut unescaped = String::with_capacity(self.text().len());
-            let mut chars = self.text().chars();
-            while let Some(c) = chars.next() {
-                match c {
-                    '\\' => {
-                        let c = chars.next().expect("infallible");
-                        match c {
-                            '\\' | '/' | '"' | 'n' | 't' | 'r' | 'b' | 'f' => unescaped.push(c),
-                            'u' => {
-                                let c = std::str::from_utf8(&[
-                                    chars.next().expect("infallible") as u8,
-                                    chars.next().expect("infallible") as u8,
-                                    chars.next().expect("infallible") as u8,
-                                    chars.next().expect("infallible") as u8,
-                                ])
-                                .ok()
-                                .and_then(|code| u32::from_str_radix(code, 16).ok())
-                                .and_then(char::from_u32)
-                                .expect("infallible");
-                                unescaped.push(c);
-                            }
-                            _ => unreachable!(),
-                        }
-                    }
-                    _ => unescaped.push(c),
-                }
-            }
-            Cow::Owned(unescaped)
-        } else {
-            Cow::Borrowed(self.text())
+        if !self.kind().is_string() {
+            return Cow::Borrowed(self.text());
         }
+
+        let content = &self.text()[1..self.text().len() - 1];
+        if !self.entry().escaped {
+            return Cow::Borrowed(content);
+        }
+
+        let mut unescaped = String::with_capacity(content.len());
+        let mut chars = content.chars();
+        while let Some(c) = chars.next() {
+            match c {
+                '\\' => {
+                    let c = chars.next().expect("infallible");
+                    match c {
+                        '\\' | '/' | '"' | 'n' | 't' | 'r' | 'b' | 'f' => unescaped.push(c),
+                        'u' => {
+                            let c = std::str::from_utf8(&[
+                                chars.next().expect("infallible") as u8,
+                                chars.next().expect("infallible") as u8,
+                                chars.next().expect("infallible") as u8,
+                                chars.next().expect("infallible") as u8,
+                            ])
+                            .ok()
+                            .and_then(|code| u32::from_str_radix(code, 16).ok())
+                            .and_then(char::from_u32)
+                            .expect("infallible");
+                            unescaped.push(c);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                _ => unescaped.push(c),
+            }
+        }
+        Cow::Owned(unescaped)
     }
 
     pub fn non_null_then<F, T>(self, f: F) -> Option<T>
@@ -215,6 +224,7 @@ impl<'a> RawJsonValue<'a> {
         T::from_raw_json_value(self)
     }
 
+    // TODO: remove?
     pub fn parse<T>(self) -> Result<T, JsonParseError>
     where
         T: FromStr,
@@ -223,6 +233,7 @@ impl<'a> RawJsonValue<'a> {
         self.parse_with(|text| text.parse())
     }
 
+    // TODO: remove?
     pub fn parse_with<F, T, E>(self, f: F) -> Result<T, JsonParseError>
     where
         F: FnOnce(&str) -> Result<T, E>,
@@ -240,7 +251,7 @@ impl<'a> RawJsonValue<'a> {
             Ok(self)
         } else {
             Err(self.to_invalid_value_error(format!(
-                "expected {:?}, but found {:?}",
+                "expected {}, but found {:?}",
                 if kinds.len() == 1 {
                     format!("{:?}", kinds[0])
                 } else {
@@ -309,18 +320,21 @@ impl<'a> RawJsonValue<'a> {
         let mut optional = [None; M];
         for (k, v) in self.to_object_members()? {
             let k = k.to_unquoted_text();
+            dbg!(&k);
             if let Some(i) = required_member_names.iter().position(|n| k == *n) {
+                dbg!(v);
                 required[i] = v;
             } else if let Some(i) = optional_member_names.iter().position(|n| k == *n) {
+                dbg!(v);
                 optional[i] = Some(v);
             }
         }
 
-        if required.iter().any(|v| v.index != self.index) {
+        if required.iter().any(|v| v.index == self.index) {
             let missings = required_member_names
                 .iter()
                 .zip(required.iter())
-                .filter(|(_, value)| value.index != self.index)
+                .filter(|(_, value)| value.index == self.index)
                 .map(|(name, _)| name)
                 .collect::<Vec<_>>();
             return Err(self
