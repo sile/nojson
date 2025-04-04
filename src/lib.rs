@@ -1,3 +1,9 @@
+//!
+//! - One-to-one mapping between Rust types and JSON texts is not needed.
+//!   - You can gain the merits of both type-level probgramming and flexibility of imperative code.
+//! - Rather toolbox than a monilitic framework.
+//! - Easy to add custom validtions:
+//!   - Application specific validation error can be associated with the errorneous JSON value position at the JSON text.
 mod format;
 mod from_raw_json_value;
 mod kind;

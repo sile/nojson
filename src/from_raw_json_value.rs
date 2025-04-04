@@ -52,6 +52,49 @@ use crate::{JsonParseError, RawJsonValue};
 /// # Ok(())
 /// # }
 /// ```
+///
+/// Parse a rational number represented as a JSON string:
+///
+/// ```
+/// use nojson::{Json, RawJsonValue, JsonParseError, FromRawJsonValue};
+/// use std::str::FromStr;
+///
+/// #[derive(Debug, PartialEq)]
+/// struct Rational {
+///     numerator: i32,
+///     denominator: i32,
+/// }
+///
+/// impl<'a> FromRawJsonValue<'a> for Rational {
+///     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+///         // Get the raw string content of the JSON value.
+///         let fraction_str = value.to_unquoted_string_str()?;
+///
+///         // Split by the '/' character and parse components.
+///         let parts: Vec<&str> = fraction_str.split('/').collect();
+///         if parts.len() != 2 {
+///             return Err(JsonParseError::invalid_value(value, "Expected format 'numerator/denominator'"));
+///         }
+///
+///         let numerator = parts[0].parse()
+///             .map_err(|_| JsonParseError::invalid_value(value, "Invalid numerator"))?;
+///         let denominator = parts[1].parse()
+///             .map_err(|_| JsonParseError::invalid_value(value, "Invalid denominator"))?;
+///
+///         if denominator == 0 {
+///             return Err(JsonParseError::invalid_value(value, "Denominator cannot be zero"));
+///         }
+///
+///         Ok(Rational { numerator, denominator })
+///     }
+/// }
+///
+/// # fn main() -> Result<(), nojson::JsonParseError> {
+/// let fraction: Json<Rational> = r#""3/4""#.parse()?;
+/// assert_eq!(fraction.0, Rational { numerator: 3, denominator: 4 });
+/// # Ok(())
+/// # }
+/// ```
 pub trait FromRawJsonValue<'a>: Sized {
     /// Attempts to convert a raw JSON value to this type.
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError>;
