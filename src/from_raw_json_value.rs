@@ -19,7 +19,7 @@ use crate::{JsonParseError, RawJsonValue};
 /// use nojson::Json;
 ///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// let numbers: Json<Vec<u32>> = "[1, 2, 3]".parse()?;
+/// let numbers: Json<[u32; 3]> = "[1, 2, 3]".parse()?;
 /// assert_eq!(numbers.0, [1, 2, 3]);
 /// # Ok(())
 /// # }
@@ -297,5 +297,142 @@ impl<'a, T: FromRawJsonValue<'a>, const N: usize> FromRawJsonValue<'a> for [T; N
     }
 }
 
-// TODO: tupples
-// TODO: Add impl for Option<T>, Vec<T>, [T; N], HashMap etc
+impl<'a> FromRawJsonValue<'a> for () {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [] = value.to_fixed_array()?;
+        Ok(())
+    }
+}
+
+impl<'a, T0: FromRawJsonValue<'a>> FromRawJsonValue<'a> for (T0,) {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [v0] = value.to_fixed_array()?;
+        Ok((v0.try_to()?,))
+    }
+}
+
+impl<'a, T0: FromRawJsonValue<'a>, T1: FromRawJsonValue<'a>> FromRawJsonValue<'a> for (T0, T1) {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [v0, v1] = value.to_fixed_array()?;
+        Ok((v0.try_to()?, v1.try_to()?))
+    }
+}
+
+impl<'a, T0: FromRawJsonValue<'a>, T1: FromRawJsonValue<'a>, T2: FromRawJsonValue<'a>>
+    FromRawJsonValue<'a> for (T0, T1, T2)
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [v0, v1, v2] = value.to_fixed_array()?;
+        Ok((v0.try_to()?, v1.try_to()?, v2.try_to()?))
+    }
+}
+
+impl<
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3)
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [v0, v1, v2, v3] = value.to_fixed_array()?;
+        Ok((v0.try_to()?, v1.try_to()?, v2.try_to()?, v3.try_to()?))
+    }
+}
+
+impl<
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+    T4: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3, T4)
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [v0, v1, v2, v3, v4] = value.to_fixed_array()?;
+        Ok((
+            v0.try_to()?,
+            v1.try_to()?,
+            v2.try_to()?,
+            v3.try_to()?,
+            v4.try_to()?,
+        ))
+    }
+}
+
+impl<
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+    T4: FromRawJsonValue<'a>,
+    T5: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5)
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [v0, v1, v2, v3, v4, v5] = value.to_fixed_array()?;
+        Ok((
+            v0.try_to()?,
+            v1.try_to()?,
+            v2.try_to()?,
+            v3.try_to()?,
+            v4.try_to()?,
+            v5.try_to()?,
+        ))
+    }
+}
+
+impl<
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+    T4: FromRawJsonValue<'a>,
+    T5: FromRawJsonValue<'a>,
+    T6: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5, T6)
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [v0, v1, v2, v3, v4, v5, v6] = value.to_fixed_array()?;
+        Ok((
+            v0.try_to()?,
+            v1.try_to()?,
+            v2.try_to()?,
+            v3.try_to()?,
+            v4.try_to()?,
+            v5.try_to()?,
+            v6.try_to()?,
+        ))
+    }
+}
+
+impl<
+    'a,
+    T0: FromRawJsonValue<'a>,
+    T1: FromRawJsonValue<'a>,
+    T2: FromRawJsonValue<'a>,
+    T3: FromRawJsonValue<'a>,
+    T4: FromRawJsonValue<'a>,
+    T5: FromRawJsonValue<'a>,
+    T6: FromRawJsonValue<'a>,
+    T7: FromRawJsonValue<'a>,
+> FromRawJsonValue<'a> for (T0, T1, T2, T3, T4, T5, T6, T7)
+{
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let [v0, v1, v2, v3, v4, v5, v6, v7] = value.to_fixed_array()?;
+        Ok((
+            v0.try_to()?,
+            v1.try_to()?,
+            v2.try_to()?,
+            v3.try_to()?,
+            v4.try_to()?,
+            v5.try_to()?,
+            v6.try_to()?,
+            v7.try_to()?,
+        ))
+    }
+}
