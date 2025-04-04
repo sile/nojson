@@ -58,22 +58,34 @@ impl<'a> RawJsonValue<'a> {
         &self.json.values[self.index]
     }
 
-    // TODO: s/text/as_raw_str/
-    pub fn text(self) -> &'a str {
-        let text = &self.json.values[self.index].text;
-        &self.json.text[text.start..text.end]
+    pub fn json(self) -> &'a RawJson<'a> {
+        self.json
     }
 
     pub fn position(self) -> usize {
         self.json.values[self.index].text.start
     }
 
-    pub fn to_unquoted_text(self) -> Cow<'a, str> {
+    pub fn as_raw_str(self) -> &'a str {
+        let text = &self.json.values[self.index].text;
+        &self.json.text[text.start..text.end]
+    }
+
+    pub fn as_integer_str(self) -> Result<&'a str, JsonParseError> {
+        self.expect(&[JsonValueKind::Integer])
+            .map(|v| v.as_raw_str())
+    }
+
+    // TODO
+    // as_bool_str(), as_integer_str(), as_float_str(), as_number_str(),
+    // to_unquoted_string_str(),
+
+    pub fn to_unquoted_str(self) -> Cow<'a, str> {
         if !self.kind().is_string() {
-            return Cow::Borrowed(self.text());
+            return Cow::Borrowed(self.as_raw_str());
         }
 
-        let content = &self.text()[1..self.text().len() - 1];
+        let content = &self.as_raw_str()[1..self.as_raw_str().len() - 1];
         if !self.entry().escaped {
             return Cow::Borrowed(content);
         }
@@ -141,7 +153,7 @@ impl<'a> RawJsonValue<'a> {
         F: FnOnce(&str) -> Result<T, E>,
         E: Into<Box<dyn Send + Sync + std::error::Error>>,
     {
-        f(&self.to_unquoted_text()).map_err(|e| JsonParseError::InvalidValue {
+        f(&self.to_unquoted_str()).map_err(|e| JsonParseError::InvalidValue {
             kind: self.kind(),
             position: self.position(),
             error: e.into(),
@@ -169,10 +181,6 @@ impl<'a> RawJsonValue<'a> {
 
     pub fn as_bool(self) -> Result<Self, JsonParseError> {
         self.expect(&[JsonValueKind::Bool])
-    }
-
-    pub fn as_integer(self) -> Result<Self, JsonParseError> {
-        self.expect(&[JsonValueKind::Integer])
     }
 
     pub fn as_number(self) -> Result<Self, JsonParseError> {
@@ -228,7 +236,7 @@ impl<'a> RawJsonValue<'a> {
         let mut required = [self; N];
         let mut optional = [None; M];
         for (k, v) in self.to_object_members()? {
-            let k = k.to_unquoted_text();
+            let k = k.to_unquoted_str();
             dbg!(&k);
             if let Some(i) = required_member_names.iter().position(|n| k == *n) {
                 dbg!(v);

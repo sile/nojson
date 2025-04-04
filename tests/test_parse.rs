@@ -34,7 +34,7 @@ fn parse_nulls() -> Result<(), JsonParseError> {
     let json = RawJson::parse(" null ")?;
     let value = json.value();
     assert_eq!(value.kind(), JsonValueKind::Null);
-    assert_eq!(value.text(), "null");
+    assert_eq!(value.as_raw_str(), "null");
     assert_eq!(value.position(), 1);
 
     assert_parse_error_matches!(
@@ -67,13 +67,13 @@ fn parse_bools() -> Result<(), JsonParseError> {
     let json = RawJson::parse("true")?;
     let value = json.value();
     assert_eq!(value.kind(), JsonValueKind::Bool);
-    assert_eq!(value.text(), "true");
+    assert_eq!(value.as_raw_str(), "true");
     assert_eq!(value.position(), 0);
 
     let json = RawJson::parse(" false ")?;
     let value = json.value();
     assert_eq!(value.kind(), JsonValueKind::Bool);
-    assert_eq!(value.text(), "false");
+    assert_eq!(value.as_raw_str(), "false");
     assert_eq!(value.position(), 1);
 
     assert_parse_error_matches!(
@@ -108,7 +108,7 @@ fn parse_numbers() -> Result<(), JsonParseError> {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::Integer);
-        assert_eq!(value.text(), text);
+        assert_eq!(value.as_raw_str(), text);
         assert_eq!(value.position(), 0);
     }
 
@@ -117,7 +117,7 @@ fn parse_numbers() -> Result<(), JsonParseError> {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::Float);
-        assert_eq!(value.text(), text);
+        assert_eq!(value.as_raw_str(), text);
         assert_eq!(value.position(), 0);
     }
 
@@ -183,9 +183,9 @@ fn parse_strings() -> Result<(), JsonParseError> {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::String);
-        assert_eq!(value.text(), text.trim());
+        assert_eq!(value.as_raw_str(), text.trim());
         assert_eq!(value.position(), 1);
-        assert!(matches!(value.to_unquoted_text(), Cow::Borrowed(_)));
+        assert!(matches!(value.to_unquoted_str(), Cow::Borrowed(_)));
     }
 
     // Escaped strings.
@@ -197,9 +197,9 @@ fn parse_strings() -> Result<(), JsonParseError> {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::String);
-        assert_eq!(value.text(), text.trim());
+        assert_eq!(value.as_raw_str(), text.trim());
         assert_eq!(value.position(), 1);
-        assert!(matches!(value.to_unquoted_text(), Cow::Owned(_)));
+        assert!(matches!(value.to_unquoted_str(), Cow::Owned(_)));
     }
 
     // Malformed strings.
@@ -241,7 +241,7 @@ fn parse_arrays() -> Result<(), JsonParseError> {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::Array);
-        assert_eq!(value.text(), text);
+        assert_eq!(value.as_raw_str(), text);
         assert_eq!(value.position(), 0);
     }
 
@@ -302,7 +302,7 @@ fn parse_objects() -> Result<(), JsonParseError> {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::Object);
-        assert_eq!(value.text(), text);
+        assert_eq!(value.as_raw_str(), text);
         assert_eq!(value.position(), 0);
     }
 

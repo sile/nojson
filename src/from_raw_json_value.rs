@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::{JsonParseError, RawJsonValue};
 
 /// Converts a raw JSON value into a specific Rust type.
@@ -7,7 +9,7 @@ use crate::{JsonParseError, RawJsonValue};
 ///
 /// Implementing this trait enables a type to be deserialized from JSON data.
 /// Once a type implements [`FromRawJsonValue`], you can use [`Json`][crate::Json] to parse
-/// JSON text into that type through Rust's standard [`FromStr`][std::str::FromStr] trait.
+/// JSON text into that type through Rust's standard [`FromStr`] trait.
 ///
 /// # Examples
 ///
@@ -61,147 +63,158 @@ impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Box<T> {
     }
 }
 
+fn parse_integer<T>(value: RawJsonValue<'_>) -> Result<T, JsonParseError>
+where
+    T: FromStr,
+    T::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
+{
+    value
+        .as_integer_str()?
+        .parse()
+        .map_err(|e| JsonParseError::invalid_value(value, e))
+}
+
 impl<'a> FromRawJsonValue<'a> for i8 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for u8 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for i16 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for u16 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for i32 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for u32 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for i64 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for u64 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for i128 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for u128 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for isize {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for usize {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI8 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU8 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI16 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU16 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI32 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU32 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI64 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU64 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroI128 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroU128 {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroIsize {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
 impl<'a> FromRawJsonValue<'a> for std::num::NonZeroUsize {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_integer()?.parse()
+        parse_integer(value)
     }
 }
 
