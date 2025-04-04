@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{borrow::Cow, str::FromStr};
 
 use crate::{JsonParseError, RawJsonValue};
 
@@ -60,6 +60,25 @@ pub trait FromRawJsonValue<'a>: Sized {
 impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Box<T> {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
         T::from_raw_json_value(value).map(Box::new)
+    }
+}
+
+impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Option<T> {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        if value.kind().is_null() {
+            Ok(None)
+        } else {
+            value.try_to().map(Some)
+        }
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for bool {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value
+            .as_bool_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
     }
 }
 
@@ -218,9 +237,41 @@ impl<'a> FromRawJsonValue<'a> for std::num::NonZeroUsize {
     }
 }
 
+fn parse_float<T>(value: RawJsonValue<'_>) -> Result<T, JsonParseError>
+where
+    T: FromStr,
+    T::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
+{
+    value
+        .as_number_str()?
+        .parse()
+        .map_err(|e| JsonParseError::invalid_value(value, e))
+}
+
+impl<'a> FromRawJsonValue<'a> for f32 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        parse_float(value)
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for f64 {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        parse_float(value)
+    }
+}
+
 impl<'a> FromRawJsonValue<'a> for String {
     fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
-        value.as_string()?.parse()
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'a> FromRawJsonValue<'a> for Cow<'a, str> {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        value.to_unquoted_string_str()
     }
 }
 
@@ -233,4 +284,18 @@ impl<'a, T: FromRawJsonValue<'a>> FromRawJsonValue<'a> for Vec<T> {
     }
 }
 
-// TODO: Add impl for Cow<'a, str>, String, u8, i8, f32, f64, Option<T>, Vec<T>, [T; N], HashMap etc
+impl<'a, T: FromRawJsonValue<'a>, const N: usize> FromRawJsonValue<'a> for [T; N] {
+    fn from_raw_json_value(value: RawJsonValue<'a>) -> Result<Self, JsonParseError> {
+        let values = value.to_fixed_array::<N>()?;
+        let mut results = values.map(|v| v.try_to().map_err(Some));
+        for result in &mut results {
+            if let Err(e) = result {
+                return Err(e.take().expect("infallible"));
+            }
+        }
+        Ok(results.map(|r| r.expect("infallible")))
+    }
+}
+
+// TODO: tupples
+// TODO: Add impl for Option<T>, Vec<T>, [T; N], HashMap etc

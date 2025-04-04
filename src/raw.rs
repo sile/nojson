@@ -71,15 +71,30 @@ impl<'a> RawJsonValue<'a> {
         &self.json.text[text.start..text.end]
     }
 
+    pub fn as_bool_str(self) -> Result<&'a str, JsonParseError> {
+        self.expect(&[JsonValueKind::Bool]).map(|v| v.as_raw_str())
+    }
+
     pub fn as_integer_str(self) -> Result<&'a str, JsonParseError> {
         self.expect(&[JsonValueKind::Integer])
             .map(|v| v.as_raw_str())
     }
 
-    // TODO
-    // as_bool_str(), as_integer_str(), as_float_str(), as_number_str(),
-    // to_unquoted_string_str(),
+    pub fn as_float_str(self) -> Result<&'a str, JsonParseError> {
+        self.expect(&[JsonValueKind::Float]).map(|v| v.as_raw_str())
+    }
 
+    pub fn as_number_str(self) -> Result<&'a str, JsonParseError> {
+        self.expect(&[JsonValueKind::Integer, JsonValueKind::Float])
+            .map(|v| v.as_raw_str())
+    }
+
+    pub fn to_unquoted_string_str(self) -> Result<Cow<'a, str>, JsonParseError> {
+        self.expect(&[JsonValueKind::String])
+            .map(|v| v.to_unquoted_str())
+    }
+
+    // TODO: private
     pub fn to_unquoted_str(self) -> Cow<'a, str> {
         if !self.kind().is_string() {
             return Cow::Borrowed(self.as_raw_str());
@@ -181,10 +196,6 @@ impl<'a> RawJsonValue<'a> {
 
     pub fn as_bool(self) -> Result<Self, JsonParseError> {
         self.expect(&[JsonValueKind::Bool])
-    }
-
-    pub fn as_number(self) -> Result<Self, JsonParseError> {
-        self.expect(&[JsonValueKind::Integer, JsonValueKind::Float])
     }
 
     pub fn as_string(self) -> Result<Self, JsonParseError> {
