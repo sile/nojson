@@ -423,3 +423,17 @@ fn parse_std_types() {
         ))
     );
 }
+
+#[test]
+fn get_value_by_position() {
+    let json = RawJson::parse(r#"{"1":1,"2":null,"3":3}"#).expect("ok");
+
+    let value = json.get_value_by_position(2).expect("some");
+    assert_eq!(value.kind(), JsonValueKind::String);
+    assert_eq!(value.position(), 1);
+    assert_eq!(value.as_raw_str(), r#""1""#);
+
+    let value = json.get_value_by_position(13).expect("some");
+    assert_eq!(value.kind(), JsonValueKind::Null);
+    assert_eq!(value.position(), 11);
+}

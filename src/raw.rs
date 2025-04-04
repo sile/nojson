@@ -72,7 +72,32 @@ impl<'text> RawJson<'text> {
         }
     }
 
-    // TODO: add doc and test
+    /// Finds the JSON value at the specified byte position in the original text.
+    ///
+    /// This method traverses the JSON structure to find the most specific value
+    /// that contains the given position.
+    /// It returns `None` if the position is outside the bounds of the JSON text.
+    ///
+    /// This method is useful for retrieving the context
+    /// where a [`JsonParseError::InvalidValue`] error occurred.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "John", "age": 30}"#)?;
+    ///
+    /// // Position at "name" key
+    /// let name_value = json.get_value_by_position(2)?;
+    /// assert_eq!(name_value.as_raw_str(), r#""name""#);
+    ///
+    /// // Position at number value
+    /// let age_value = json.get_value_by_position(25)?;
+    /// assert_eq!(age_value.as_raw_str(), "30");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue<'_, 'text>> {
         let mut value = self.value();
         if !value.entry().text.contains(&position) {
@@ -107,6 +132,8 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     fn entry(&self) -> &JsonValueIndexEntry {
         &self.json.values[self.index]
     }
+
+    // TODO: parent
 
     pub fn json(self) -> &'a RawJson<'text> {
         self.json
