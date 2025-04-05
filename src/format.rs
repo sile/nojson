@@ -15,9 +15,9 @@ pub struct JsonFormatter<'a, 'b> {
 }
 
 impl<'a, 'b> JsonFormatter<'a, 'b> {
-    pub fn new(fmt: &'a mut std::fmt::Formatter<'b>) -> Self {
+    pub fn new(inner: &'a mut std::fmt::Formatter<'b>) -> Self {
         Self {
-            inner: fmt,
+            inner,
             indent: 0,
             space: 0,
             level: 0,
@@ -25,28 +25,23 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     }
 }
 
-impl JsonFormatter<'_, '_> {
-    pub fn null(&mut self) -> std::fmt::Result {
-        write!(self.inner, "null")
+impl<'b> JsonFormatter<'_, 'b> {
+    pub fn value<T: DisplayJson>(&mut self, value: T) -> std::fmt::Result {
+        value.fmt(self)
     }
 
-    pub fn boolean(&mut self, v: bool) -> std::fmt::Result {
-        write!(self.inner, "{v}")
-    }
-
-    //  value(), string(), array(), object(), raw_value()
-    pub fn write_value<T: Display>(&mut self, value: T) -> std::fmt::Result {
-        write!(self.inner, "{value}")
-    }
-
-    pub fn write_string<T: Display>(&mut self, content: T) -> std::fmt::Result {
-        write!(self.inner, "\"")?;
+    pub fn string<T: Display>(&mut self, content: T) -> std::fmt::Result {
+        self.inner.write_char('"')?;
         {
             let mut fmt = JsonStringContentFormatter { inner: self.inner };
             write!(fmt, "{content}")?;
         }
-        write!(self.inner, "\"")?;
+        self.inner.write_char('"')?;
         Ok(())
+    }
+
+    pub fn inner_mut(&mut self) -> &mut std::fmt::Formatter<'b> {
+        self.inner
     }
 
     pub fn write_array_start(&mut self) -> std::fmt::Result {
