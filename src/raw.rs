@@ -243,15 +243,16 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let json = RawJson::parse("false")?;
-    /// assert_eq!(json.value().as_bool_str()?.parse(), Ok(false));
+    /// assert_eq!(json.value().as_boolean_str()?.parse(), Ok(false));
     ///
     /// let json = RawJson::parse("10")?;
-    /// assert!(json.value().as_bool_str().is_err());
+    /// assert!(json.value().as_boolean_str().is_err());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn as_bool_str(self) -> Result<&'text str, JsonParseError> {
-        self.expect([JsonValueKind::Bool]).map(|v| v.as_raw_str())
+    pub fn as_boolean_str(self) -> Result<&'text str, JsonParseError> {
+        self.expect([JsonValueKind::Boolean])
+            .map(|v| v.as_raw_str())
     }
 
     /// Similar to [`RawJsonValue::as_raw_str()`],

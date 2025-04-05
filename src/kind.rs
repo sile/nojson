@@ -5,8 +5,7 @@ pub enum JsonValueKind {
     Null,
 
     /// `true` or `false`.
-    // Should I rename this to "Boolean"?
-    Bool,
+    Boolean,
 
     /// Integer number.
     Integer,
@@ -30,9 +29,9 @@ impl JsonValueKind {
         matches!(self, Self::Null)
     }
 
-    /// Returns `true` if this kind is [`JsonValueKind::Bool`].
+    /// Returns `true` if this kind is [`JsonValueKind::Boolean`].
     pub const fn is_bool(self) -> bool {
-        matches!(self, Self::Bool)
+        matches!(self, Self::Boolean)
     }
 
     /// Returns `true` if this kind is [`JsonValueKind::Integer`].

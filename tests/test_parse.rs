@@ -66,34 +66,34 @@ fn parse_nulls() -> Result<(), JsonParseError> {
 fn parse_bools() -> Result<(), JsonParseError> {
     let json = RawJson::parse("true")?;
     let value = json.value();
-    assert_eq!(value.kind(), JsonValueKind::Bool);
+    assert_eq!(value.kind(), JsonValueKind::Boolean);
     assert_eq!(value.as_raw_str(), "true");
     assert_eq!(value.position(), 0);
 
     let json = RawJson::parse(" false ")?;
     let value = json.value();
-    assert_eq!(value.kind(), JsonValueKind::Bool);
+    assert_eq!(value.kind(), JsonValueKind::Boolean);
     assert_eq!(value.as_raw_str(), "false");
     assert_eq!(value.position(), 1);
 
     assert_parse_error_matches!(
         "false true",
         JsonParseError::UnexpectedTrailingChar {
-            kind: JsonValueKind::Bool,
+            kind: JsonValueKind::Boolean,
             position: 6
         }
     );
     assert_parse_error_matches!(
         "fale",
         JsonParseError::UnexpectedValueChar {
-            kind: Some(JsonValueKind::Bool),
+            kind: Some(JsonValueKind::Boolean),
             position: 3
         }
     );
     assert_parse_error_matches!(
         "tr",
         JsonParseError::UnexpectedEos {
-            kind: Some(JsonValueKind::Bool),
+            kind: Some(JsonValueKind::Boolean),
             position: 2
         }
     );

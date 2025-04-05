@@ -133,7 +133,7 @@ impl<'text, T: FromRawJsonValue<'text>> FromRawJsonValue<'text> for Option<T> {
 impl<'text> FromRawJsonValue<'text> for bool {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         value
-            .as_bool_str()?
+            .as_boolean_str()?
             .parse()
             .map_err(|e| JsonParseError::invalid_value(value, e))
     }

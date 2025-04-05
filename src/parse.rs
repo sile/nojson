@@ -59,11 +59,11 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_true(&mut self, s: &'a str) -> Result<(), JsonParseError> {
-        self.parse_literal(JsonValueKind::Bool, "rue", s)
+        self.parse_literal(JsonValueKind::Boolean, "rue", s)
     }
 
     fn parse_false(&mut self, s: &'a str) -> Result<(), JsonParseError> {
-        self.parse_literal(JsonValueKind::Bool, "alse", s)
+        self.parse_literal(JsonValueKind::Boolean, "alse", s)
     }
 
     fn parse_literal(
