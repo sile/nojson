@@ -152,6 +152,27 @@ pub(crate) struct JsonValueIndexEntry {
     pub end_index: usize,
 }
 
+/// A JSON value in a [`RasJson`].
+///
+/// This struct only provides that the text and kind of this JSON value.
+/// How to interpret that text is responsibility of the user.
+///
+/// To convert this JSON value to a Rust type that implements the [`FromRawJsonValue`],
+/// [`RawJsonValue::try_to()`] is convinient.
+/// For other Rust types, you can use the standard [`FromStr`] trait or other parsing methods to parse the underlaying JSON text of this value as follows:
+///
+/// ```
+/// # use nojson::{RawJson, RawJsonValue, JsonParseError};
+/// # fn main() -> Result<(), JsonParseError> {
+/// let text = "1.23";
+/// let json = RawJson::parse(text)?;
+/// let raw: RawJsonValue = json.value();
+/// let parsed: f32 =
+///     raw.as_number_str()?.parse().map_err(|e| JsonParseError::invalid_value(raw, e))?;
+/// assert_eq!(parsed, 1.23);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawJsonValue<'text, 'a> {
     json: &'a RawJson<'text>,
@@ -159,12 +180,13 @@ pub struct RawJsonValue<'text, 'a> {
 }
 
 impl<'text, 'a> RawJsonValue<'text, 'a> {
+    /// Returns the kind of this JSON value.
     pub fn kind(self) -> JsonValueKind {
         self.json.values[self.index].kind
     }
 
-    fn entry(&self) -> &JsonValueIndexEntry {
-        &self.json.values[self.index]
+    pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
+        T::from_raw_json_value(self)
     }
 
     pub fn parent(self) -> Option<Self> {
@@ -248,10 +270,6 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
             }
         }
         Cow::Owned(unescaped)
-    }
-
-    pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
-        T::from_raw_json_value(self)
     }
 
     fn expect<const N: usize>(self, kinds: [JsonValueKind; N]) -> Result<Self, JsonParseError> {
@@ -356,6 +374,10 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         }
 
         Ok((required, optional))
+    }
+
+    fn entry(&self) -> &JsonValueIndexEntry {
+        &self.json.values[self.index]
     }
 }
 
