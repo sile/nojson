@@ -74,40 +74,6 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         Ok(())
     }
 
-    pub fn write_array_start(&mut self) -> std::fmt::Result {
-        write!(self.inner, "[")?;
-        self.level += 1;
-        Ok(())
-    }
-
-    pub fn write_array_element<T>(&mut self, _value: T, first: bool) -> std::fmt::Result
-    where
-        T: DisplayJson,
-    {
-        if !first {
-            write!(self.inner, ",")?;
-        }
-
-        if self.indent_size > 0 {
-            let indent = self.indent_size * self.level;
-            write!(self.inner, "\n{:indent$}", "", indent = indent)?;
-        }
-
-        // TODO: write value
-
-        Ok(())
-    }
-
-    pub fn write_array_end(&mut self, empty: bool) -> std::fmt::Result {
-        self.level -= 1;
-        if !empty && self.indent_size > 0 {
-            let indent = self.indent_size * self.level;
-            write!(self.inner, "\n{:indent$}", "", indent = indent)?;
-        }
-        write!(self.inner, "]")?;
-        Ok(())
-    }
-
     pub fn get_level(&self) -> usize {
         self.level
     }
