@@ -135,7 +135,7 @@ pub struct JsonArrayFormatter<'a, 'b, 'c> {
     empty: bool,
 }
 
-impl<'a, 'b, 'c> JsonArrayFormatter<'a, 'b, 'c> {
+impl JsonArrayFormatter<'_, '_, '_> {
     pub fn element<T: DisplayJson>(&mut self, element: T) -> std::fmt::Result {
         if !self.empty {
             write!(self.fmt.inner, ",")?;
