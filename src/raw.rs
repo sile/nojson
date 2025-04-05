@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
-use crate::{FromRawJsonValue, JsonValueKind, parse::JsonParser};
+use crate::{DisplayJson, FromRawJsonValue, JsonFormatter, JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
@@ -142,7 +142,11 @@ impl Display for RawJson<'_> {
     }
 }
 
-// TODO: impl DisplayJson
+impl DisplayJson for RawJson<'_> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        DisplayJson::fmt(&self.value(), f)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct JsonValueIndexEntry {
@@ -562,7 +566,19 @@ impl Display for RawJsonValue<'_, '_> {
     }
 }
 
-// TODO: impl DisplayJson
+impl DisplayJson for RawJsonValue<'_, '_> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        match self.kind() {
+            JsonValueKind::Null
+            | JsonValueKind::Boolean
+            | JsonValueKind::Integer
+            | JsonValueKind::Float => write!(f.inner_mut(), "{}", self.as_raw_str()),
+            JsonValueKind::String => f.string(self.unquote()),
+            JsonValueKind::Array => f.array(|f| f.elements(self.to_array().expect("infallible"))),
+            JsonValueKind::Object => f.object(|f| f.members(self.to_object().expect("infallible"))),
+        }
+    }
+}
 
 #[derive(Debug)]
 struct Children<'text, 'a> {
