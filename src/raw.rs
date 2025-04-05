@@ -152,14 +152,14 @@ pub(crate) struct JsonValueIndexEntry {
     pub end_index: usize,
 }
 
-/// A JSON value in a [`RasJson`].
+/// A JSON value in a [`RawJson`].
 ///
 /// This struct only provides the text and structural information (e.g., kind, parent, children) of this JSON value.
 /// Interpreting that text is the responsibility of the user.
 ///
 /// To convert this JSON value to a Rust type that implements the [`FromRawJsonValue`] trait,
 /// [`RawJsonValue::try_to()`] is convinient.
-/// For other Rust types, you can use the standard [`FromStr`] trait or other parsing methods to parse the underlaying JSON text of this value as shown below:
+/// For other Rust types, you can use the standard [`FromStr`](std::str::FromStr) trait or other parsing methods to parse the underlaying JSON text of this value as shown below:
 ///
 /// ```
 /// # use nojson::{RawJson, RawJsonValue, JsonParseError};
@@ -228,38 +228,40 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         T::from_raw_json_value(self)
     }
 
+    /// Returns the raw JSON text of this value as-is.
     pub fn as_raw_str(self) -> &'text str {
         let text = &self.json.values[self.index].text;
         &self.json.text[text.start..text.end]
     }
 
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a boolean.
     pub fn as_bool_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Bool]).map(|v| v.as_raw_str())
     }
 
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is an integer number.
     pub fn as_integer_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Integer])
             .map(|v| v.as_raw_str())
     }
 
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a floating-point number.
     pub fn as_float_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Float]).map(|v| v.as_raw_str())
     }
 
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a number.
     pub fn as_number_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Integer, JsonValueKind::Float])
             .map(|v| v.as_raw_str())
     }
 
     pub fn to_unquoted_string_str(self) -> Result<Cow<'text, str>, JsonParseError> {
-        self.expect([JsonValueKind::String])
-            .map(|v| v.to_unquoted_str())
+        self.expect([JsonValueKind::String]).map(|v| v.unquote())
     }
 
-    fn to_unquoted_str(self) -> Cow<'text, str> {
-        if !self.kind().is_string() {
-            return Cow::Borrowed(self.as_raw_str());
-        }
+    fn unquote(self) -> Cow<'text, str> {
+        debug_assert!(self.kind().is_string());
 
         let content = &self.as_raw_str()[1..self.as_raw_str().len() - 1];
         if !self.entry().escaped {
@@ -373,7 +375,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         let mut required = [self; N];
         let mut optional = [None; M];
         for (k, v) in self.to_object_members()? {
-            let k = k.to_unquoted_str();
+            let k = k.unquote();
             dbg!(&k);
             if let Some(i) = required_member_names.iter().position(|n| k == *n) {
                 dbg!(v);
