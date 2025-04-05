@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use nojson::{DisplayJson, Json, json};
 
 #[test]
@@ -64,5 +66,40 @@ fn array() {
   ],
   [2, 3]
 ]"#
+    );
+}
+
+#[test]
+fn object() {
+    let object = [(1, None), (2, Some("foo")), (3, Some("ba\nr"))]
+        .into_iter()
+        .collect::<BTreeMap<_, _>>();
+    assert_eq!(
+        Json(&object).to_string(),
+        r#"{"1":null,"2":"foo","3":"ba\nr"}"#
+    );
+    assert_eq!(
+        json(|f| {
+            f.set_spacing(true);
+            f.value(&object)
+        })
+        .to_string(),
+        r#"{ "1": null, "2": "foo", "3": "ba\nr" }"#
+    );
+    assert_eq!(
+        format!(
+            "\n{}",
+            json(|f| {
+                f.set_indent_size(2);
+                f.set_spacing(true);
+                f.value(&object)
+            })
+        ),
+        r#"
+{
+  "1": null,
+  "2": "foo",
+  "3": "ba\nr"
+}"#
     );
 }
