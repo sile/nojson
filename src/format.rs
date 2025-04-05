@@ -2,9 +2,6 @@ use std::fmt::{Display, Write};
 
 use crate::DisplayJson;
 
-pub struct JsonArrayFormatter;
-pub struct JsonObjectFormatter;
-
 pub struct JsonFormatter<'a, 'b> {
     inner: &'a mut std::fmt::Formatter<'b>,
     level: usize,
@@ -23,23 +20,58 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     }
 }
 
-impl<'b> JsonFormatter<'_, 'b> {
+impl<'a, 'b> JsonFormatter<'a, 'b> {
     pub fn value<T: DisplayJson>(&mut self, value: T) -> std::fmt::Result {
         value.fmt(self)
     }
 
     pub fn string<T: Display>(&mut self, content: T) -> std::fmt::Result {
-        self.inner.write_char('"')?;
+        write!(self.inner, "\"")?;
         {
             let mut fmt = JsonStringContentFormatter { inner: self.inner };
             write!(fmt, "{content}")?;
         }
-        self.inner.write_char('"')?;
+        write!(self.inner, "\"")?;
+        Ok(())
+    }
+
+    pub fn array<F>(&mut self, f: F) -> std::fmt::Result
+    where
+        F: FnOnce(&mut JsonArrayFormatter<'a, 'b, '_>) -> std::fmt::Result,
+    {
+        write!(self.inner, "[")?;
+
+        let indent_size = self.indent_size;
+        let spacing = self.spacing;
+        self.level += 1;
+        let mut array = JsonArrayFormatter {
+            fmt: self,
+            empty: true,
+        };
+        f(&mut array)?;
+        let empty = array.empty;
+        self.level -= 1;
+        self.indent_size = indent_size;
+        self.spacing = spacing;
+
+        if !empty {
+            self.indent()?;
+        }
+        write!(self.inner, "]")?;
+
         Ok(())
     }
 
     pub fn inner_mut(&mut self) -> &mut std::fmt::Formatter<'b> {
         self.inner
+    }
+
+    fn indent(&mut self) -> std::fmt::Result {
+        if self.indent_size > 0 {
+            let total = self.indent_size * self.level;
+            write!(self.inner, "\n{:total$}", "", total = total)?;
+        }
+        Ok(())
     }
 
     pub fn write_array_start(&mut self) -> std::fmt::Result {
@@ -99,6 +131,16 @@ impl<'b> JsonFormatter<'_, 'b> {
     }
 }
 
+impl std::fmt::Debug for JsonFormatter<'_, '_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JsonFormatter")
+            .field("level", &self.level)
+            .field("indent_size", &self.indent_size)
+            .field("spacing", &self.spacing)
+            .finish_non_exhaustive()
+    }
+}
+
 struct JsonStringContentFormatter<'a, 'b> {
     inner: &'a mut std::fmt::Formatter<'b>,
 }
@@ -121,3 +163,36 @@ impl std::fmt::Write for JsonStringContentFormatter<'_, '_> {
         Ok(())
     }
 }
+
+pub struct JsonArrayFormatter<'a, 'b, 'c> {
+    fmt: &'c mut JsonFormatter<'a, 'b>,
+    empty: bool,
+}
+
+impl<'a, 'b, 'c> JsonArrayFormatter<'a, 'b, 'c> {
+    pub fn element<T: DisplayJson>(&mut self, element: T) -> std::fmt::Result {
+        if !self.empty {
+            write!(self.fmt.inner, ",")?;
+            if self.fmt.spacing && self.fmt.indent_size == 0 {
+                write!(self.fmt.inner, " ")?;
+            }
+        }
+        self.fmt.indent()?;
+        self.fmt.value(element)?;
+        self.empty = false;
+        Ok(())
+    }
+
+    pub fn elements<I>(&mut self, elements: I) -> std::fmt::Result
+    where
+        I: IntoIterator,
+        I::Item: DisplayJson,
+    {
+        for element in elements {
+            self.element(element)?;
+        }
+        Ok(())
+    }
+}
+
+pub struct JsonObjectFormatter;

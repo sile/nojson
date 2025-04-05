@@ -4,13 +4,13 @@ pub trait DisplayJson {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result;
 }
 
-impl<T: DisplayJson> DisplayJson for &T {
+impl<T: DisplayJson + ?Sized> DisplayJson for &T {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         (*self).fmt(f)
     }
 }
 
-impl<T: DisplayJson> DisplayJson for Box<T> {
+impl<T: DisplayJson + ?Sized> DisplayJson for Box<T> {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         (**self).fmt(f)
     }
@@ -197,5 +197,41 @@ impl DisplayJson for &str {
 impl DisplayJson for String {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.string(self)
+    }
+}
+
+impl<T: DisplayJson, const N: usize> DisplayJson for [T; N] {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| f.elements(self.iter()))
+    }
+}
+
+impl<T: DisplayJson> DisplayJson for &[T] {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| f.elements(self.iter()))
+    }
+}
+
+impl<T: DisplayJson> DisplayJson for Vec<T> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| f.elements(self.iter()))
+    }
+}
+
+impl<T: DisplayJson> DisplayJson for std::collections::VecDeque<T> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| f.elements(self.iter()))
+    }
+}
+
+impl<T: DisplayJson> DisplayJson for std::collections::BTreeSet<T> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| f.elements(self.iter()))
+    }
+}
+
+impl<T: DisplayJson> DisplayJson for std::collections::HashSet<T> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| f.elements(self.iter()))
     }
 }
