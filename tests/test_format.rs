@@ -102,4 +102,22 @@ fn object() {
   "3": "ba\nr"
 }"#
     );
+    assert_eq!(
+        format!(
+            "\n{}",
+            json(|f| {
+                f.set_indent_size(2);
+                f.set_spacing(true);
+                f.value([&object])
+            })
+        ),
+        r#"
+[
+  {
+    "1": null,
+    "2": "foo",
+    "3": "ba\nr"
+  }
+]"#
+    );
 }
