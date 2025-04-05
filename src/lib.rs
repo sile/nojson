@@ -22,20 +22,20 @@ pub use from_raw_json_value::FromRawJsonValue;
 pub use kind::JsonValueKind;
 pub use raw::{JsonParseError, RawJson, RawJsonValue};
 
-/// Marker struct that makes it possible to execute JSON parsing and generation via [`FromStr`] and [`Display`] traits.
+/// A marker struct that enables JSON parsing and generation through the [`FromStr`] and [`Display`] traits.
 ///
-/// This is a handy way to operating on JSON, but if you need more control,
-/// please consider to use [`RawJson`] (for JSON pasing) and [`json()`] (for JSON generation) instead.
+/// This provides a convenient way to work with JSON, but if you need more fine-grained control,
+/// consider using [`RawJson`] (for JSON parsing) and [`json()`] (for JSON generation) instead.
 ///
 /// # Examples
 ///
-/// Parse a JSON text:
+/// Parsing JSON text:
 /// ```
 /// use nojson::Json;
 ///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// // As `[Option<u32>; 3]` type implements the `FromRawJsonValue` trait,
-/// // you can use the `std::str::parse()` method to parse JSON by wrapping the type by `Json`.
+/// // Since the `[Option<u32>; 3]` type implements the `FromRawJsonValue` trait,
+/// // you can use the `std::str::parse()` method to parse JSON by wrapping the type with `Json`.
 /// let text = "[1, null, 2]";
 /// let value: Json(_) = text.parse()?;
 /// assert_eq!(value, [Some(1), None, Some(2)]);
@@ -43,13 +43,13 @@ pub use raw::{JsonParseError, RawJson, RawJsonValue};
 /// # }
 /// ```
 ///
-/// Generate a JSON type from a Rust type:
+/// Generating JSON from a Rust type:
 /// ```
 /// use nojson::Json;
 ///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// // As `[Option<u32>; 3]` type implements the `DisplyJson` trait too,
-/// // you can use the `std::fmt::Display::to_string()` method to generate JSON by wrapping the type by `Json`.
+/// // Since the `[Option<u32>; 3]` type also implements the `DisplyJson` trait,
+/// // you can use the `std::fmt::Display::to_string()` method to generate JSON by wrapping the type with `Json`.
 /// let value = [Some(1), None, Some(2)];
 /// assert_eq!(Json(value).to_string(), "[1,null,2]");
 /// # OK(())
@@ -104,3 +104,5 @@ where
         self.0(f)
     }
 }
+
+// TODO: error context generating function
