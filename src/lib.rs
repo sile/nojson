@@ -4,6 +4,7 @@
 //! - Rather toolbox than a monilitic framework.
 //! - Easy to add custom validtions:
 //!   - Application specific validation error can be associated with the errorneous JSON value position at the JSON text.
+mod display_json;
 mod format;
 mod from_raw_json_value;
 mod kind;
@@ -11,9 +12,10 @@ mod parse;
 mod parse_error;
 mod raw;
 
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
-pub use format::{DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
+pub use display_json::DisplayJson;
+pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, json};
 pub use from_raw_json_value::FromRawJsonValue;
 pub use kind::JsonValueKind;
 pub use raw::{JsonParseError, RawJson, RawJsonValue};
@@ -21,7 +23,7 @@ pub use raw::{JsonParseError, RawJson, RawJsonValue};
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);
 
-impl<T: DisplayJson> std::fmt::Display for Json<T> {
+impl<T: DisplayJson> Display for Json<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut fmt = JsonFormatter::new(f);
         self.0.fmt(&mut fmt)?;
