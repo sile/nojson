@@ -185,10 +185,17 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         self.json.values[self.index].kind
     }
 
-    pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
-        T::from_raw_json_value(self)
+    /// Returns the byte position where this value begins in the JSON text (`self.json().text()`).
+    pub fn position(self) -> usize {
+        self.json.values[self.index].text.start
     }
 
+    /// Returns a reference to the [`RawJson`] instance that contains this value.
+    pub fn json(self) -> &'a RawJson<'text> {
+        self.json
+    }
+
+    // TODO: test
     pub fn parent(self) -> Option<Self> {
         if self.index == 0 {
             return None;
@@ -196,12 +203,8 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         self.json.get_value_by_position(self.position() - 1)
     }
 
-    pub fn json(self) -> &'a RawJson<'text> {
-        self.json
-    }
-
-    pub fn position(self) -> usize {
-        self.json.values[self.index].text.start
+    pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
+        T::from_raw_json_value(self)
     }
 
     pub fn as_raw_str(self) -> &'text str {
