@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::JsonFormatter;
 
 pub trait DisplayJson {
@@ -233,5 +235,17 @@ impl<T: DisplayJson> DisplayJson for std::collections::BTreeSet<T> {
 impl<T: DisplayJson> DisplayJson for std::collections::HashSet<T> {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.array(|f| f.elements(self.iter()))
+    }
+}
+
+impl<K: Display, V: DisplayJson> DisplayJson for std::collections::BTreeMap<K, V> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.object(|f| f.members(self.iter()))
+    }
+}
+
+impl<K: Display, V: DisplayJson> DisplayJson for std::collections::HashMap<K, V> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.object(|f| f.members(self.iter()))
     }
 }

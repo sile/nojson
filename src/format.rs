@@ -62,6 +62,37 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         Ok(())
     }
 
+    pub fn object<F>(&mut self, f: F) -> std::fmt::Result
+    where
+        F: FnOnce(&mut JsonObjectFormatter<'a, 'b, '_>) -> std::fmt::Result,
+    {
+        write!(self.inner, "{{")?;
+
+        let indent_size = self.indent_size;
+        let spacing = self.spacing;
+        self.level += 1;
+        let mut object = JsonObjectFormatter {
+            fmt: self,
+            empty: true,
+        };
+        f(&mut object)?;
+        let empty = object.empty;
+        self.level -= 1;
+        self.indent_size = indent_size;
+        self.spacing = spacing;
+
+        if !empty {
+            if self.indent_size > 0 {
+                self.indent()?;
+            } else if self.spacing {
+                write!(self.inner, " ")?;
+            }
+        }
+        write!(self.inner, "}}")?;
+
+        Ok(())
+    }
+
     pub fn inner_mut(&mut self) -> &mut std::fmt::Formatter<'b> {
         self.inner
     }
@@ -161,4 +192,46 @@ impl JsonArrayFormatter<'_, '_, '_> {
     }
 }
 
-pub struct JsonObjectFormatter;
+pub struct JsonObjectFormatter<'a, 'b, 'c> {
+    fmt: &'c mut JsonFormatter<'a, 'b>,
+    empty: bool,
+}
+
+impl JsonObjectFormatter<'_, '_, '_> {
+    pub fn member<N, V>(&mut self, name: N, value: V) -> std::fmt::Result
+    where
+        N: Display,
+        V: DisplayJson,
+    {
+        if !self.empty {
+            write!(self.fmt.inner, ",")?;
+            if self.fmt.spacing && self.fmt.indent_size == 0 {
+                write!(self.fmt.inner, " ")?;
+            }
+        } else if self.fmt.spacing && self.fmt.indent_size == 0 {
+            write!(self.fmt.inner, " ")?;
+        }
+
+        self.fmt.indent()?;
+        self.fmt.string(name)?;
+        write!(self.fmt.inner, ":")?;
+        if self.fmt.spacing {
+            write!(self.fmt.inner, " ")?;
+        }
+        self.fmt.value(value)?;
+        self.empty = false;
+        Ok(())
+    }
+
+    pub fn members<I, N, V>(&mut self, members: I) -> std::fmt::Result
+    where
+        I: IntoIterator<Item = (N, V)>,
+        N: Display,
+        V: DisplayJson,
+    {
+        for (name, value) in members {
+            self.member(name, value)?;
+        }
+        Ok(())
+    }
+}
