@@ -154,12 +154,12 @@ pub(crate) struct JsonValueIndexEntry {
 
 /// A JSON value in a [`RasJson`].
 ///
-/// This struct only provides that the text and kind of this JSON value.
-/// How to interpret that text is responsibility of the user.
+/// This struct only provides the text and structural information (e.g., kind, parent, children) of this JSON value.
+/// Interpreting that text is the responsibility of the user.
 ///
-/// To convert this JSON value to a Rust type that implements the [`FromRawJsonValue`],
+/// To convert this JSON value to a Rust type that implements the [`FromRawJsonValue`] trait,
 /// [`RawJsonValue::try_to()`] is convinient.
-/// For other Rust types, you can use the standard [`FromStr`] trait or other parsing methods to parse the underlaying JSON text of this value as follows:
+/// For other Rust types, you can use the standard [`FromStr`] trait or other parsing methods to parse the underlaying JSON text of this value as shown below:
 ///
 /// ```
 /// # use nojson::{RawJson, RawJsonValue, JsonParseError};
