@@ -234,28 +234,29 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         &self.json.text[text.start..text.end]
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a boolean.
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON boolean.
     pub fn as_bool_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Bool]).map(|v| v.as_raw_str())
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is an integer number.
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON integer number.
     pub fn as_integer_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Integer])
             .map(|v| v.as_raw_str())
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a floating-point number.
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON floating-point number.
     pub fn as_float_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Float]).map(|v| v.as_raw_str())
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a number.
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON number.
     pub fn as_number_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Integer, JsonValueKind::Float])
             .map(|v| v.as_raw_str())
     }
 
+    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON number and returns the unquoted content of the string.
     pub fn to_unquoted_string_str(self) -> Result<Cow<'text, str>, JsonParseError> {
         self.expect([JsonValueKind::String]).map(|v| v.unquote())
     }
