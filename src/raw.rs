@@ -175,8 +175,8 @@ pub(crate) struct JsonValueIndexEntry {
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawJsonValue<'text, 'a> {
-    json: &'a RawJson<'text>,
     index: usize,
+    json: &'a RawJson<'text>,
 }
 
 impl<'text, 'a> RawJsonValue<'text, 'a> {
@@ -203,6 +203,27 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         self.json.get_value_by_position(self.position() - 1)
     }
 
+    /// Covnerts this value to `T` by using [`FromRawJsonValue::from_raw_json_value()`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::{ RawJson, FromRawJsonValue };
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("[1, 2, -3]")?;
+    ///
+    /// // Convert via `FromRawJsonValue::from_raw_json_value()`
+    /// let (v0, v1, v2) = FromRawJsonValue::from_raw_json_value(json.value())?;
+    /// assert_eq!((v0, v1, v2), (1, 2.0, -3));
+    ///
+    /// // Convert via `RawJsonValue::try_to()`
+    /// // (Exactly the same result as the above call, but usually more concise and readable)
+    /// let (v0, v1, v2) = json.value().try_to()?;
+    /// assert_eq!((v0, v1, v2), (1, 2.0, -3));
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
         T::from_raw_json_value(self)
     }
