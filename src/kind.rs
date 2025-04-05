@@ -5,6 +5,7 @@ pub enum JsonValueKind {
     Null,
 
     /// `true` or `false`.
+    // Should I rename this to "Boolean"?
     Bool,
 
     /// Integer number.

@@ -26,6 +26,14 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
 }
 
 impl JsonFormatter<'_, '_> {
+    pub fn null(&mut self) -> std::fmt::Result {
+        write!(self.inner, "null")
+    }
+
+    pub fn boolean(&mut self, v: bool) -> std::fmt::Result {
+        write!(self.inner, "{v}")
+    }
+
     //  value(), string(), array(), object(), raw_value()
     pub fn write_value<T: Display>(&mut self, value: T) -> std::fmt::Result {
         write!(self.inner, "{value}")
