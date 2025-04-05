@@ -234,96 +234,155 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         &self.json.text[text.start..text.end]
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON boolean.
+    /// Similar to [`RawJsonValue::as_raw_str()`],
+    /// but this method verifies whether the value is a JSON boolean.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("false")?;
+    /// assert_eq!(json.value().as_bool_str()?.parse(), Ok(false));
+    ///
+    /// let json = RawJson::parse("10")?;
+    /// assert!(json.value().as_bool_str().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_bool_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Bool]).map(|v| v.as_raw_str())
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON integer number.
+    /// Similar to [`RawJsonValue::as_raw_str()`],
+    /// but this method verifies whether the value is a JSON integer number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("123")?;
+    /// assert_eq!(json.value().as_integer_str()?.parse(), Ok(123));
+    ///
+    /// let json = RawJson::parse("12.3")?;
+    /// assert!(json.value().as_integer_str().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_integer_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Integer])
             .map(|v| v.as_raw_str())
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON floating-point number.
+    /// Similar to [`RawJsonValue::as_raw_str()`],
+    /// but this method verifies whether the value is a JSON floating-point number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("12.3")?;
+    /// assert_eq!(json.value().as_float_str()?.parse(), Ok(12.3));
+    ///
+    /// let json = RawJson::parse("123")?;
+    /// assert!(json.value().as_float_str().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_float_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Float]).map(|v| v.as_raw_str())
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON number.
+    /// Similar to [`RawJsonValue::as_raw_str()`],
+    /// but this method verifies whether the value is a JSON number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("123")?;
+    /// assert_eq!(json.value().as_number_str()?.parse(), Ok(123));
+    ///
+    /// let json = RawJson::parse("12.3")?;
+    /// assert_eq!(json.value().as_number_str()?.parse(), Ok(12.3));
+    ///
+    /// let json = RawJson::parse("null")?;
+    /// assert!(json.value().as_number_str().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_number_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::Integer, JsonValueKind::Float])
             .map(|v| v.as_raw_str())
     }
 
-    /// Similar to [`RawJsonValue::as_raw_str()`], but this method verifies whether the value is a JSON number and returns the unquoted content of the string.
+    /// Similar to [`RawJsonValue::as_raw_str()`],
+    /// but this method verifies whether the value is a JSON number and returns the unquoted content of the string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("\"123\"")?;
+    /// assert_eq!(json.value().to_unquoted_string_str()?, "123");
+    /// assert_eq!(json.value().to_unquoted_string_str()?.parse(), Ok(123));
+    ///
+    /// let json = RawJson::parse("123")?;
+    /// assert!(json.value().to_unquoted_string_str().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn to_unquoted_string_str(self) -> Result<Cow<'text, str>, JsonParseError> {
         self.expect([JsonValueKind::String]).map(|v| v.unquote())
     }
 
-    fn unquote(self) -> Cow<'text, str> {
-        debug_assert!(self.kind().is_string());
-
-        let content = &self.as_raw_str()[1..self.as_raw_str().len() - 1];
-        if !self.entry().escaped {
-            return Cow::Borrowed(content);
-        }
-
-        let mut unescaped = String::with_capacity(content.len());
-        let mut chars = content.chars();
-        while let Some(c) = chars.next() {
-            match c {
-                '\\' => {
-                    let c = chars.next().expect("infallible");
-                    match c {
-                        '\\' | '/' | '"' | 'n' | 't' | 'r' | 'b' | 'f' => unescaped.push(c),
-                        'u' => {
-                            let c = std::str::from_utf8(&[
-                                chars.next().expect("infallible") as u8,
-                                chars.next().expect("infallible") as u8,
-                                chars.next().expect("infallible") as u8,
-                                chars.next().expect("infallible") as u8,
-                            ])
-                            .ok()
-                            .and_then(|code| u32::from_str_radix(code, 16).ok())
-                            .and_then(char::from_u32)
-                            .expect("infallible");
-                            unescaped.push(c);
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                _ => unescaped.push(c),
-            }
-        }
-        Cow::Owned(unescaped)
-    }
-
-    fn expect<const N: usize>(self, kinds: [JsonValueKind; N]) -> Result<Self, JsonParseError> {
-        if kinds.contains(&self.kind()) {
-            Ok(self)
-        } else {
-            Err(JsonParseError::invalid_value(
-                self,
-                format!(
-                    "expected {}, but found {:?}",
-                    if kinds.len() == 1 {
-                        format!("{:?}", kinds[0])
-                    } else {
-                        format!("one of {:?}", kinds)
-                    },
-                    self.kind()
-                ),
-            ))
-        }
-    }
-
+    /// If the value is a JSON array,
+    /// this method returns an iterator that iterates over the array's elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("[0, 1, 2]")?;
+    /// for (i, v) in json.value().to_array_values()?.enumerate() {
+    ///     assert_eq!(v.as_integer_str()?.parse(), Ok(i));
+    /// }
+    ///
+    /// let json = RawJson::parse("null")?;
+    /// assert!(json.value().to_array_values().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn to_array_values(
         self,
     ) -> Result<impl Iterator<Item = RawJsonValue<'text, 'a>>, JsonParseError> {
         self.expect([JsonValueKind::Array]).map(Children::new)
     }
 
+    /// If the value is a JSON array with exactly `N` elements,
+    /// this method returns a fixed-size array containing those elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("[0, 1, 2]")?;
+    /// let [v0, v1, v2] = json.value().to_fixed_array()?;
+    /// for (i, v) in [v0, v1, v2].into_iter().enumerate() {
+    ///     assert_eq!(v.as_integer_str()?.parse(), Ok(i));
+    /// }
+    ///
+    /// let json = RawJson::parse("[0, 1]")?;
+    /// assert!(json.value().to_fixed_array::<3>().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn to_fixed_array<const N: usize>(
         self,
     ) -> Result<[RawJsonValue<'text, 'a>; N], JsonParseError> {
@@ -401,6 +460,63 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         }
 
         Ok((required, optional))
+    }
+
+    fn unquote(self) -> Cow<'text, str> {
+        debug_assert!(self.kind().is_string());
+
+        let content = &self.as_raw_str()[1..self.as_raw_str().len() - 1];
+        if !self.entry().escaped {
+            return Cow::Borrowed(content);
+        }
+
+        let mut unescaped = String::with_capacity(content.len());
+        let mut chars = content.chars();
+        while let Some(c) = chars.next() {
+            match c {
+                '\\' => {
+                    let c = chars.next().expect("infallible");
+                    match c {
+                        '\\' | '/' | '"' | 'n' | 't' | 'r' | 'b' | 'f' => unescaped.push(c),
+                        'u' => {
+                            let c = std::str::from_utf8(&[
+                                chars.next().expect("infallible") as u8,
+                                chars.next().expect("infallible") as u8,
+                                chars.next().expect("infallible") as u8,
+                                chars.next().expect("infallible") as u8,
+                            ])
+                            .ok()
+                            .and_then(|code| u32::from_str_radix(code, 16).ok())
+                            .and_then(char::from_u32)
+                            .expect("infallible");
+                            unescaped.push(c);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                _ => unescaped.push(c),
+            }
+        }
+        Cow::Owned(unescaped)
+    }
+
+    fn expect<const N: usize>(self, kinds: [JsonValueKind; N]) -> Result<Self, JsonParseError> {
+        if kinds.contains(&self.kind()) {
+            Ok(self)
+        } else {
+            Err(JsonParseError::invalid_value(
+                self,
+                format!(
+                    "expected {}, but found {:?}",
+                    if kinds.len() == 1 {
+                        format!("{:?}", kinds[0])
+                    } else {
+                        format!("one of {:?}", kinds)
+                    },
+                    self.kind()
+                ),
+            ))
+        }
     }
 
     fn entry(&self) -> &JsonValueIndexEntry {
