@@ -358,7 +358,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_array(self) -> Result<impl Iterator<Item = RawJsonValue<'text, 'a>>, JsonParseError> {
+    pub fn to_array(self) -> Result<impl Iterator<Item = Self>, JsonParseError> {
         self.expect([JsonValueKind::Array]).map(Children::new)
     }
 
@@ -381,9 +381,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_fixed_array<const N: usize>(
-        self,
-    ) -> Result<[RawJsonValue<'text, 'a>; N], JsonParseError> {
+    pub fn to_fixed_array<const N: usize>(self) -> Result<[Self; N], JsonParseError> {
         let mut values = self.to_array()?;
         let mut fixed_array = [self; N];
         for (i, v) in fixed_array.iter_mut().enumerate() {
@@ -409,12 +407,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         Ok(fixed_array)
     }
 
-    pub fn to_object(
-        self,
-    ) -> Result<
-        impl Iterator<Item = (RawJsonValue<'text, 'a>, RawJsonValue<'text, 'a>)>,
-        JsonParseError,
-    > {
+    pub fn to_object(self) -> Result<impl Iterator<Item = (Self, Self)>, JsonParseError> {
         self.expect([JsonValueKind::Object])
             .map(JsonKeyValuePairs::new)
     }
@@ -423,13 +416,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         self,
         required_member_names: [&str; N],
         optional_member_names: [&str; M],
-    ) -> Result<
-        (
-            [RawJsonValue<'text, 'a>; N],
-            [Option<RawJsonValue<'text, 'a>>; M],
-        ),
-        JsonParseError,
-    > {
+    ) -> Result<([Self; N], [Option<Self>; M]), JsonParseError> {
         let mut required = [self; N];
         let mut optional = [None; M];
         for (k, v) in self.to_object()? {
