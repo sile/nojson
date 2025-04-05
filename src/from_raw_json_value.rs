@@ -334,19 +334,13 @@ impl<'text> FromRawJsonValue<'text> for std::borrow::Cow<'text, str> {
 
 impl<'text, T: FromRawJsonValue<'text>> FromRawJsonValue<'text> for Vec<T> {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
-        value
-            .to_array_values()?
-            .map(T::from_raw_json_value)
-            .collect()
+        value.to_array()?.map(T::from_raw_json_value).collect()
     }
 }
 
 impl<'text, T: FromRawJsonValue<'text>> FromRawJsonValue<'text> for std::collections::VecDeque<T> {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
-        value
-            .to_array_values()?
-            .map(T::from_raw_json_value)
-            .collect()
+        value.to_array()?.map(T::from_raw_json_value).collect()
     }
 }
 
@@ -355,10 +349,7 @@ where
     T: FromRawJsonValue<'text> + Ord,
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
-        value
-            .to_array_values()?
-            .map(T::from_raw_json_value)
-            .collect()
+        value.to_array()?.map(T::from_raw_json_value).collect()
     }
 }
 
@@ -367,10 +358,7 @@ where
     T: FromRawJsonValue<'text> + Eq + std::hash::Hash,
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
-        value
-            .to_array_values()?
-            .map(T::from_raw_json_value)
-            .collect()
+        value.to_array()?.map(T::from_raw_json_value).collect()
     }
 }
 
@@ -537,7 +525,7 @@ where
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         value
-            .to_object_members()?
+            .to_object()?
             .map(|(k, v)| {
                 Ok((
                     k.to_unquoted_string_str()?
@@ -558,7 +546,7 @@ where
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         value
-            .to_object_members()?
+            .to_object()?
             .map(|(k, v)| {
                 Ok((
                     k.to_unquoted_string_str()?

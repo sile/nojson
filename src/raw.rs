@@ -349,18 +349,16 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let json = RawJson::parse("[0, 1, 2]")?;
-    /// for (i, v) in json.value().to_array_values()?.enumerate() {
+    /// for (i, v) in json.value().to_array()?.enumerate() {
     ///     assert_eq!(v.as_integer_str()?.parse(), Ok(i));
     /// }
     ///
     /// let json = RawJson::parse("null")?;
-    /// assert!(json.value().to_array_values().is_err());
+    /// assert!(json.value().to_array().is_err());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_array_values(
-        self,
-    ) -> Result<impl Iterator<Item = RawJsonValue<'text, 'a>>, JsonParseError> {
+    pub fn to_array(self) -> Result<impl Iterator<Item = RawJsonValue<'text, 'a>>, JsonParseError> {
         self.expect([JsonValueKind::Array]).map(Children::new)
     }
 
@@ -386,7 +384,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     pub fn to_fixed_array<const N: usize>(
         self,
     ) -> Result<[RawJsonValue<'text, 'a>; N], JsonParseError> {
-        let mut values = self.to_array_values()?;
+        let mut values = self.to_array()?;
         let mut fixed_array = [self; N];
         for (i, v) in fixed_array.iter_mut().enumerate() {
             *v = values.next().ok_or_else(|| {
@@ -411,7 +409,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         Ok(fixed_array)
     }
 
-    pub fn to_object_members(
+    pub fn to_object(
         self,
     ) -> Result<
         impl Iterator<Item = (RawJsonValue<'text, 'a>, RawJsonValue<'text, 'a>)>,
@@ -434,7 +432,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     > {
         let mut required = [self; N];
         let mut optional = [None; M];
-        for (k, v) in self.to_object_members()? {
+        for (k, v) in self.to_object()? {
             let k = k.unquote();
             dbg!(&k);
             if let Some(i) = required_member_names.iter().position(|n| k == *n) {
