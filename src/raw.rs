@@ -195,7 +195,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         self.json
     }
 
-    // TODO: test
+    /// Returns the parent value (array or object) that contains this value.
     pub fn parent(self) -> Option<Self> {
         if self.index == 0 {
             return None;

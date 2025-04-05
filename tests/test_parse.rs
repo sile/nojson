@@ -437,3 +437,18 @@ fn get_value_by_position() {
     assert_eq!(value.kind(), JsonValueKind::Null);
     assert_eq!(value.position(), 11);
 }
+
+#[test]
+fn value_parent() {
+    let text = r#"{"1":1,"2":[null],"3":3}"#;
+    let json = RawJson::parse(text).expect("ok");
+    let value = json.get_value_by_position(13).expect("some");
+    assert_eq!(value.as_raw_str(), "null");
+
+    let parent = value.parent().expect("parent");
+    assert_eq!(parent.as_raw_str(), "[null]");
+
+    let grand_parent = parent.parent().expect("parent");
+    assert_eq!(grand_parent.as_raw_str(), text);
+    assert_eq!(grand_parent.parent(), None);
+}
