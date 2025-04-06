@@ -192,10 +192,10 @@ fn parse_strings() -> Result<(), JsonParseError> {
     }
 
     // Escaped strings.
-    for text in [
-        r#" "ab\tc" "#,
-        r#" "\n\\a\r\nb\b\"\fc" "#,
-        r#" "ab\uF20ac" "#,
+    for (text, unescaped) in [
+        (r#" "ab\tc" "#, "ab\tc"),
+        (r#" "\n\\a\r\nb\b\"\fc" "#, "\n\\a\r\nb\u{8}\"\u{c}c"),
+        (r#" "ab\uF20ac" "#, "ab\u{f20a}c"),
     ] {
         let json = RawJson::parse(text)?;
         let value = json.value();
@@ -203,6 +203,7 @@ fn parse_strings() -> Result<(), JsonParseError> {
         assert_eq!(value.as_raw_str(), text.trim());
         assert_eq!(value.position(), 1);
         assert!(matches!(value.to_unquoted_string_str(), Ok(Cow::Owned(_))));
+        assert_eq!(value.to_unquoted_string_str().expect("ok"), unescaped);
     }
 
     // Malformed strings.
