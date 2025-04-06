@@ -4,15 +4,15 @@ use crate::DisplayJson;
 
 /// A formatter for JSON values that controls the layout and formatting of the output.
 ///
-/// `JsonFormatter` wraps a standard `std::fmt::Formatter` and provides methods specifically designed
+/// [`JsonFormatter`] wraps the [`std::fmt::Formatter`] and provides methods specifically designed
 /// for generating well-formed JSON with customizable formatting options like indentation and spacing.
 ///
-/// This formatter is primarily used when implementing the `DisplayJson` trait or when using the
+/// This formatter is primarily used when implementing the [`DisplayJson`] trait or when using the
 /// [`json()`](crate::json) function for in-place JSON generation.
 ///
 /// # Examples
 ///
-/// Basic usage with the `json()` function:
+/// Basic usage with the [`json()`] function:
 /// ```
 /// use nojson::json;
 ///
@@ -54,7 +54,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         }
     }
 
-    /// Formats a value that implements the `DisplayJson` trait.
+    /// Formats a value that implements the [`DisplayJson`] trait.
     ///
     /// This is the primary method for writing a value to the JSON output.
     ///
@@ -95,7 +95,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
 
     /// Creates a JSON array with the provided formatting function.
     ///
-    /// This method starts a new JSON array and provides a `JsonArrayFormatter` to the callback
+    /// This method starts a new JSON array and provides a [`JsonArrayFormatter`] to the callback
     /// function for adding elements to the array. It handles proper indentation, spacing, and
     /// brackets placement.
     ///
@@ -153,7 +153,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
 
     /// Creates a JSON object with the provided formatting function.
     ///
-    /// This method starts a new JSON object and provides a `JsonObjectFormatter` to the callback
+    /// This method starts a new JSON object and provides a [`JsonObjectFormatter`] to the callback
     /// function for adding members to the object. It handles proper indentation, spacing, and
     /// braces placement.
     ///
@@ -212,10 +212,14 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         Ok(())
     }
 
-    /// Returns a mutable reference to the inner `std::fmt::Formatter`.
+    /// Returns a mutable reference to the inner [`std::fmt::Formatter`].
     ///
-    /// This method provides direct access to the wrapped standard formatter, which can be useful
+    /// This method provides direct access to the wrapped formatter, which can be useful
     /// for implementing custom formatting logic for primitive types.
+    ///
+    /// # Note
+    ///
+    /// It is the responsibility of the user to ensure that the content written to the inner formatter is valid JSON.
     pub fn inner_mut(&mut self) -> &mut std::fmt::Formatter<'b> {
         self.inner
     }
