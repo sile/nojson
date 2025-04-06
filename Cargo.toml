@@ -2,5 +2,12 @@
 name = "nojson"
 version = "0.1.0"
 edition = "2024"
+authors = ["Takeru Ohta <phjgt308@gmail.com>"]
+license = "MIT"
+description = "A flexible JSON library with no dependencies and no macros"
+homepage = "https://github.com/sile/noargs"
+repository = "https://github.com/sile/noargs"
+readme = "README.md"
+categories = ["encoding", "parser-implementations"]
 
 [dependencies]
