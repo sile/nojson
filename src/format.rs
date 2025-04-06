@@ -298,12 +298,59 @@ impl std::fmt::Write for JsonStringContentFormatter<'_, '_> {
     }
 }
 
+/// A formatter for JSON arrays.
+///
+/// This struct is created by the [`JsonFormatter::array()`] method and provides
+/// methods for adding elements to a JSON array with proper formatting, spacing,
+/// and indentation.
+///
+/// # Examples
+///
+/// ```
+/// use nojson::json;
+///
+/// let output = json(|f| {
+///     f.array(|f| {
+///         f.element(1)?;
+///         f.element("test")?;
+///         f.element(true)
+///     })
+/// });
+/// assert_eq!(output.to_string(), "[1,\"test\",true]");
+///
+/// // With pretty-printing
+/// let pretty = json(|f| {
+///     f.set_indent_size(2);
+///     f.set_spacing(true);
+///     f.array(|f| {
+///         f.elements([1, 2, 3])
+///     })
+/// });
+/// ```
 pub struct JsonArrayFormatter<'a, 'b, 'c> {
     fmt: &'c mut JsonFormatter<'a, 'b>,
     empty: bool,
 }
 
 impl JsonArrayFormatter<'_, '_, '_> {
+    /// Adds a single element to the JSON array.
+    ///
+    /// This method handles adding the appropriate comma separators between elements
+    /// and applies the current formatting rules like indentation and spacing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nojson::json;
+    ///
+    /// let output = json(|f| {
+    ///     f.array(|f| {
+    ///         f.element(1)?;
+    ///         f.element("text")?;
+    ///         f.element([9.87])
+    ///     })
+    /// });
+    /// ```
     pub fn element<T: DisplayJson>(&mut self, element: T) -> std::fmt::Result {
         if !self.empty {
             write!(self.fmt.inner, ",")?;
@@ -317,6 +364,27 @@ impl JsonArrayFormatter<'_, '_, '_> {
         Ok(())
     }
 
+    /// Adds multiple elements to the JSON array from an iterator.
+    ///
+    /// This is a convenience method that iterates over the provided collection and
+    /// adds each item as an element using the [`JsonArrayFormatter::element()`] method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nojson::json;
+    ///
+    /// let values = vec![1, 2, 3];
+    /// let output = json(|f| {
+    ///     f.array(|f| f.elements(&values))
+    /// });
+    /// assert_eq!(output.to_string(), "[1,2,3]");
+    ///
+    /// // Works with any iterable collection
+    /// let output = json(|f| {
+    ///     f.array(|f| f.elements([true, false, true]))
+    /// });
+    /// ```
     pub fn elements<I>(&mut self, elements: I) -> std::fmt::Result
     where
         I: IntoIterator,
@@ -329,12 +397,59 @@ impl JsonArrayFormatter<'_, '_, '_> {
     }
 }
 
+/// A formatter for JSON objects.
+///
+/// This struct is created by the [`JsonFormatter::object()`] method and provides
+/// methods for adding name-value pairs (members) to a JSON object with proper
+/// formatting, spacing, and indentation.
+///
+/// # Examples
+///
+/// ```
+/// use nojson::json;
+///
+/// let output = json(|f| {
+///     f.object(|f| {
+///         f.member("name", "Alice")?;
+///         f.member("age", 30)
+///     })
+/// });
+/// assert_eq!(output.to_string(), r#"{"name":"Alice","age":30}"#);
+///
+/// // With pretty-printing
+/// let pretty = json(|f| {
+///     f.set_indent_size(2);
+///     f.set_spacing(true);
+///     f.object(|f| {
+///         f.member("name", "Alice")?;
+///         f.member("age", 30)
+///     })
+/// });
+/// ```
 pub struct JsonObjectFormatter<'a, 'b, 'c> {
     fmt: &'c mut JsonFormatter<'a, 'b>,
     empty: bool,
 }
 
 impl JsonObjectFormatter<'_, '_, '_> {
+    /// Adds a single name-value pair (member) to the JSON object.
+    ///
+    /// This method handles adding the appropriate comma separators between members
+    /// and applies the current formatting rules like indentation and spacing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nojson::json;
+    ///
+    /// let output = json(|f| {
+    ///     f.object(|f| {
+    ///         f.member("name", "Alice")?;
+    ///         f.member("age", 30)?;
+    ///         f.member("active", true)
+    ///     })
+    /// });
+    /// ```
     pub fn member<N, V>(&mut self, name: N, value: V) -> std::fmt::Result
     where
         N: Display,
@@ -360,6 +475,25 @@ impl JsonObjectFormatter<'_, '_, '_> {
         Ok(())
     }
 
+    /// Adds multiple name-value pairs (members) to the JSON object from an iterator.
+    ///
+    /// This is a convenience method that iterates over the provided collection and
+    /// adds each item as a member using the [`JsonObjectFormatter::member()`] method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nojson::json;
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert("name", "Alice");
+    /// map.insert("age", "30");
+    ///
+    /// let output = json(|f| {
+    ///     f.object(|f| f.members(&map))
+    /// });
+    /// ```
     pub fn members<I, N, V>(&mut self, members: I) -> std::fmt::Result
     where
         I: IntoIterator<Item = (N, V)>,
