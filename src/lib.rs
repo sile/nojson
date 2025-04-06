@@ -1,13 +1,14 @@
 //! A flexible Rust JSON library with no dependencies and no macros.
 //!
-//! `nojson` is a flexible and ergonomic JSON library for Rust that offers a balance between the type-safety of Rust and the dynamic nature of JSON. Unlike many JSON libraries that require strict one-to-one mapping between Rust types and JSON structures, `nojson` provides a toolbox approach that allows you to leverage both type-level programming and imperative code flexibility.
+//! `nojson` is a flexible and ergonomic JSON library for Rust that offers a balance between the type-safety of Rust and the dynamic nature of JSON.
+//! Unlike [`serde`](https://crates.io/crates/serde), which typically requires one-to-one mapping between Rust types and JSON structures (or other serialization formats),
+//! `nojson` provides a toolbox approach that allows you to leverage both type-level programming and imperative code flexibility.
 //!
 //! ## Features
 //!
 //! - **No strict one-to-one type mapping required** - Mix type-level programming with imperative flexibility as needed
 //! - **Clean parsing error messages** with position information for better debugging
 //! - **Customizable validation** - Add application-specific validation rules with proper error context
-//! - **Two-way conversion** between JSON and Rust types through consistent traits
 //! - **Flexible formatting options** including pretty-printing with customizable indentation
 //! - **Low-level access** to the JSON structure when needed
 //! - **High-level conveniences** for common JSON operations
@@ -53,7 +54,7 @@
 //!
 //! The [`json()`] function provides a convenient way to generate JSON with custom formatting:
 //!
-//! ```rust
+//! ```
 //! use nojson::json;
 //!
 //! // Compact JSON
@@ -157,7 +158,7 @@
 //!
 //! Rich error information helps with debugging:
 //!
-//! ```rust
+//! ```
 //! use nojson::{JsonParseError, RawJson};
 //!
 //! let text = r#"{"invalid": 123e++}"#;
