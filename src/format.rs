@@ -2,6 +2,41 @@ use std::fmt::{Display, Write};
 
 use crate::DisplayJson;
 
+/// A formatter for JSON values that controls the layout and formatting of the output.
+///
+/// `JsonFormatter` wraps a standard `std::fmt::Formatter` and provides methods specifically designed
+/// for generating well-formed JSON with customizable formatting options like indentation and spacing.
+///
+/// This formatter is primarily used when implementing the `DisplayJson` trait or when using the
+/// [`json()`](crate::json) function for in-place JSON generation.
+///
+/// # Examples
+///
+/// Basic usage with the `json()` function:
+/// ```
+/// use nojson::json;
+///
+/// // Generate compact JSON
+/// let compact = json(|f| f.value([1, 2, 3]));
+/// assert_eq!(compact.to_string(), "[1,2,3]");
+///
+/// // Generate pretty-printed JSON
+/// let pretty = json(|f| {
+///     f.set_indent_size(2);
+///     f.set_spacing(true);
+///     f.value([1, 2, 3])
+/// });
+///
+/// assert_eq!(
+///     format!("\n{}", pretty),
+///     r#"
+/// [
+///   1,
+///   2,
+///   3
+/// ]"#
+/// );
+/// ```
 pub struct JsonFormatter<'a, 'b> {
     inner: &'a mut std::fmt::Formatter<'b>,
     level: usize,
@@ -10,7 +45,7 @@ pub struct JsonFormatter<'a, 'b> {
 }
 
 impl<'a, 'b> JsonFormatter<'a, 'b> {
-    pub fn new(inner: &'a mut std::fmt::Formatter<'b>) -> Self {
+    pub(crate) fn new(inner: &'a mut std::fmt::Formatter<'b>) -> Self {
         Self {
             inner,
             level: 0,
@@ -18,13 +53,36 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
             spacing: false,
         }
     }
-}
 
-impl<'a, 'b> JsonFormatter<'a, 'b> {
+    /// Formats a value that implements the `DisplayJson` trait.
+    ///
+    /// This is the primary method for writing a value to the JSON output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nojson::json;
+    ///
+    /// let output = json(|f| f.value([1, 2, 3]));
+    /// assert_eq!(output.to_string(), "[1,2,3]");
+    /// ```
     pub fn value<T: DisplayJson>(&mut self, value: T) -> std::fmt::Result {
         value.fmt(self)
     }
 
+    /// Formats a value as a JSON string with proper escaping.
+    ///
+    /// This method handles the necessary escaping of special characters in JSON strings,
+    /// including quotes, backslashes, control characters, etc.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nojson::json;
+    ///
+    /// let output = json(|f| f.string("Hello\nWorld"));
+    /// assert_eq!(output.to_string(), r#""Hello\nWorld""#);
+    /// ```
     pub fn string<T: Display>(&mut self, content: T) -> std::fmt::Result {
         write!(self.inner, "\"")?;
         {
@@ -35,6 +93,37 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         Ok(())
     }
 
+    /// Creates a JSON array with the provided formatting function.
+    ///
+    /// This method starts a new JSON array and provides a `JsonArrayFormatter` to the callback
+    /// function for adding elements to the array. It handles proper indentation, spacing, and
+    /// brackets placement.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nojson::json;
+    ///
+    /// let output = json(|f| {
+    ///     f.array(|f| {
+    ///         f.element(1)?;
+    ///         f.element(2)?;
+    ///         f.element(3)
+    ///     })
+    /// });
+    /// assert_eq!(output.to_string(), "[1,2,3]");
+    ///
+    /// // With pretty-printing
+    /// let pretty = json(|f| {
+    ///     f.set_indent_size(2);
+    ///     f.set_spacing(true);
+    ///     f.array(|f| {
+    ///         f.element(1)?;
+    ///         f.element(2)?;
+    ///         f.element(3)
+    ///     })
+    /// });
+    /// ```
     pub fn array<F>(&mut self, f: F) -> std::fmt::Result
     where
         F: FnOnce(&mut JsonArrayFormatter<'a, 'b, '_>) -> std::fmt::Result,
@@ -62,6 +151,36 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         Ok(())
     }
 
+    /// Creates a JSON object with the provided formatting function.
+    ///
+    /// This method starts a new JSON object and provides a `JsonObjectFormatter` to the callback
+    /// function for adding members to the object. It handles proper indentation, spacing, and
+    /// braces placement.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nojson::json;
+    /// use std::collections::HashMap;
+    ///
+    /// let output = json(|f| {
+    ///     f.object(|f| {
+    ///         f.member("name", "Alice")?;
+    ///         f.member("age", 30)
+    ///     })
+    /// });
+    /// assert_eq!(output.to_string(), r#"{"name":"Alice","age":30}"#);
+    ///
+    /// // With pretty-printing
+    /// let pretty = json(|f| {
+    ///     f.set_indent_size(2);
+    ///     f.set_spacing(true);
+    ///     f.object(|f| {
+    ///         f.member("name", "Alice")?;
+    ///         f.member("age", 30)
+    ///     })
+    /// });
+    /// ```
     pub fn object<F>(&mut self, f: F) -> std::fmt::Result
     where
         F: FnOnce(&mut JsonObjectFormatter<'a, 'b, '_>) -> std::fmt::Result,
@@ -93,18 +212,18 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         Ok(())
     }
 
+    /// Returns a mutable reference to the inner `std::fmt::Formatter`.
+    ///
+    /// This method provides direct access to the wrapped standard formatter, which can be useful
+    /// for implementing custom formatting logic for primitive types.
     pub fn inner_mut(&mut self) -> &mut std::fmt::Formatter<'b> {
         self.inner
     }
 
-    fn indent(&mut self) -> std::fmt::Result {
-        if self.indent_size > 0 {
-            let total = self.indent_size * self.level;
-            write!(self.inner, "\n{:total$}", "", total = total)?;
-        }
-        Ok(())
-    }
-
+    /// Returns the current indentation level.
+    ///
+    /// The indentation level increases when entering arrays and objects, and
+    /// decreases when exiting them.
     pub fn get_level(&self) -> usize {
         self.level
     }
@@ -114,17 +233,31 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         self.indent_size
     }
 
+    /// Sets the number of spaces used for each indentation level.
+    ///
+    /// Note that this setting only affects the current and higher indentation levels.
     pub fn set_indent_size(&mut self, size: usize) {
         self.indent_size = size;
     }
 
-    /// Returnes whether inserting a space after ':' and ','.
+    /// Returnes whether inserting a space after ':', ',', and '{'.
     pub fn get_spacing(&self) -> bool {
         self.spacing
     }
 
+    /// Sets whether inserting a space after ':', ',', and '{'.
+    ///
+    /// Note that this setting only affects the current and higher indentation levels.
     pub fn set_spacing(&mut self, enable: bool) {
         self.spacing = enable;
+    }
+
+    fn indent(&mut self) -> std::fmt::Result {
+        if self.indent_size > 0 {
+            let total = self.indent_size * self.level;
+            write!(self.inner, "\n{:total$}", "", total = total)?;
+        }
+        Ok(())
     }
 }
 
