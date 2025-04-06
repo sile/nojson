@@ -12,7 +12,7 @@ use crate::DisplayJson;
 ///
 /// # Examples
 ///
-/// Basic usage with the [`json()`] function:
+/// Basic usage with the [`json()`](crate::json) function:
 /// ```
 /// use nojson::json;
 ///
