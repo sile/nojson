@@ -513,7 +513,12 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
                 '\\' => {
                     let c = chars.next().expect("infallible");
                     match c {
-                        '\\' | '/' | '"' | 'n' | 't' | 'r' | 'b' | 'f' => unescaped.push(c),
+                        '\\' | '/' | '"' => unescaped.push(c),
+                        'n' => unescaped.push('\n'),
+                        't' => unescaped.push('\t'),
+                        'r' => unescaped.push('\r'),
+                        'b' => unescaped.push('\u{8}'),
+                        'f' => unescaped.push('\u{c}'),
                         'u' => {
                             let c = std::str::from_utf8(&[
                                 chars.next().expect("infallible") as u8,
