@@ -37,9 +37,9 @@ pub use raw::{JsonParseError, RawJson, RawJsonValue};
 /// // Since the `[Option<u32>; 3]` type implements the `FromRawJsonValue` trait,
 /// // you can use the `std::str::parse()` method to parse JSON by wrapping the type with `Json`.
 /// let text = "[1, null, 2]";
-/// let value: Json(_) = text.parse()?;
-/// assert_eq!(value, [Some(1), None, Some(2)]);
-/// # OK(())
+/// let value: Json<[Option<u32>; 3]> = text.parse()?;
+/// assert_eq!(value.0, [Some(1), None, Some(2)]);
+/// # Ok(())
 /// # }
 /// ```
 ///
@@ -49,10 +49,11 @@ pub use raw::{JsonParseError, RawJson, RawJsonValue};
 ///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
 /// // Since the `[Option<u32>; 3]` type also implements the `DisplyJson` trait,
-/// // you can use the `std::fmt::Display::to_string()` method to generate JSON by wrapping the type with `Json`.
+/// // you can use the `std::fmt::Display::to_string()` method to
+/// // generate JSON by wrapping the type with `Json`.
 /// let value = [Some(1), None, Some(2)];
 /// assert_eq!(Json(value).to_string(), "[1,null,2]");
-/// # OK(())
+/// # Ok(())
 /// # }
 /// ```
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -78,6 +79,72 @@ where
     }
 }
 
+/// Similiar to [`Json`], but can be used for pretty-printing and in-place JSON generation purposes.
+///
+/// # Examples
+///
+/// ## Basic usage
+///
+/// ```
+/// use nojson::json;
+///
+/// // Standard JSON serialization (compact)
+/// let compact = json(|f| f.value([1, 2, 3]));
+/// assert_eq!(compact.to_string(), "[1,2,3]");
+/// ```
+///
+/// ## Pretty printing with custom indentation
+///
+/// ```
+/// use nojson::json;
+///
+/// // Pretty-printed JSON with 2-space indentation
+/// let pretty = json(|f| {
+///     f.set_indent_size(2);
+///     f.set_spacing(true);
+///     f.value([1, 2, 3])
+/// });
+///
+/// assert_eq!(
+///     format!("\n{}", pretty),
+///     r#"
+/// [
+///   1,
+///   2,
+///   3
+/// ]"#
+/// );
+/// ```
+///
+/// ## Mixing formatting styles
+///
+/// ```
+/// use nojson::{json, DisplayJson};
+///
+/// // You can nest formatters with different settings
+/// let mixed = json(|f| {
+///     f.set_indent_size(2);
+///     f.set_spacing(true);
+///     f.value([
+///         &vec![1] as &dyn DisplayJson,
+///         &json(|f| {
+///             f.set_indent_size(0);
+///             f.value(vec![2, 3])
+///         }),
+///     ])
+/// });
+///
+/// assert_eq!(
+///     format!("\n{}", mixed),
+///     r#"
+/// [
+///   [
+///     1
+///   ],
+///   [2, 3]
+/// ]"#
+/// );
+/// ```
 pub fn json<F>(f: F) -> impl DisplayJson + Display
 where
     F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
