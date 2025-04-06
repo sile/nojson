@@ -5,8 +5,8 @@ edition = "2024"
 authors = ["Takeru Ohta <phjgt308@gmail.com>"]
 license = "MIT"
 description = "A flexible JSON library with no dependencies and no macros"
-homepage = "https://github.com/sile/noargs"
-repository = "https://github.com/sile/noargs"
+homepage = "https://github.com/sile/nojson"
+repository = "https://github.com/sile/nojson"
 readme = "README.md"
 categories = ["encoding", "parser-implementations"]
 
