@@ -332,6 +332,67 @@ impl<'text> FromRawJsonValue<'text> for std::borrow::Cow<'text, str> {
     }
 }
 
+impl<'text> FromRawJsonValue<'text> for std::path::PathBuf {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        let path = value.to_unquoted_string_str()?.into_owned();
+        Ok(std::path::PathBuf::from(path))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::IpAddr {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::Ipv4Addr {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::Ipv6Addr {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::SocketAddr {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::SocketAddrV4 {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::SocketAddrV6 {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
 impl<'text, T: FromRawJsonValue<'text>> FromRawJsonValue<'text> for Vec<T> {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         value.to_array()?.map(T::from_raw_json_value).collect()
