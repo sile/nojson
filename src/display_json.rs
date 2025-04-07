@@ -97,7 +97,13 @@ pub trait DisplayJson {
 
 impl<T: DisplayJson + ?Sized> DisplayJson for &T {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        (*self).fmt(f)
+        (**self).fmt(f)
+    }
+}
+
+impl<T: DisplayJson + ?Sized> DisplayJson for &mut T {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        (**self).fmt(f)
     }
 }
 
