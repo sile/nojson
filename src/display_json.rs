@@ -297,6 +297,18 @@ impl DisplayJson for String {
     }
 }
 
+impl DisplayJson for &std::path::Path {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self.display())
+    }
+}
+
+impl DisplayJson for std::path::PathBuf {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self.display())
+    }
+}
+
 impl<T: DisplayJson, const N: usize> DisplayJson for [T; N] {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.array(|f| f.elements(self.iter()))
