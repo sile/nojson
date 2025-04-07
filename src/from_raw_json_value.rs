@@ -332,6 +332,67 @@ impl<'text> FromRawJsonValue<'text> for std::borrow::Cow<'text, str> {
     }
 }
 
+impl<'text> FromRawJsonValue<'text> for std::path::PathBuf {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        let path = value.to_unquoted_string_str()?.into_owned();
+        Ok(std::path::PathBuf::from(path))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::IpAddr {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::Ipv4Addr {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::Ipv6Addr {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::SocketAddr {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::SocketAddrV4 {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
+impl<'text> FromRawJsonValue<'text> for std::net::SocketAddrV6 {
+    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+        value
+            .to_unquoted_string_str()?
+            .parse()
+            .map_err(|e| JsonParseError::invalid_value(value, e))
+    }
+}
+
 impl<'text, T: FromRawJsonValue<'text>> FromRawJsonValue<'text> for Vec<T> {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         value.to_array()?.map(T::from_raw_json_value).collect()
@@ -398,12 +459,8 @@ impl<'text, T0: FromRawJsonValue<'text>, T1: FromRawJsonValue<'text>> FromRawJso
     }
 }
 
-impl<
-        'text,
-        T0: FromRawJsonValue<'text>,
-        T1: FromRawJsonValue<'text>,
-        T2: FromRawJsonValue<'text>,
-    > FromRawJsonValue<'text> for (T0, T1, T2)
+impl<'text, T0: FromRawJsonValue<'text>, T1: FromRawJsonValue<'text>, T2: FromRawJsonValue<'text>>
+    FromRawJsonValue<'text> for (T0, T1, T2)
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2] = value.to_fixed_array()?;
@@ -412,12 +469,12 @@ impl<
 }
 
 impl<
-        'text,
-        T0: FromRawJsonValue<'text>,
-        T1: FromRawJsonValue<'text>,
-        T2: FromRawJsonValue<'text>,
-        T3: FromRawJsonValue<'text>,
-    > FromRawJsonValue<'text> for (T0, T1, T2, T3)
+    'text,
+    T0: FromRawJsonValue<'text>,
+    T1: FromRawJsonValue<'text>,
+    T2: FromRawJsonValue<'text>,
+    T3: FromRawJsonValue<'text>,
+> FromRawJsonValue<'text> for (T0, T1, T2, T3)
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3] = value.to_fixed_array()?;
@@ -426,13 +483,13 @@ impl<
 }
 
 impl<
-        'text,
-        T0: FromRawJsonValue<'text>,
-        T1: FromRawJsonValue<'text>,
-        T2: FromRawJsonValue<'text>,
-        T3: FromRawJsonValue<'text>,
-        T4: FromRawJsonValue<'text>,
-    > FromRawJsonValue<'text> for (T0, T1, T2, T3, T4)
+    'text,
+    T0: FromRawJsonValue<'text>,
+    T1: FromRawJsonValue<'text>,
+    T2: FromRawJsonValue<'text>,
+    T3: FromRawJsonValue<'text>,
+    T4: FromRawJsonValue<'text>,
+> FromRawJsonValue<'text> for (T0, T1, T2, T3, T4)
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3, v4] = value.to_fixed_array()?;
@@ -447,14 +504,14 @@ impl<
 }
 
 impl<
-        'text,
-        T0: FromRawJsonValue<'text>,
-        T1: FromRawJsonValue<'text>,
-        T2: FromRawJsonValue<'text>,
-        T3: FromRawJsonValue<'text>,
-        T4: FromRawJsonValue<'text>,
-        T5: FromRawJsonValue<'text>,
-    > FromRawJsonValue<'text> for (T0, T1, T2, T3, T4, T5)
+    'text,
+    T0: FromRawJsonValue<'text>,
+    T1: FromRawJsonValue<'text>,
+    T2: FromRawJsonValue<'text>,
+    T3: FromRawJsonValue<'text>,
+    T4: FromRawJsonValue<'text>,
+    T5: FromRawJsonValue<'text>,
+> FromRawJsonValue<'text> for (T0, T1, T2, T3, T4, T5)
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3, v4, v5] = value.to_fixed_array()?;
@@ -470,15 +527,15 @@ impl<
 }
 
 impl<
-        'text,
-        T0: FromRawJsonValue<'text>,
-        T1: FromRawJsonValue<'text>,
-        T2: FromRawJsonValue<'text>,
-        T3: FromRawJsonValue<'text>,
-        T4: FromRawJsonValue<'text>,
-        T5: FromRawJsonValue<'text>,
-        T6: FromRawJsonValue<'text>,
-    > FromRawJsonValue<'text> for (T0, T1, T2, T3, T4, T5, T6)
+    'text,
+    T0: FromRawJsonValue<'text>,
+    T1: FromRawJsonValue<'text>,
+    T2: FromRawJsonValue<'text>,
+    T3: FromRawJsonValue<'text>,
+    T4: FromRawJsonValue<'text>,
+    T5: FromRawJsonValue<'text>,
+    T6: FromRawJsonValue<'text>,
+> FromRawJsonValue<'text> for (T0, T1, T2, T3, T4, T5, T6)
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3, v4, v5, v6] = value.to_fixed_array()?;
@@ -495,16 +552,16 @@ impl<
 }
 
 impl<
-        'text,
-        T0: FromRawJsonValue<'text>,
-        T1: FromRawJsonValue<'text>,
-        T2: FromRawJsonValue<'text>,
-        T3: FromRawJsonValue<'text>,
-        T4: FromRawJsonValue<'text>,
-        T5: FromRawJsonValue<'text>,
-        T6: FromRawJsonValue<'text>,
-        T7: FromRawJsonValue<'text>,
-    > FromRawJsonValue<'text> for (T0, T1, T2, T3, T4, T5, T6, T7)
+    'text,
+    T0: FromRawJsonValue<'text>,
+    T1: FromRawJsonValue<'text>,
+    T2: FromRawJsonValue<'text>,
+    T3: FromRawJsonValue<'text>,
+    T4: FromRawJsonValue<'text>,
+    T5: FromRawJsonValue<'text>,
+    T6: FromRawJsonValue<'text>,
+    T7: FromRawJsonValue<'text>,
+> FromRawJsonValue<'text> for (T0, T1, T2, T3, T4, T5, T6, T7)
 {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         let [v0, v1, v2, v3, v4, v5, v6, v7] = value.to_fixed_array()?;
@@ -560,12 +617,5 @@ where
                 ))
             })
             .collect()
-    }
-}
-
-impl<'text> FromRawJsonValue<'text> for std::path::PathBuf {
-    fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
-        let path = value.to_unquoted_string_str()?.into_owned();
-        Ok(std::path::PathBuf::from(path))
     }
 }

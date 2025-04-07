@@ -309,6 +309,42 @@ impl DisplayJson for std::path::PathBuf {
     }
 }
 
+impl DisplayJson for std::net::SocketAddr {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self)
+    }
+}
+
+impl DisplayJson for std::net::SocketAddrV4 {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self)
+    }
+}
+
+impl DisplayJson for std::net::SocketAddrV6 {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self)
+    }
+}
+
+impl DisplayJson for std::net::IpAddr {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self)
+    }
+}
+
+impl DisplayJson for std::net::Ipv4Addr {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self)
+    }
+}
+
+impl DisplayJson for std::net::Ipv6Addr {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self)
+    }
+}
+
 impl<T: DisplayJson, const N: usize> DisplayJson for [T; N] {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.array(|f| f.elements(self.iter()))
