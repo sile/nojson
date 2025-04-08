@@ -389,6 +389,133 @@ impl<T: DisplayJson> DisplayJson for std::collections::HashSet<T> {
     }
 }
 
+impl DisplayJson for () {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|_| Ok(()))
+    }
+}
+
+impl<T0: DisplayJson> DisplayJson for (T0,) {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| f.element(&self.0))
+    }
+}
+
+impl<T0: DisplayJson, T1: DisplayJson> DisplayJson for (T0, T1) {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| {
+            f.element(&self.0)?;
+            f.element(&self.1)
+        })
+    }
+}
+
+impl<T0: DisplayJson, T1: DisplayJson, T2: DisplayJson> DisplayJson for (T0, T1, T2) {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| {
+            f.element(&self.0)?;
+            f.element(&self.1)?;
+            f.element(&self.2)
+        })
+    }
+}
+
+impl<T0: DisplayJson, T1: DisplayJson, T2: DisplayJson, T3: DisplayJson> DisplayJson
+    for (T0, T1, T2, T3)
+{
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| {
+            f.element(&self.0)?;
+            f.element(&self.1)?;
+            f.element(&self.2)?;
+            f.element(&self.3)
+        })
+    }
+}
+
+impl<T0: DisplayJson, T1: DisplayJson, T2: DisplayJson, T3: DisplayJson, T4: DisplayJson>
+    DisplayJson for (T0, T1, T2, T3, T4)
+{
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| {
+            f.element(&self.0)?;
+            f.element(&self.1)?;
+            f.element(&self.2)?;
+            f.element(&self.3)?;
+            f.element(&self.4)
+        })
+    }
+}
+
+impl<
+    T0: DisplayJson,
+    T1: DisplayJson,
+    T2: DisplayJson,
+    T3: DisplayJson,
+    T4: DisplayJson,
+    T5: DisplayJson,
+> DisplayJson for (T0, T1, T2, T3, T4, T5)
+{
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| {
+            f.element(&self.0)?;
+            f.element(&self.1)?;
+            f.element(&self.2)?;
+            f.element(&self.3)?;
+            f.element(&self.4)?;
+            f.element(&self.5)
+        })
+    }
+}
+
+impl<
+    T0: DisplayJson,
+    T1: DisplayJson,
+    T2: DisplayJson,
+    T3: DisplayJson,
+    T4: DisplayJson,
+    T5: DisplayJson,
+    T6: DisplayJson,
+> DisplayJson for (T0, T1, T2, T3, T4, T5, T6)
+{
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| {
+            f.element(&self.0)?;
+            f.element(&self.1)?;
+            f.element(&self.2)?;
+            f.element(&self.3)?;
+            f.element(&self.4)?;
+            f.element(&self.5)?;
+            f.element(&self.6)
+        })
+    }
+}
+
+impl<
+    T0: DisplayJson,
+    T1: DisplayJson,
+    T2: DisplayJson,
+    T3: DisplayJson,
+    T4: DisplayJson,
+    T5: DisplayJson,
+    T6: DisplayJson,
+    T7: DisplayJson,
+> DisplayJson for (T0, T1, T2, T3, T4, T5, T6, T7)
+{
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.array(|f| {
+            f.element(&self.0)?;
+            f.element(&self.1)?;
+            f.element(&self.2)?;
+            f.element(&self.3)?;
+            f.element(&self.4)?;
+            f.element(&self.5)?;
+            f.element(&self.6)?;
+            f.element(&self.7)
+        })
+    }
+}
+
 impl<K: Display, V: DisplayJson> DisplayJson for std::collections::BTreeMap<K, V> {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.object(|f| f.members(self.iter()))
