@@ -275,13 +275,21 @@ impl DisplayJson for std::num::NonZeroUsize {
 
 impl DisplayJson for f32 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        self.is_finite().then_some(self).fmt(f)
+        if self.is_finite() {
+            write!(f.inner_mut(), "{}", self)
+        } else {
+            write!(f.inner_mut(), "null")
+        }
     }
 }
 
 impl DisplayJson for f64 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        self.is_finite().then_some(self).fmt(f)
+        if self.is_finite() {
+            write!(f.inner_mut(), "{}", self)
+        } else {
+            write!(f.inner_mut(), "null")
+        }
     }
 }
 
