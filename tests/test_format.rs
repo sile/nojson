@@ -3,6 +3,12 @@ use std::collections::BTreeMap;
 use nojson::{DisplayJson, Json, json};
 
 #[test]
+fn float() {
+    assert_eq!(json(|f| f.value(1.23f32)).to_string(), "1.23");
+    assert_eq!(json(|f| f.value(1.23f64)).to_string(), "1.23");
+}
+
+#[test]
 fn array() {
     assert_eq!(Json([1, 2, 3]).to_string(), "[1,2,3]");
     assert_eq!(Json([Some(1), None, Some(3)]).to_string(), "[1,null,3]");
