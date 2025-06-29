@@ -406,7 +406,7 @@ fn parse_std_types() {
     assert_eq!("-1".parse().ok(), Some(Json(-1i8)));
     assert_eq!("\"a\"".parse().ok(), Some(Json("a".to_owned())));
     assert_eq!("123".parse().ok(), Some(Json(123u32)));
-    assert_eq!("3.14".parse().ok(), Some(Json(3.14f64)));
+    assert_eq!("3.45".parse().ok(), Some(Json(3.45f64)));
     assert_eq!("true".parse().ok(), Some(Json(true)));
     assert_eq!("false".parse().ok(), Some(Json(false)));
     assert_eq!("null".parse::<Json<Option<bool>>>().ok(), Some(Json(None)));

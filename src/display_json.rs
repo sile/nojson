@@ -125,158 +125,158 @@ impl<T: DisplayJson> DisplayJson for Option<T> {
 
 impl DisplayJson for bool {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for i8 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for i16 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for i32 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for i64 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for i128 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for isize {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for u8 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for u16 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for u32 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for u64 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for u128 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for usize {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroI8 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroI16 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroI32 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroI64 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroI128 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroIsize {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroU8 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroU16 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroU32 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroU64 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroU128 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for std::num::NonZeroUsize {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        write!(f.inner_mut(), "{}", self)
+        write!(f.inner_mut(), "{self}")
     }
 }
 
 impl DisplayJson for f32 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         if self.is_finite() {
-            write!(f.inner_mut(), "{}", self)
+            write!(f.inner_mut(), "{self}")
         } else {
             write!(f.inner_mut(), "null")
         }
@@ -286,7 +286,7 @@ impl DisplayJson for f32 {
 impl DisplayJson for f64 {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         if self.is_finite() {
-            write!(f.inner_mut(), "{}", self)
+            write!(f.inner_mut(), "{self}")
         } else {
             write!(f.inner_mut(), "null")
         }

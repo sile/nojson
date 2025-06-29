@@ -552,7 +552,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
                     if kinds.len() == 1 {
                         format!("{:?}", kinds[0])
                     } else {
-                        format!("one of {:?}", kinds)
+                        format!("one of {kinds:?}")
                     },
                     self.kind()
                 ),
