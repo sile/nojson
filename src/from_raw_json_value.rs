@@ -84,16 +84,16 @@ use crate::{JsonParseError, RawJsonValue};
 ///         // Split by the '/' character and parse components.
 ///         let parts: Vec<&str> = fraction_str.split('/').collect();
 ///         if parts.len() != 2 {
-///             return Err(JsonParseError::invalid_value(value, "Expected format 'numerator/denominator'"));
+///             return Err(value.invalid("Expected format 'numerator/denominator'"));
 ///         }
 ///
 ///         let numerator = parts[0].parse()
-///             .map_err(|_| JsonParseError::invalid_value(value, "Invalid numerator"))?;
+///             .map_err(|_| value.invalid("Invalid numerator"))?;
 ///         let denominator = parts[1].parse()
-///             .map_err(|_| JsonParseError::invalid_value(value, "Invalid denominator"))?;
+///             .map_err(|_| value.invalid("Invalid denominator"))?;
 ///
 ///         if denominator == 0 {
-///             return Err(JsonParseError::invalid_value(value, "Denominator cannot be zero"));
+///             return Err(value.invalid("Denominator cannot be zero"));
 ///         }
 ///
 ///         Ok(Rational { numerator, denominator })
@@ -135,7 +135,7 @@ impl<'text> FromRawJsonValue<'text> for bool {
         value
             .as_boolean_str()?
             .parse()
-            .map_err(|e| JsonParseError::invalid_value(value, e))
+            .map_err(|e| value.invalid(e))
     }
 }
 
@@ -147,7 +147,7 @@ where
     value
         .as_integer_str()?
         .parse()
-        .map_err(|e| JsonParseError::invalid_value(value, e))
+        .map_err(|e| value.invalid(e))
 }
 
 impl<'text> FromRawJsonValue<'text> for i8 {
@@ -299,10 +299,7 @@ where
     T: FromStr,
     T::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
 {
-    value
-        .as_number_str()?
-        .parse()
-        .map_err(|e| JsonParseError::invalid_value(value, e))
+    value.as_number_str()?.parse().map_err(|e| value.invalid(e))
 }
 
 impl<'text> FromRawJsonValue<'text> for f32 {
@@ -322,7 +319,7 @@ impl<'text> FromRawJsonValue<'text> for String {
         value
             .to_unquoted_string_str()?
             .parse()
-            .map_err(|e| JsonParseError::invalid_value(value, e))
+            .map_err(|e| value.invalid(e))
     }
 }
 
@@ -344,7 +341,7 @@ impl<'text> FromRawJsonValue<'text> for std::net::IpAddr {
         value
             .to_unquoted_string_str()?
             .parse()
-            .map_err(|e| JsonParseError::invalid_value(value, e))
+            .map_err(|e| value.invalid(e))
     }
 }
 
@@ -353,7 +350,7 @@ impl<'text> FromRawJsonValue<'text> for std::net::Ipv4Addr {
         value
             .to_unquoted_string_str()?
             .parse()
-            .map_err(|e| JsonParseError::invalid_value(value, e))
+            .map_err(|e| value.invalid(e))
     }
 }
 
@@ -362,7 +359,7 @@ impl<'text> FromRawJsonValue<'text> for std::net::Ipv6Addr {
         value
             .to_unquoted_string_str()?
             .parse()
-            .map_err(|e| JsonParseError::invalid_value(value, e))
+            .map_err(|e| value.invalid(e))
     }
 }
 
@@ -371,7 +368,7 @@ impl<'text> FromRawJsonValue<'text> for std::net::SocketAddr {
         value
             .to_unquoted_string_str()?
             .parse()
-            .map_err(|e| JsonParseError::invalid_value(value, e))
+            .map_err(|e| value.invalid(e))
     }
 }
 
@@ -380,7 +377,7 @@ impl<'text> FromRawJsonValue<'text> for std::net::SocketAddrV4 {
         value
             .to_unquoted_string_str()?
             .parse()
-            .map_err(|e| JsonParseError::invalid_value(value, e))
+            .map_err(|e| value.invalid(e))
     }
 }
 
@@ -389,7 +386,7 @@ impl<'text> FromRawJsonValue<'text> for std::net::SocketAddrV6 {
         value
             .to_unquoted_string_str()?
             .parse()
-            .map_err(|e| JsonParseError::invalid_value(value, e))
+            .map_err(|e| value.invalid(e))
     }
 }
 
@@ -591,7 +588,7 @@ where
                 Ok((
                     k.to_unquoted_string_str()?
                         .parse()
-                        .map_err(|e| JsonParseError::invalid_value(k, e))?,
+                        .map_err(|e| k.invalid(e))?,
                     v.try_to()?,
                 ))
             })
@@ -612,7 +609,7 @@ where
                 Ok((
                     k.to_unquoted_string_str()?
                         .parse()
-                        .map_err(|e| JsonParseError::invalid_value(k, e))?,
+                        .map_err(|e| k.invalid(e))?,
                     v.try_to()?,
                 ))
             })

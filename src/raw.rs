@@ -172,7 +172,7 @@ pub(crate) struct JsonValueIndexEntry {
 /// let json = RawJson::parse(text)?;
 /// let raw: RawJsonValue = json.value();
 /// let parsed: f32 =
-///     raw.as_number_str()?.parse().map_err(|e| JsonParseError::invalid_value(raw, e))?;
+///     raw.as_number_str()?.parse().map_err(|e| raw.invalid(e))?;
 /// assert_eq!(parsed, 1.23);
 /// # Ok(())
 /// # }
@@ -391,22 +391,18 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         let mut fixed_array = [self; N];
         for (i, v) in fixed_array.iter_mut().enumerate() {
             *v = values.next().ok_or_else(|| {
-                JsonParseError::invalid_value(
-                    self,
-                    format!("expected an array with {N} elements, but got only {i} elements"),
-                )
+                self.invalid(format!(
+                    "expected an array with {N} elements, but got only {i} elements"
+                ))
             })?;
         }
 
         let extra = values.count();
         if extra > 0 {
-            return Err(JsonParseError::invalid_value(
-                self,
-                format!(
-                    "expected an array with {N} elements, but got {} elements",
-                    N + extra
-                ),
-            ));
+            return Err(self.invalid(format!(
+                "expected an array with {N} elements, but got {} elements",
+                N + extra
+            )));
         }
 
         Ok(fixed_array)
@@ -489,13 +485,36 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
                 .filter(|(_, value)| value.index == self.index)
                 .map(|(name, _)| name)
                 .collect::<Vec<_>>();
-            return Err(JsonParseError::invalid_value(
-                self,
-                format!("missing required object members: {missings:?}"),
-            ));
+            return Err(self.invalid(format!("missing required object members: {missings:?}")));
         }
 
         Ok((required, optional))
+    }
+
+    /// Creates a [`JsonParseError::InvalidValue`] error for this value.
+    ///
+    /// This is a convenience method that's equivalent to calling
+    /// [`JsonParseError::invalid_value()`] with this value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("\"not_a_number\"")?;
+    /// let value = json.value();
+    ///
+    /// // These are equivalent:
+    /// let error1 = value.invalid("expected a number");
+    /// let error2 = nojson::JsonParseError::invalid_value(value, "expected a number");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn invalid<E>(self, error: E) -> JsonParseError
+    where
+        E: Into<Box<dyn Send + Sync + std::error::Error>>,
+    {
+        JsonParseError::invalid_value(self, error)
     }
 
     fn unquote(self) -> Cow<'text, str> {
@@ -545,18 +564,15 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         if kinds.contains(&self.kind()) {
             Ok(self)
         } else {
-            Err(JsonParseError::invalid_value(
-                self,
-                format!(
-                    "expected {}, but found {:?}",
-                    if kinds.len() == 1 {
-                        format!("{:?}", kinds[0])
-                    } else {
-                        format!("one of {kinds:?}")
-                    },
-                    self.kind()
-                ),
-            ))
+            Err(self.invalid(format!(
+                "expected {}, but found {:?}",
+                if kinds.len() == 1 {
+                    format!("{:?}", kinds[0])
+                } else {
+                    format!("one of {kinds:?}")
+                },
+                self.kind()
+            )))
         }
     }
 

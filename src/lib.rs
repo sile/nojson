@@ -130,7 +130,7 @@
 //!
 //! ### Custom Validations
 //!
-//! You can add custom validations using [`JsonParseError::invalid_value()`]:
+//! You can add custom validations using [`RawJsonValue::invalid()`]:
 //!
 //! ```
 //! use nojson::{JsonParseError, RawJson, RawJsonValue};
@@ -138,18 +138,15 @@
 //! fn parse_positive_number(text: &str) -> Result<u32, JsonParseError> {
 //!     let json = RawJson::parse(text)?;
 //!     let raw_value = json.value();
-
+//!
 //!     let num: u32 = raw_value.as_number_str()?
 //!         .parse()
-//!         .map_err(|e| JsonParseError::invalid_value(raw_value, e))?;
-
+//!         .map_err(|e| raw_value.invalid(e))?;
+//!
 //!     if num == 0 {
-//!         return Err(JsonParseError::invalid_value(
-//!             raw_value,
-//!             "Expected a positive number, got 0"
-//!         ));
+//!         return Err(raw_value.invalid("Expected a positive number, got 0"));
 //!     }
-
+//!
 //!     Ok(num)
 //! }
 //! ```
