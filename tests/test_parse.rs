@@ -122,7 +122,8 @@ fn parse_numbers() -> Result<(), JsonParseError> {
     }
 
     // Malformed integers.
-    for (text, position) in [("--1", 1)] {
+    {
+        let (text, position) = ("--1", 1);
         let e = assert_parse_error_matches!(
             text,
             JsonParseError::UnexpectedValueChar {

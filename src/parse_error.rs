@@ -176,29 +176,26 @@ impl std::fmt::Display for JsonParseError {
                 if let Some(kind) = kind {
                     write!(
                         f,
-                        "unexpected EOS while parsing {:?} at byte position {}",
-                        kind, position
+                        "unexpected EOS while parsing {kind:?} at byte position {position}"
                     )
                 } else {
-                    write!(f, "unexpected EOS at byte position {}", position)
+                    write!(f, "unexpected EOS at byte position {position}")
                 }
             }
             JsonParseError::UnexpectedTrailingChar { kind, position } => {
                 write!(
                     f,
-                    "unexpected trailing char after parsing {:?} at byte position {}",
-                    kind, position
+                    "unexpected trailing char after parsing {kind:?} at byte position {position}"
                 )
             }
             JsonParseError::UnexpectedValueChar { kind, position } => {
                 if let Some(kind) = kind {
                     write!(
                         f,
-                        "unexpected char while parsing {:?} at byte position {}",
-                        kind, position
+                        "unexpected char while parsing {kind:?} at byte position {position}"
                     )
                 } else {
-                    write!(f, "unexpected char at byte position {}", position)
+                    write!(f, "unexpected char at byte position {position}")
                 }
             }
             JsonParseError::InvalidValue {
@@ -208,8 +205,7 @@ impl std::fmt::Display for JsonParseError {
             } => {
                 write!(
                     f,
-                    "JSON {:?} at byte position {} is invalid: {}",
-                    kind, position, error
+                    "JSON {kind:?} at byte position {position} is invalid: {error}"
                 )
             }
         }
