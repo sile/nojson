@@ -498,6 +498,32 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         Ok((required, optional))
     }
 
+    /// Creates a [`JsonParseError::InvalidValue`] error for this value.
+    ///
+    /// This is a convenience method that's equivalent to calling
+    /// [`JsonParseError::invalid_value()`] with this value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("\"not_a_number\"")?;
+    /// let value = json.value();
+    ///
+    /// // These are equivalent:
+    /// let error1 = value.invalid("expected a number");
+    /// let error2 = nojson::JsonParseError::invalid_value(value, "expected a number");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn invalid<E>(self, error: E) -> JsonParseError
+    where
+        E: Into<Box<dyn Send + Sync + std::error::Error>>,
+    {
+        JsonParseError::invalid_value(self, error)
+    }
+
     fn unquote(self) -> Cow<'text, str> {
         debug_assert!(self.kind().is_string());
 
