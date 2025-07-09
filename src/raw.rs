@@ -391,6 +391,18 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
             .map(JsonKeyValuePairs::new)
     }
 
+    pub fn to_member(self, name: &str) -> Result<RawJsonMember<'text, 'raw>, JsonParseError> {
+        let member = self
+            .to_object()?
+            .find(|(key, _)| key.unquote() == name)
+            .map(|(_, value)| value);
+
+        Ok(RawJsonMember {
+            object: self,
+            member,
+        })
+    }
+
     /// If the value is a JSON object, this method extracts member values for a fixed set of member names.
     ///
     /// The method returns a tuple containing:
@@ -606,5 +618,34 @@ impl<'text, 'raw> Iterator for JsonKeyValuePairs<'text, 'raw> {
         let key = self.inner.next()?;
         let value = self.inner.next().expect("infallible");
         Some((key, value))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RawJsonMember<'text, 'raw> {
+    object: RawJsonValue<'text, 'raw>,
+    member: Option<RawJsonValue<'text, 'raw>>,
+}
+
+impl<'text, 'raw> RawJsonMember<'text, 'raw> {
+    pub fn required(self) -> Result<RawJsonValue<'text, 'raw>, JsonParseError> {
+        self.member
+            .ok_or_else(|| self.object.invalid("required member is missing"))
+    }
+}
+
+impl<'text, 'raw, T> TryFrom<RawJsonMember<'text, 'raw>> for Option<T>
+where
+    T: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T::Error>,
+{
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonMember<'text, 'raw>) -> Result<Self, Self::Error> {
+        value
+            .member
+            .map(T::try_from)
+            .transpose()
+            .map_err(JsonParseError::from)
     }
 }
