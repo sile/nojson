@@ -459,64 +459,6 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
         })
     }
 
-    /// If the value is a JSON object, this method extracts member values for a fixed set of member names.
-    ///
-    /// The method returns a tuple containing:
-    /// - An array of values for required member names
-    /// - An array of optional values for optional member names
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use nojson::RawJson;
-    /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30, "city": "New York"}"#)?;
-    /// let (required, optional) = json.value().to_fixed_object(
-    ///     ["name", "age"],      // required fields
-    ///     ["city", "country"]   // optional fields
-    /// )?;
-    ///
-    /// assert_eq!(required[0].to_unquoted_string_str()?, "Alice");
-    /// assert_eq!(required[1].as_integer_str()?.parse(), Ok(30));
-    ///
-    /// assert_eq!(optional[0].expect("some").to_unquoted_string_str()?, "New York");
-    /// assert!(optional[1].is_none()); // "country" wasn't present
-    ///
-    /// // Fails when required fields are missing
-    /// let json = RawJson::parse(r#"{"name": "Bob", "city": "London"}"#)?;
-    /// assert!(json.value().to_fixed_object(["name", "age"], ["city"]).is_err());
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn to_fixed_object<const N: usize, const M: usize>(
-        self,
-        required_member_names: [&str; N],
-        optional_member_names: [&str; M],
-    ) -> Result<([Self; N], [Option<Self>; M]), JsonParseError> {
-        let mut required = [self; N];
-        let mut optional = [None; M];
-        for (k, v) in self.to_object()? {
-            let k = k.unquote();
-            if let Some(i) = required_member_names.iter().position(|n| k == *n) {
-                required[i] = v;
-            } else if let Some(i) = optional_member_names.iter().position(|n| k == *n) {
-                optional[i] = Some(v);
-            }
-        }
-
-        if required.iter().any(|v| v.index == self.index) {
-            let missings = required_member_names
-                .iter()
-                .zip(required.iter())
-                .filter(|(_, value)| value.index == self.index)
-                .map(|(name, _)| name)
-                .collect::<Vec<_>>();
-            return Err(self.invalid(format!("missing required object members: {missings:?}")));
-        }
-
-        Ok((required, optional))
-    }
-
     /// Creates a [`JsonParseError::InvalidValue`] error for this value.
     ///
     /// This is a convenience method that's equivalent to calling
