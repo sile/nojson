@@ -391,6 +391,32 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
             .map(JsonKeyValuePairs::new)
     }
 
+    /// Attempts to access a member of a JSON object by name.
+    ///
+    /// This method returns a [`RawJsonMember`] that represents the result of
+    /// looking up the specified member name. The member may or may not exist,
+    /// and you can use methods like [`RawJsonMember::required()`] or convert
+    /// it to an `Option<T>` to handle both cases.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+    /// let obj = json.value();
+    ///
+    /// // Access existing member
+    /// let name_value = obj.to_member("name")?.required()?;
+    /// assert_eq!(name_value.to_unquoted_string_str()?, "Alice");
+    ///
+    /// // Handle optional member
+    /// let city_member = obj.to_member("city")?;
+    /// let city: Option<String> = city_member.try_into()?;
+    /// assert_eq!(city, None);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn to_member(self, name: &str) -> Result<RawJsonMember<'text, 'raw>, JsonParseError> {
         let member = self
             .to_object()?
@@ -621,6 +647,32 @@ impl<'text, 'raw> Iterator for JsonKeyValuePairs<'text, 'raw> {
     }
 }
 
+/// Represents a member access result for a JSON object.
+///
+/// This struct is returned by [`RawJsonValue::to_member()`] and allows you to handle
+/// both present and missing object members. It wraps an optional value that is
+/// `Some` if the member exists and `None` if it doesn't.
+///
+/// # Examples
+///
+/// ```
+/// # use nojson::RawJson;
+/// # fn main() -> Result<(), nojson::JsonParseError> {
+/// let json = RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+/// let obj = json.value();
+///
+/// // Access an existing member
+/// let name_member = obj.to_member("name")?;
+/// let name: String = name_member.required()?.try_into()?;
+/// assert_eq!(name, "Alice");
+///
+/// // Access a missing member
+/// let city_member = obj.to_member("city")?;
+/// let city: Option<String> = city_member.try_into()?;
+/// assert_eq!(city, None);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawJsonMember<'text, 'raw> {
     object: RawJsonValue<'text, 'raw>,
@@ -628,6 +680,29 @@ pub struct RawJsonMember<'text, 'raw> {
 }
 
 impl<'text, 'raw> RawJsonMember<'text, 'raw> {
+    /// Returns the member value if it exists, or an error if it's missing.
+    ///
+    /// This method is useful when you need to ensure that a required member
+    /// is present in the JSON object.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "Alice"}"#)?;
+    /// let obj = json.value();
+    ///
+    /// // Required member exists
+    /// let name = obj.to_member("name")?.required()?;
+    /// assert_eq!(name.to_unquoted_string_str()?, "Alice");
+    ///
+    /// // Required member missing - returns error
+    /// let age_result = obj.to_member("age")?.required();
+    /// assert!(age_result.is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn required(self) -> Result<RawJsonValue<'text, 'raw>, JsonParseError> {
         self.member
             .ok_or_else(|| self.object.invalid("required member is missing"))
