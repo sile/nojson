@@ -352,45 +352,61 @@ where
 
 impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for Vec<T>
 where
-    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        value.to_array()?.map(T::try_from).collect()
+        value
+            .to_array()?
+            .map(|v| T::try_from(v).map_err(JsonParseError::from))
+            .collect()
     }
 }
 
 impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for std::collections::VecDeque<T>
 where
-    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        value.to_array()?.map(T::try_from).collect()
+        value
+            .to_array()?
+            .map(|v| T::try_from(v).map_err(JsonParseError::from))
+            .collect()
     }
 }
 
 impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for std::collections::BTreeSet<T>
 where
-    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError> + Ord,
+    T: TryFrom<RawJsonValue<'text, 'raw>> + Ord,
+    JsonParseError: From<T::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        value.to_array()?.map(T::try_from).collect()
+        value
+            .to_array()?
+            .map(|v| T::try_from(v).map_err(JsonParseError::from))
+            .collect()
     }
 }
 
 impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for std::collections::HashSet<T>
 where
-    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError> + Eq + std::hash::Hash,
+    T: TryFrom<RawJsonValue<'text, 'raw>> + Eq + std::hash::Hash,
+    JsonParseError: From<T::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        value.to_array()?.map(T::try_from).collect()
+        value
+            .to_array()?
+            .map(|v| T::try_from(v).map_err(JsonParseError::from))
+            .collect()
     }
 }
 
@@ -441,81 +457,95 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for () {
 
 impl<'text, 'raw, T0> TryFrom<RawJsonValue<'text, 'raw>> for (T0,)
 where
-    T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    //T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T0: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T0::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0]: [RawJsonValue<'text, 'raw>; 1] = value.try_into()?;
-        Ok((T0::try_from(v0)?,))
+        let [v0] = <[RawJsonValue; 1]>::try_from(value)?;
+        Ok((T0::try_from(v0).map_err(JsonParseError::from)?,))
     }
 }
 
 impl<'text, 'raw, T0, T1> TryFrom<RawJsonValue<'text, 'raw>> for (T0, T1)
 where
-    T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T1: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T0: TryFrom<RawJsonValue<'text, 'raw>>,
+    T1: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T0::Error> + From<T1::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
         let [v0, v1]: [RawJsonValue<'text, 'raw>; 2] = value.try_into()?;
-        Ok((T0::try_from(v0)?, T1::try_from(v1)?))
+        Ok((
+            T0::try_from(v0).map_err(JsonParseError::from)?,
+            T1::try_from(v1).map_err(JsonParseError::from)?,
+        ))
     }
 }
 
 impl<'text, 'raw, T0, T1, T2> TryFrom<RawJsonValue<'text, 'raw>> for (T0, T1, T2)
 where
-    T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T1: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T2: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T0: TryFrom<RawJsonValue<'text, 'raw>>,
+    T1: TryFrom<RawJsonValue<'text, 'raw>>,
+    T2: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T0::Error> + From<T1::Error> + From<T2::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
         let [v0, v1, v2]: [RawJsonValue<'text, 'raw>; 3] = value.try_into()?;
-        Ok((T0::try_from(v0)?, T1::try_from(v1)?, T2::try_from(v2)?))
+        Ok((
+            T0::try_from(v0).map_err(JsonParseError::from)?,
+            T1::try_from(v1).map_err(JsonParseError::from)?,
+            T2::try_from(v2).map_err(JsonParseError::from)?,
+        ))
     }
 }
 
 impl<'text, 'raw, T0, T1, T2, T3> TryFrom<RawJsonValue<'text, 'raw>> for (T0, T1, T2, T3)
 where
-    T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T1: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T2: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T3: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T0: TryFrom<RawJsonValue<'text, 'raw>>,
+    T1: TryFrom<RawJsonValue<'text, 'raw>>,
+    T2: TryFrom<RawJsonValue<'text, 'raw>>,
+    T3: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T0::Error> + From<T1::Error> + From<T2::Error> + From<T3::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
         let [v0, v1, v2, v3]: [RawJsonValue<'text, 'raw>; 4] = value.try_into()?;
         Ok((
-            T0::try_from(v0)?,
-            T1::try_from(v1)?,
-            T2::try_from(v2)?,
-            T3::try_from(v3)?,
+            T0::try_from(v0).map_err(JsonParseError::from)?,
+            T1::try_from(v1).map_err(JsonParseError::from)?,
+            T2::try_from(v2).map_err(JsonParseError::from)?,
+            T3::try_from(v3).map_err(JsonParseError::from)?,
         ))
     }
 }
 
 impl<'text, 'raw, T0, T1, T2, T3, T4> TryFrom<RawJsonValue<'text, 'raw>> for (T0, T1, T2, T3, T4)
 where
-    T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T1: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T2: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T3: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T4: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T0: TryFrom<RawJsonValue<'text, 'raw>>,
+    T1: TryFrom<RawJsonValue<'text, 'raw>>,
+    T2: TryFrom<RawJsonValue<'text, 'raw>>,
+    T3: TryFrom<RawJsonValue<'text, 'raw>>,
+    T4: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError:
+        From<T0::Error> + From<T1::Error> + From<T2::Error> + From<T3::Error> + From<T4::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
         let [v0, v1, v2, v3, v4]: [RawJsonValue<'text, 'raw>; 5] = value.try_into()?;
         Ok((
-            T0::try_from(v0)?,
-            T1::try_from(v1)?,
-            T2::try_from(v2)?,
-            T3::try_from(v3)?,
-            T4::try_from(v4)?,
+            T0::try_from(v0).map_err(JsonParseError::from)?,
+            T1::try_from(v1).map_err(JsonParseError::from)?,
+            T2::try_from(v2).map_err(JsonParseError::from)?,
+            T3::try_from(v3).map_err(JsonParseError::from)?,
+            T4::try_from(v4).map_err(JsonParseError::from)?,
         ))
     }
 }
@@ -523,24 +553,30 @@ where
 impl<'text, 'raw, T0, T1, T2, T3, T4, T5> TryFrom<RawJsonValue<'text, 'raw>>
     for (T0, T1, T2, T3, T4, T5)
 where
-    T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T1: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T2: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T3: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T4: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T5: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T0: TryFrom<RawJsonValue<'text, 'raw>>,
+    T1: TryFrom<RawJsonValue<'text, 'raw>>,
+    T2: TryFrom<RawJsonValue<'text, 'raw>>,
+    T3: TryFrom<RawJsonValue<'text, 'raw>>,
+    T4: TryFrom<RawJsonValue<'text, 'raw>>,
+    T5: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T0::Error>
+        + From<T1::Error>
+        + From<T2::Error>
+        + From<T3::Error>
+        + From<T4::Error>
+        + From<T5::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
         let [v0, v1, v2, v3, v4, v5]: [RawJsonValue<'text, 'raw>; 6] = value.try_into()?;
         Ok((
-            T0::try_from(v0)?,
-            T1::try_from(v1)?,
-            T2::try_from(v2)?,
-            T3::try_from(v3)?,
-            T4::try_from(v4)?,
-            T5::try_from(v5)?,
+            T0::try_from(v0).map_err(JsonParseError::from)?,
+            T1::try_from(v1).map_err(JsonParseError::from)?,
+            T2::try_from(v2).map_err(JsonParseError::from)?,
+            T3::try_from(v3).map_err(JsonParseError::from)?,
+            T4::try_from(v4).map_err(JsonParseError::from)?,
+            T5::try_from(v5).map_err(JsonParseError::from)?,
         ))
     }
 }
@@ -548,26 +584,33 @@ where
 impl<'text, 'raw, T0, T1, T2, T3, T4, T5, T6> TryFrom<RawJsonValue<'text, 'raw>>
     for (T0, T1, T2, T3, T4, T5, T6)
 where
-    T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T1: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T2: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T3: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T4: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T5: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T6: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T0: TryFrom<RawJsonValue<'text, 'raw>>,
+    T1: TryFrom<RawJsonValue<'text, 'raw>>,
+    T2: TryFrom<RawJsonValue<'text, 'raw>>,
+    T3: TryFrom<RawJsonValue<'text, 'raw>>,
+    T4: TryFrom<RawJsonValue<'text, 'raw>>,
+    T5: TryFrom<RawJsonValue<'text, 'raw>>,
+    T6: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T0::Error>
+        + From<T1::Error>
+        + From<T2::Error>
+        + From<T3::Error>
+        + From<T4::Error>
+        + From<T5::Error>
+        + From<T6::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
         let [v0, v1, v2, v3, v4, v5, v6]: [RawJsonValue<'text, 'raw>; 7] = value.try_into()?;
         Ok((
-            T0::try_from(v0)?,
-            T1::try_from(v1)?,
-            T2::try_from(v2)?,
-            T3::try_from(v3)?,
-            T4::try_from(v4)?,
-            T5::try_from(v5)?,
-            T6::try_from(v6)?,
+            T0::try_from(v0).map_err(JsonParseError::from)?,
+            T1::try_from(v1).map_err(JsonParseError::from)?,
+            T2::try_from(v2).map_err(JsonParseError::from)?,
+            T3::try_from(v3).map_err(JsonParseError::from)?,
+            T4::try_from(v4).map_err(JsonParseError::from)?,
+            T5::try_from(v5).map_err(JsonParseError::from)?,
+            T6::try_from(v6).map_err(JsonParseError::from)?,
         ))
     }
 }
@@ -575,28 +618,36 @@ where
 impl<'text, 'raw, T0, T1, T2, T3, T4, T5, T6, T7> TryFrom<RawJsonValue<'text, 'raw>>
     for (T0, T1, T2, T3, T4, T5, T6, T7)
 where
-    T0: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T1: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T2: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T3: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T4: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T5: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T6: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-    T7: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    T0: TryFrom<RawJsonValue<'text, 'raw>>,
+    T1: TryFrom<RawJsonValue<'text, 'raw>>,
+    T2: TryFrom<RawJsonValue<'text, 'raw>>,
+    T3: TryFrom<RawJsonValue<'text, 'raw>>,
+    T4: TryFrom<RawJsonValue<'text, 'raw>>,
+    T5: TryFrom<RawJsonValue<'text, 'raw>>,
+    T6: TryFrom<RawJsonValue<'text, 'raw>>,
+    T7: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T0::Error>
+        + From<T1::Error>
+        + From<T2::Error>
+        + From<T3::Error>
+        + From<T4::Error>
+        + From<T5::Error>
+        + From<T6::Error>
+        + From<T7::Error>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
         let [v0, v1, v2, v3, v4, v5, v6, v7]: [RawJsonValue<'text, 'raw>; 8] = value.try_into()?;
         Ok((
-            T0::try_from(v0)?,
-            T1::try_from(v1)?,
-            T2::try_from(v2)?,
-            T3::try_from(v3)?,
-            T4::try_from(v4)?,
-            T5::try_from(v5)?,
-            T6::try_from(v6)?,
-            T7::try_from(v7)?,
+            T0::try_from(v0).map_err(JsonParseError::from)?,
+            T1::try_from(v1).map_err(JsonParseError::from)?,
+            T2::try_from(v2).map_err(JsonParseError::from)?,
+            T3::try_from(v3).map_err(JsonParseError::from)?,
+            T4::try_from(v4).map_err(JsonParseError::from)?,
+            T5::try_from(v5).map_err(JsonParseError::from)?,
+            T6::try_from(v6).map_err(JsonParseError::from)?,
+            T7::try_from(v7).map_err(JsonParseError::from)?,
         ))
     }
 }
@@ -605,7 +656,8 @@ impl<'text, 'raw, K, V> TryFrom<RawJsonValue<'text, 'raw>> for std::collections:
 where
     K: FromStr + Ord,
     K::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
-    V: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    V: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<V::Error>,
 {
     type Error = JsonParseError;
 
@@ -617,7 +669,7 @@ where
                     k.to_unquoted_string_str()?
                         .parse()
                         .map_err(|e| k.invalid(e))?,
-                    V::try_from(v)?,
+                    V::try_from(v).map_err(JsonParseError::from)?,
                 ))
             })
             .collect()
@@ -628,7 +680,8 @@ impl<'text, 'raw, K, V> TryFrom<RawJsonValue<'text, 'raw>> for std::collections:
 where
     K: FromStr + Eq + std::hash::Hash,
     K::Err: Into<Box<dyn Send + Sync + std::error::Error>>,
-    V: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+    V: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<V::Error>,
 {
     type Error = JsonParseError;
 
@@ -640,7 +693,7 @@ where
                     k.to_unquoted_string_str()?
                         .parse()
                         .map_err(|e| k.invalid(e))?,
-                    V::try_from(v)?,
+                    V::try_from(v).map_err(JsonParseError::from)?,
                 ))
             })
             .collect()
