@@ -179,7 +179,6 @@
 
 mod display_json;
 mod format;
-mod from_raw_json_value;
 mod kind;
 mod parse;
 mod parse_error;
@@ -190,7 +189,6 @@ use std::{fmt::Display, str::FromStr};
 
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
-pub use from_raw_json_value::FromRawJsonValue;
 pub use kind::JsonValueKind;
 pub use raw::{JsonParseError, RawJson, RawJsonValue};
 
@@ -241,7 +239,7 @@ impl<T: DisplayJson> Display for Json<T> {
 
 impl<T> FromStr for Json<T>
 where
-    T: for<'a> FromRawJsonValue<'a>,
+    T: for<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
 {
     type Err = JsonParseError;
 

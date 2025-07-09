@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
-use crate::{DisplayJson, FromRawJsonValue, JsonFormatter, JsonValueKind, parse::JsonParser};
+use crate::{DisplayJson, JsonFormatter, JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
@@ -228,8 +228,8 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
-        T::from_raw_json_value(self)
+    pub fn try_to<T: TryFrom<Self, Error = JsonParseError>>(self) -> Result<T, JsonParseError> {
+        T::try_from(self)
     }
 
     /// Returns the raw JSON text of this value as-is.
