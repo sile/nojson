@@ -447,7 +447,10 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_member(self, name: &str) -> Result<RawJsonMember<'text, 'raw>, JsonParseError> {
+    pub fn to_member<'a>(
+        self,
+        name: &'a str,
+    ) -> Result<RawJsonMember<'text, 'raw, 'a>, JsonParseError> {
         let member = self
             .to_object()?
             .find(|(key, _)| key.unquote() == name)
@@ -455,6 +458,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
 
         Ok(RawJsonMember {
             object: self,
+            name,
             member,
         })
     }
@@ -646,12 +650,13 @@ impl<'text, 'raw> Iterator for JsonKeyValuePairs<'text, 'raw> {
 /// # }
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RawJsonMember<'text, 'raw> {
+pub struct RawJsonMember<'text, 'raw, 'a> {
     object: RawJsonValue<'text, 'raw>,
+    name: &'a str,
     member: Option<RawJsonValue<'text, 'raw>>,
 }
 
-impl<'text, 'raw> RawJsonMember<'text, 'raw> {
+impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// Returns the member value if it exists, or an error if it's missing.
     ///
     /// This method is useful when you need to ensure that a required member
@@ -676,19 +681,21 @@ impl<'text, 'raw> RawJsonMember<'text, 'raw> {
     /// # }
     /// ```
     pub fn required(self) -> Result<RawJsonValue<'text, 'raw>, JsonParseError> {
-        self.member
-            .ok_or_else(|| self.object.invalid("required member is missing"))
+        self.member.ok_or_else(|| {
+            self.object
+                .invalid(format!("required member '{}' is missing", self.name))
+        })
     }
 }
 
-impl<'text, 'raw, T> TryFrom<RawJsonMember<'text, 'raw>> for Option<T>
+impl<'text, 'raw, 'a, T> TryFrom<RawJsonMember<'text, 'raw, 'a>> for Option<T>
 where
     T: TryFrom<RawJsonValue<'text, 'raw>>,
     JsonParseError: From<T::Error>,
 {
     type Error = JsonParseError;
 
-    fn try_from(value: RawJsonMember<'text, 'raw>) -> Result<Self, Self::Error> {
+    fn try_from(value: RawJsonMember<'text, 'raw, 'a>) -> Result<Self, Self::Error> {
         value
             .member
             .map(T::try_from)
