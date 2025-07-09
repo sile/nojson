@@ -184,6 +184,7 @@ mod kind;
 mod parse;
 mod parse_error;
 mod raw;
+mod try_from_impls;
 
 use std::{fmt::Display, str::FromStr};
 
