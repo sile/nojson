@@ -24,7 +24,7 @@
 //!
 //! ### Parsing JSON with Strong Typing
 //!
-//! The [`Json<T>`] wrapper allows parsing JSON text into Rust types that implement the [`FromRawJsonValue`] trait:
+//! The [`Json<T>`] wrapper allows parsing JSON text into Rust types that implement `TryFrom<RawJsonValue<'_, '_>>`:
 //!
 //! ```
 //! use nojson::Json;
@@ -85,10 +85,10 @@
 //!
 //! ### Custom Types
 //!
-//! Implementing [`DisplayJson`] and [`FromRawJsonValue`] for your own types:
+//! Implementing [`DisplayJson`] and `TryFrom<RawJsonValue<'_, '_>>` for your own types:
 //!
 //! ```
-//! use nojson::{DisplayJson, FromRawJsonValue, Json, JsonFormatter, JsonParseError, RawJsonValue};
+//! use nojson::{DisplayJson, Json, JsonFormatter, JsonParseError, RawJsonValue};
 //!
 //! struct Person {
 //!     name: String,
@@ -104,12 +104,14 @@
 //!     }
 //! }
 //!
-//! impl<'text> FromRawJsonValue<'text> for Person {
-//!     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+//! impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for Person {
+//!     type Error = JsonParseError;
+//!
+//!     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
 //!         let ([name, age], []) = value.to_fixed_object(["name", "age"], [])?;
 //!         Ok(Person {
-//!             name: name.try_to()?,
-//!             age: age.try_to()?,
+//!             name: name.try_into()?,
+//!             age: age.try_into()?,
 //!         })
 //!     }
 //! }
@@ -179,17 +181,16 @@
 
 mod display_json;
 mod format;
-mod from_raw_json_value;
 mod kind;
 mod parse;
 mod parse_error;
 mod raw;
+mod try_from_impls;
 
 use std::{fmt::Display, str::FromStr};
 
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
-pub use from_raw_json_value::FromRawJsonValue;
 pub use kind::JsonValueKind;
 pub use raw::{JsonParseError, RawJson, RawJsonValue};
 
@@ -205,7 +206,7 @@ pub use raw::{JsonParseError, RawJson, RawJsonValue};
 /// use nojson::Json;
 ///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// // Since the `[Option<u32>; 3]` type implements the `FromRawJsonValue` trait,
+/// // Since the `[Option<u32>; 3]` type implements `TryFrom<RawJsonValue<'_, '_>>`,
 /// // you can use the `std::str::parse()` method to parse JSON by wrapping the type with `Json`.
 /// let text = "[1, null, 2]";
 /// let value: Json<[Option<u32>; 3]> = text.parse()?;
@@ -219,7 +220,7 @@ pub use raw::{JsonParseError, RawJson, RawJsonValue};
 /// use nojson::Json;
 ///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// // Since the `[Option<u32>; 3]` type also implements the `DisplyJson` trait,
+/// // Since the `[Option<u32>; 3]` type also implements the `DisplayJson` trait,
 /// // you can use the `std::fmt::Display::to_string()` method to
 /// // generate JSON by wrapping the type with `Json`.
 /// let value = [Some(1), None, Some(2)];
@@ -240,13 +241,13 @@ impl<T: DisplayJson> Display for Json<T> {
 
 impl<T> FromStr for Json<T>
 where
-    T: for<'a> FromRawJsonValue<'a>,
+    T: for<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
 {
     type Err = JsonParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let raw = RawJson::parse(s)?;
-        raw.value().try_to().map(Self)
+        raw.value().try_into().map(Self)
     }
 }
 

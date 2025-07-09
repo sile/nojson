@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::BTreeMap};
 
-use nojson::{FromRawJsonValue, Json, JsonParseError, JsonValueKind, RawJson, RawJsonValue};
+use nojson::{Json, JsonParseError, JsonValueKind, RawJson, RawJsonValue};
 
 macro_rules! assert_parse_error_matches {
     ($text:expr, $error_pattern:pat) => {{
@@ -384,12 +384,14 @@ fn to_fixed_object() -> Result<(), JsonParseError> {
         age: u32,
     }
 
-    impl<'text> FromRawJsonValue<'text> for Person {
-        fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
+    impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for Person {
+        type Error = JsonParseError;
+
+        fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
             let ([name, age], []) = value.to_fixed_object(["name", "age"], [])?;
             Ok(Person {
-                name: name.try_to()?,
-                age: age.try_to()?,
+                name: name.try_into()?,
+                age: age.try_into()?,
             })
         }
     }

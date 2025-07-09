@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
-use crate::{DisplayJson, FromRawJsonValue, JsonFormatter, JsonValueKind, parse::JsonParser};
+use crate::{DisplayJson, JsonFormatter, JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
@@ -158,12 +158,12 @@ pub(crate) struct JsonValueIndexEntry {
 
 /// A JSON value in a [`RawJson`].
 ///
-/// This struct only provides the text and structural information (e.g., kind, parent, children) of this JSON value.
+/// This struct provides the text and structural information (e.g., kind, parent, children) of a JSON value.
 /// Interpreting that text is the responsibility of the user.
 ///
-/// To convert this JSON value to a Rust type that implements the [`FromRawJsonValue`] trait,
-/// [`RawJsonValue::try_to()`] is convinient.
-/// For other Rust types, you can use the standard [`FromStr`](std::str::FromStr) trait or other parsing methods to parse the underlaying JSON text of this value as shown below:
+/// To convert this JSON value to a Rust type, you can use the standard [`TryFrom`] and [`TryInto`] traits.
+/// For other parsing approaches, you can use the [`FromStr`](std::str::FromStr) trait or other parsing methods
+/// to parse the underlying JSON text of this value as shown below:
 ///
 /// ```
 /// # use nojson::{RawJson, RawJsonValue, JsonParseError};
@@ -174,6 +174,18 @@ pub(crate) struct JsonValueIndexEntry {
 /// let parsed: f32 =
 ///     raw.as_number_str()?.parse().map_err(|e| raw.invalid(e))?;
 /// assert_eq!(parsed, 1.23);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// For types that implement `TryFrom<RawJsonValue<'_, '_>>`, you can use the [`TryInto`] trait:
+///
+/// ```
+/// # use nojson::{RawJson, JsonParseError};
+/// # fn main() -> Result<(), JsonParseError> {
+/// let json = RawJson::parse("[1, 2, 3]")?;
+/// let numbers: [u32; 3] = json.value().try_into()?;
+/// assert_eq!(numbers, [1, 2, 3]);
 /// # Ok(())
 /// # }
 /// ```
@@ -205,31 +217,6 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
             return None;
         }
         self.json.get_value_by_position(self.position() - 1)
-    }
-
-    /// Covnerts this value to `T` by using [`FromRawJsonValue::from_raw_json_value()`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use nojson::{ RawJson, FromRawJsonValue };
-    /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("[1, 2, -3]")?;
-    ///
-    /// // Convert via `FromRawJsonValue::from_raw_json_value()`
-    /// let (v0, v1, v2) = FromRawJsonValue::from_raw_json_value(json.value())?;
-    /// assert_eq!((v0, v1, v2), (1, 2.0, -3));
-    ///
-    /// // Convert via `RawJsonValue::try_to()`
-    /// // (Exactly the same result as the above call, but usually more concise and readable)
-    /// let (v0, v1, v2) = json.value().try_to()?;
-    /// assert_eq!((v0, v1, v2), (1, 2.0, -3));
-    ///
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn try_to<T: FromRawJsonValue<'text>>(self) -> Result<T, JsonParseError> {
-        T::from_raw_json_value(self)
     }
 
     /// Returns the raw JSON text of this value as-is.
@@ -325,7 +312,7 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
     }
 
     /// Similar to [`RawJsonValue::as_raw_str()`],
-    /// but this method verifies whether the value is a JSON number and returns the unquoted content of the string.
+    /// but this method verifies whether the value is a JSON string and returns the unquoted content of the string.
     ///
     /// # Examples
     ///
