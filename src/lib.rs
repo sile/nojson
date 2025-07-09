@@ -24,7 +24,7 @@
 //!
 //! ### Parsing JSON with Strong Typing
 //!
-//! The [`Json<T>`] wrapper allows parsing JSON text into Rust types that implement the [`FromRawJsonValue`] trait:
+//! The [`Json<T>`] wrapper allows parsing JSON text into Rust types that implement `TryFrom<RawJsonValue<'_, '_>>`:
 //!
 //! ```
 //! use nojson::Json;
@@ -85,7 +85,7 @@
 //!
 //! ### Custom Types
 //!
-//! Implementing [`DisplayJson`] and [`FromRawJsonValue`] for your own types:
+//! Implementing [`DisplayJson`] and `TryFrom<RawJsonValue<'_, '_>>` for your own types:
 //!
 //! ```
 //! use nojson::{DisplayJson, Json, JsonFormatter, JsonParseError, RawJsonValue};
@@ -206,7 +206,7 @@ pub use raw::{JsonParseError, RawJson, RawJsonValue};
 /// use nojson::Json;
 ///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// // Since the `[Option<u32>; 3]` type implements the `FromRawJsonValue` trait,
+/// // Since the `[Option<u32>; 3]` type implements `TryFrom<RawJsonValue<'_, '_>>`,
 /// // you can use the `std::str::parse()` method to parse JSON by wrapping the type with `Json`.
 /// let text = "[1, null, 2]";
 /// let value: Json<[Option<u32>; 3]> = text.parse()?;
@@ -220,7 +220,7 @@ pub use raw::{JsonParseError, RawJson, RawJsonValue};
 /// use nojson::Json;
 ///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// // Since the `[Option<u32>; 3]` type also implements the `DisplyJson` trait,
+/// // Since the `[Option<u32>; 3]` type also implements the `DisplayJson` trait,
 /// // you can use the `std::fmt::Display::to_string()` method to
 /// // generate JSON by wrapping the type with `Json`.
 /// let value = [Some(1), None, Some(2)];
