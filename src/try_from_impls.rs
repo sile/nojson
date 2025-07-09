@@ -396,24 +396,8 @@ where
 
 impl<'text, 'raw, T, const N: usize> TryFrom<RawJsonValue<'text, 'raw>> for [T; N]
 where
-    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
-{
-    type Error = JsonParseError;
-
-    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let fixed_array: [RawJsonValue<'text, 'raw>; N] = value.try_into()?;
-        let mut results = fixed_array.map(|v| T::try_from(v).map_err(Some));
-        for result in &mut results {
-            if let Err(e) = result {
-                return Err(e.take().expect("infallible"));
-            }
-        }
-        Ok(results.map(|r| r.expect("infallible")))
-    }
-}
-
-impl<'text, 'raw, const N: usize> TryFrom<RawJsonValue<'text, 'raw>>
-    for [RawJsonValue<'text, 'raw>; N]
+    T: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T::Error>,
 {
     type Error = JsonParseError;
 
@@ -436,7 +420,13 @@ impl<'text, 'raw, const N: usize> TryFrom<RawJsonValue<'text, 'raw>>
             )));
         }
 
-        Ok(fixed_array)
+        let mut results = fixed_array.map(|v| T::try_from(v).map_err(Some));
+        for result in &mut results {
+            if let Err(e) = result {
+                return Err(e.take().expect("infallible").into());
+            }
+        }
+        Ok(results.map(|r| r.ok().expect("infallible")))
     }
 }
 

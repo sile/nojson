@@ -221,3 +221,9 @@ impl std::error::Error for JsonParseError {
         }
     }
 }
+
+impl From<std::convert::Infallible> for JsonParseError {
+    fn from(_value: std::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
