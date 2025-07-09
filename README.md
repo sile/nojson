@@ -116,7 +116,8 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for Person {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let ([name, age], []) = value.to_fixed_object(["name", "age"], [])?;
+        let name = value.to_member("name")?.required()?;
+        let age = value.to_member("age")?.required()?;
         Ok(Person {
             name: name.try_into()?,
             age: age.try_into()?,

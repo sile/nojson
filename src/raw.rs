@@ -391,62 +391,76 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
             .map(JsonKeyValuePairs::new)
     }
 
-    /// If the value is a JSON object, this method extracts member values for a fixed set of member names.
+    /// Attempts to access a member of a JSON object by name.
     ///
-    /// The method returns a tuple containing:
-    /// - An array of values for required member names
-    /// - An array of optional values for optional member names
+    /// This method returns a [`RawJsonMember`] that represents the result of
+    /// looking up the specified member name. The member may or may not exist,
+    /// and you can use methods like [`RawJsonMember::required()`] or convert
+    /// it to an `Option<T>` to handle both cases.
     ///
     /// # Examples
     ///
     /// ```
     /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30, "city": "New York"}"#)?;
-    /// let (required, optional) = json.value().to_fixed_object(
-    ///     ["name", "age"],      // required fields
-    ///     ["city", "country"]   // optional fields
-    /// )?;
+    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+    /// let obj = json.value();
     ///
-    /// assert_eq!(required[0].to_unquoted_string_str()?, "Alice");
-    /// assert_eq!(required[1].as_integer_str()?.parse(), Ok(30));
+    /// // Access existing member
+    /// let name_value: String = obj.to_member("name")?.required()?.try_into()?;
+    /// assert_eq!(name_value, "Alice");
     ///
-    /// assert_eq!(optional[0].expect("some").to_unquoted_string_str()?, "New York");
-    /// assert!(optional[1].is_none()); // "country" wasn't present
-    ///
-    /// // Fails when required fields are missing
-    /// let json = RawJson::parse(r#"{"name": "Bob", "city": "London"}"#)?;
-    /// assert!(json.value().to_fixed_object(["name", "age"], ["city"]).is_err());
+    /// // Handle optional member
+    /// let city_member = obj.to_member("city")?;
+    /// let city: Option<String> = city_member.try_into()?;
+    /// assert_eq!(city, None);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_fixed_object<const N: usize, const M: usize>(
+    ///
+    /// # Performance
+    ///
+    /// This method has O(n) complexity where n is the number of members in the object,
+    /// as it performs a linear search through all object members to find the requested name.
+    /// If you need to access multiple members from the same object, consider using
+    /// [`RawJsonValue::to_object()`] instead, which allows you to iterate through
+    /// all members once and extract the values you need more efficiently.
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30, "city": "New York"}"#)?;
+    /// let obj = json.value();
+    ///
+    /// // Efficient: single iteration for multiple members
+    /// let mut name = None;
+    /// let mut age = None;
+    /// let mut city = None;
+    /// for (key, value) in obj.to_object()? {
+    ///     match key.to_unquoted_string_str()?.as_ref() {
+    ///         "name" => name = Some(value),
+    ///         "age" => age = Some(value),
+    ///         "city" => city = Some(value),
+    ///         _ => {}
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn to_member<'a>(
         self,
-        required_member_names: [&str; N],
-        optional_member_names: [&str; M],
-    ) -> Result<([Self; N], [Option<Self>; M]), JsonParseError> {
-        let mut required = [self; N];
-        let mut optional = [None; M];
-        for (k, v) in self.to_object()? {
-            let k = k.unquote();
-            if let Some(i) = required_member_names.iter().position(|n| k == *n) {
-                required[i] = v;
-            } else if let Some(i) = optional_member_names.iter().position(|n| k == *n) {
-                optional[i] = Some(v);
-            }
-        }
+        name: &'a str,
+    ) -> Result<RawJsonMember<'text, 'raw, 'a>, JsonParseError> {
+        let member = self
+            .to_object()?
+            .find(|(key, _)| key.unquote() == name)
+            .map(|(_, value)| value);
 
-        if required.iter().any(|v| v.index == self.index) {
-            let missings = required_member_names
-                .iter()
-                .zip(required.iter())
-                .filter(|(_, value)| value.index == self.index)
-                .map(|(name, _)| name)
-                .collect::<Vec<_>>();
-            return Err(self.invalid(format!("missing required object members: {missings:?}")));
-        }
-
-        Ok((required, optional))
+        Ok(RawJsonMember {
+            object: self,
+            name,
+            member,
+        })
     }
 
     /// Creates a [`JsonParseError::InvalidValue`] error for this value.
@@ -606,5 +620,86 @@ impl<'text, 'raw> Iterator for JsonKeyValuePairs<'text, 'raw> {
         let key = self.inner.next()?;
         let value = self.inner.next().expect("infallible");
         Some((key, value))
+    }
+}
+
+/// Represents a member access result for a JSON object.
+///
+/// This struct is returned by [`RawJsonValue::to_member()`] and allows you to handle
+/// both present and missing object members. It wraps an optional value that is
+/// `Some` if the member exists and `None` if it doesn't.
+///
+/// # Examples
+///
+/// ```
+/// # use nojson::RawJson;
+/// # fn main() -> Result<(), nojson::JsonParseError> {
+/// let json = RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+/// let obj = json.value();
+///
+/// // Access an existing member
+/// let name_member = obj.to_member("name")?;
+/// let name: String = name_member.required()?.try_into()?;
+/// assert_eq!(name, "Alice");
+///
+/// // Access a missing member
+/// let city_member = obj.to_member("city")?;
+/// let city: Option<String> = city_member.try_into()?;
+/// assert_eq!(city, None);
+/// # Ok(())
+/// # }
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RawJsonMember<'text, 'raw, 'a> {
+    object: RawJsonValue<'text, 'raw>,
+    name: &'a str,
+    member: Option<RawJsonValue<'text, 'raw>>,
+}
+
+impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
+    /// Returns the member value if it exists, or an error if it's missing.
+    ///
+    /// This method is useful when you need to ensure that a required member
+    /// is present in the JSON object.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "Alice"}"#)?;
+    /// let obj = json.value();
+    ///
+    /// // Required member exists
+    /// let name = obj.to_member("name")?.required()?;
+    /// assert_eq!(name.to_unquoted_string_str()?, "Alice");
+    ///
+    /// // Required member missing - returns error
+    /// let age_result = obj.to_member("age")?.required();
+    /// assert!(age_result.is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn required(self) -> Result<RawJsonValue<'text, 'raw>, JsonParseError> {
+        self.member.ok_or_else(|| {
+            self.object
+                .invalid(format!("required member '{}' is missing", self.name))
+        })
+    }
+}
+
+impl<'text, 'raw, 'a, T> TryFrom<RawJsonMember<'text, 'raw, 'a>> for Option<T>
+where
+    T: TryFrom<RawJsonValue<'text, 'raw>>,
+    JsonParseError: From<T::Error>,
+{
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonMember<'text, 'raw, 'a>) -> Result<Self, Self::Error> {
+        value
+            .member
+            .map(T::try_from)
+            .transpose()
+            .map_err(JsonParseError::from)
     }
 }

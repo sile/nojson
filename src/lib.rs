@@ -108,7 +108,8 @@
 //!     type Error = JsonParseError;
 //!
 //!     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-//!         let ([name, age], []) = value.to_fixed_object(["name", "age"], [])?;
+//!         let name = value.to_member("name")?.required()?;
+//!         let age = value.to_member("age")?.required()?;
 //!         Ok(Person {
 //!             name: name.try_into()?,
 //!             age: age.try_into()?,
@@ -192,7 +193,7 @@ use std::{fmt::Display, str::FromStr};
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
 pub use kind::JsonValueKind;
-pub use raw::{JsonParseError, RawJson, RawJsonValue};
+pub use raw::{JsonParseError, RawJson, RawJsonMember, RawJsonValue};
 
 /// A marker struct that enables JSON parsing and generation through the [`FromStr`] and [`Display`] traits.
 ///
