@@ -116,8 +116,8 @@ impl<'text> FromRawJsonValue<'text> for Person {
     fn from_raw_json_value(value: RawJsonValue<'text, '_>) -> Result<Self, JsonParseError> {
         let ([name, age], []) = value.to_fixed_object(["name", "age"], [])?;
         Ok(Person {
-            name: name.try_to()?,
-            age: age.try_to()?,
+            name: name.try_into()?,
+            age: age.try_into()?,
         })
     }
 }

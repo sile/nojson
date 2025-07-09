@@ -110,8 +110,8 @@
 //!     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
 //!         let ([name, age], []) = value.to_fixed_object(["name", "age"], [])?;
 //!         Ok(Person {
-//!             name: name.try_to()?,
-//!             age: age.try_to()?,
+//!             name: name.try_into()?,
+//!             age: age.try_into()?,
 //!         })
 //!     }
 //! }
@@ -247,7 +247,7 @@ where
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let raw = RawJson::parse(s)?;
-        raw.value().try_to().map(Self)
+        raw.value().try_into().map(Self)
     }
 }
 

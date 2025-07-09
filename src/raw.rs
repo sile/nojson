@@ -207,11 +207,6 @@ impl<'text, 'a> RawJsonValue<'text, 'a> {
         self.json.get_value_by_position(self.position() - 1)
     }
 
-    /// Covnerts this value to `T` by using [`FromRawJsonValue::from_raw_json_value()`].
-    pub fn try_to<T: TryFrom<Self, Error = JsonParseError>>(self) -> Result<T, JsonParseError> {
-        T::try_from(self)
-    }
-
     /// Returns the raw JSON text of this value as-is.
     pub fn as_raw_str(self) -> &'text str {
         let text = &self.json.values[self.index].text;
