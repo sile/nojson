@@ -407,13 +407,43 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// let obj = json.value();
     ///
     /// // Access existing member
-    /// let name_value = obj.to_member("name")?.required()?;
-    /// assert_eq!(name_value.to_unquoted_string_str()?, "Alice");
+    /// let name_value: String = obj.to_member("name")?.required()?.try_into()?;
+    /// assert_eq!(name_value, "Alice");
     ///
     /// // Handle optional member
     /// let city_member = obj.to_member("city")?;
     /// let city: Option<String> = city_member.try_into()?;
     /// assert_eq!(city, None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Performance
+    ///
+    /// This method has O(n) complexity where n is the number of members in the object,
+    /// as it performs a linear search through all object members to find the requested name.
+    /// If you need to access multiple members from the same object, consider using
+    /// [`RawJsonValue::to_object()`] instead, which allows you to iterate through
+    /// all members once and extract the values you need more efficiently.
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30, "city": "New York"}"#)?;
+    /// let obj = json.value();
+    ///
+    /// // Efficient: single iteration for multiple members
+    /// let mut name = None;
+    /// let mut age = None;
+    /// let mut city = None;
+    /// for (key, value) in obj.to_object()? {
+    ///     match key.to_unquoted_string_str()?.as_ref() {
+    ///         "name" => name = Some(value),
+    ///         "age" => age = Some(value),
+    ///         "city" => city = Some(value),
+    ///         _ => {}
+    ///     }
+    /// }
     /// # Ok(())
     /// # }
     /// ```
