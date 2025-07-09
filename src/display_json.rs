@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{borrow::Cow, fmt::Display};
 
 use crate::JsonFormatter;
 
@@ -300,6 +300,12 @@ impl DisplayJson for &str {
 }
 
 impl DisplayJson for String {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self)
+    }
+}
+
+impl<'a> DisplayJson for Cow<'a, str> {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.string(self)
     }
