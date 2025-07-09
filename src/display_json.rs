@@ -293,7 +293,7 @@ impl DisplayJson for f64 {
     }
 }
 
-impl DisplayJson for &str {
+impl DisplayJson for str {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.string(self)
     }
@@ -305,13 +305,13 @@ impl DisplayJson for String {
     }
 }
 
-impl<'a> DisplayJson for Cow<'a, str> {
+impl<'a, T: ?Sized + DisplayJson + ToOwned> DisplayJson for Cow<'a, T> {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
-        f.string(self)
+        f.value(self.as_ref())
     }
 }
 
-impl DisplayJson for &std::path::Path {
+impl DisplayJson for std::path::Path {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.string(self.display())
     }
@@ -365,7 +365,7 @@ impl<T: DisplayJson, const N: usize> DisplayJson for [T; N] {
     }
 }
 
-impl<T: DisplayJson> DisplayJson for &[T] {
+impl<T: DisplayJson> DisplayJson for [T] {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.array(|f| f.elements(self.iter()))
     }

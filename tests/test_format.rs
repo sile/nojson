@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use nojson::{DisplayJson, Json, json};
 
@@ -11,6 +11,14 @@ fn float() {
     assert_eq!(json(|f| f.value(f64::NAN)).to_string(), "null");
     assert_eq!(json(|f| f.value(f32::INFINITY)).to_string(), "null");
     assert_eq!(json(|f| f.value(f64::INFINITY)).to_string(), "null");
+}
+
+#[test]
+fn string() {
+    assert_eq!(
+        json(|f| f.value(Cow::Borrowed("foo"))).to_string(),
+        "\"foo\""
+    );
 }
 
 #[test]
