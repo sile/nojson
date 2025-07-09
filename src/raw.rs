@@ -350,49 +350,20 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_array(self) -> Result<impl Iterator<Item = Self>, JsonParseError> {
-        self.expect([JsonValueKind::Array]).map(Children::new)
-    }
-
-    /// If the value is a JSON array with exactly `N` elements,
-    /// this method returns a fixed-size array containing those elements.
     ///
-    /// # Examples
+    /// # Note
     ///
+    /// For converting to a fixed-size array, you can use the `TryInto` trait instead:
     /// ```
     /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let json = RawJson::parse("[0, 1, 2]")?;
-    /// let [v0, v1, v2] = json.value().to_fixed_array()?;
-    /// for (i, v) in [v0, v1, v2].into_iter().enumerate() {
-    ///     assert_eq!(v.as_integer_str()?.parse(), Ok(i));
-    /// }
-    ///
-    /// let json = RawJson::parse("[0, 1]")?;
-    /// assert!(json.value().to_fixed_array::<3>().is_err());
+    /// let fixed_array: [usize; 3] = json.value().try_into()?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_fixed_array<const N: usize>(self) -> Result<[Self; N], JsonParseError> {
-        let mut values = self.to_array()?;
-        let mut fixed_array = [self; N];
-        for (i, v) in fixed_array.iter_mut().enumerate() {
-            *v = values.next().ok_or_else(|| {
-                self.invalid(format!(
-                    "expected an array with {N} elements, but got only {i} elements"
-                ))
-            })?;
-        }
-
-        let extra = values.count();
-        if extra > 0 {
-            return Err(self.invalid(format!(
-                "expected an array with {N} elements, but got {} elements",
-                N + extra
-            )));
-        }
-
-        Ok(fixed_array)
+    pub fn to_array(self) -> Result<impl Iterator<Item = Self>, JsonParseError> {
+        self.expect([JsonValueKind::Array]).map(Children::new)
     }
 
     /// If the value is a JSON object,

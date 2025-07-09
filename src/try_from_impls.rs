@@ -401,8 +401,8 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let values = value.to_fixed_array::<N>()?;
-        let mut results = values.map(|v| T::try_from(v).map_err(Some));
+        let fixed_array: [RawJsonValue<'text, 'raw>; N] = value.try_into()?;
+        let mut results = fixed_array.map(|v| T::try_from(v).map_err(Some));
         for result in &mut results {
             if let Err(e) = result {
                 return Err(e.take().expect("infallible"));
@@ -412,11 +412,39 @@ where
     }
 }
 
+impl<'text, 'raw, const N: usize> TryFrom<RawJsonValue<'text, 'raw>>
+    for [RawJsonValue<'text, 'raw>; N]
+{
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        let mut values = value.to_array()?;
+        let mut fixed_array = [value; N];
+        for (i, v) in fixed_array.iter_mut().enumerate() {
+            *v = values.next().ok_or_else(|| {
+                value.invalid(format!(
+                    "expected an array with {N} elements, but got only {i} elements"
+                ))
+            })?;
+        }
+
+        let extra = values.count();
+        if extra > 0 {
+            return Err(value.invalid(format!(
+                "expected an array with {N} elements, but got {} elements",
+                N + extra
+            )));
+        }
+
+        Ok(fixed_array)
+    }
+}
+
 impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for () {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [] = value.to_fixed_array()?;
+        let []: [RawJsonValue<'text, 'raw>; 0] = value.try_into()?;
         Ok(())
     }
 }
@@ -428,7 +456,7 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0] = value.to_fixed_array()?;
+        let [v0]: [RawJsonValue<'text, 'raw>; 1] = value.try_into()?;
         Ok((T0::try_from(v0)?,))
     }
 }
@@ -441,7 +469,7 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0, v1] = value.to_fixed_array()?;
+        let [v0, v1]: [RawJsonValue<'text, 'raw>; 2] = value.try_into()?;
         Ok((T0::try_from(v0)?, T1::try_from(v1)?))
     }
 }
@@ -455,7 +483,7 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0, v1, v2] = value.to_fixed_array()?;
+        let [v0, v1, v2]: [RawJsonValue<'text, 'raw>; 3] = value.try_into()?;
         Ok((T0::try_from(v0)?, T1::try_from(v1)?, T2::try_from(v2)?))
     }
 }
@@ -470,7 +498,7 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0, v1, v2, v3] = value.to_fixed_array()?;
+        let [v0, v1, v2, v3]: [RawJsonValue<'text, 'raw>; 4] = value.try_into()?;
         Ok((
             T0::try_from(v0)?,
             T1::try_from(v1)?,
@@ -491,7 +519,7 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0, v1, v2, v3, v4] = value.to_fixed_array()?;
+        let [v0, v1, v2, v3, v4]: [RawJsonValue<'text, 'raw>; 5] = value.try_into()?;
         Ok((
             T0::try_from(v0)?,
             T1::try_from(v1)?,
@@ -515,7 +543,7 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0, v1, v2, v3, v4, v5] = value.to_fixed_array()?;
+        let [v0, v1, v2, v3, v4, v5]: [RawJsonValue<'text, 'raw>; 6] = value.try_into()?;
         Ok((
             T0::try_from(v0)?,
             T1::try_from(v1)?,
@@ -541,7 +569,7 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0, v1, v2, v3, v4, v5, v6] = value.to_fixed_array()?;
+        let [v0, v1, v2, v3, v4, v5, v6]: [RawJsonValue<'text, 'raw>; 7] = value.try_into()?;
         Ok((
             T0::try_from(v0)?,
             T1::try_from(v1)?,
@@ -569,7 +597,7 @@ where
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let [v0, v1, v2, v3, v4, v5, v6, v7] = value.to_fixed_array()?;
+        let [v0, v1, v2, v3, v4, v5, v6, v7]: [RawJsonValue<'text, 'raw>; 8] = value.try_into()?;
         Ok((
             T0::try_from(v0)?,
             T1::try_from(v1)?,
