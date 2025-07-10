@@ -463,6 +463,50 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
         })
     }
 
+    /// Applies a transformation function to this JSON value.
+    ///
+    /// This method allows you to transform a `RawJsonValue` into any other type `T`
+    /// using a closure that can potentially fail with a `JsonParseError`. It's particularly
+    /// useful for chaining operations or applying custom parsing logic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse("\"42\"")?;
+    /// let value = json.value();
+    ///
+    /// // Transform a string value to an integer
+    /// let number: i32 = value.map(|v| {
+    ///     v.to_unquoted_string_str()?.parse().map_err(|e| v.invalid(e))
+    /// })?;
+    /// assert_eq!(number, 42);
+    ///
+    /// // Chain with other operations
+    /// let json = RawJson::parse("[1, 2, 3]")?;
+    /// let sum: i32 = json.value().map(|v| {
+    ///     v.to_array()?
+    ///         .map(|item| item.as_integer_str()?.parse().map_err(|e| item.invalid(e)))
+    ///         .collect::<Result<Vec<i32>, _>>()?
+    ///         .into_iter()
+    ///         .sum::<i32>()
+    ///         .into()
+    /// })?;
+    /// assert_eq!(sum, 6);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// This method is equivalent to directly calling the function with the value,
+    /// but provides a more functional programming style for chaining operations.
+    pub fn map<F, T>(self, f: F) -> Result<T, JsonParseError>
+    where
+        F: FnOnce(RawJsonValue<'text, 'raw>) -> Result<T, JsonParseError>,
+    {
+        f(self)
+    }
+
     /// Creates a [`JsonParseError::InvalidValue`] error for this value.
     ///
     /// This is a convenience method that's equivalent to calling
