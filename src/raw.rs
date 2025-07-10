@@ -686,6 +686,45 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
                 .invalid(format!("required member '{}' is missing", self.name))
         })
     }
+
+    /// Returns the inner raw JSON value as an `Option`.
+    ///
+    /// This method provides direct access to the underlying `Option<RawJsonValue>`,
+    /// allowing you to handle the presence or absence of the member yourself.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+    /// let obj = json.value();
+    ///
+    /// // Existing member
+    /// let name_member = obj.to_member("name")?;
+    /// if let Some(name_value) = name_member.get() {
+    ///     assert_eq!(name_value.to_unquoted_string_str()?, "Alice");
+    /// }
+    ///
+    /// // Missing member
+    /// let city_member = obj.to_member("city")?;
+    /// assert!(city_member.get().is_none());
+    ///
+    /// // Using with pattern matching
+    /// match obj.to_member("age")?.get() {
+    ///     Some(age_value) => {
+    ///         let age: i32 = age_value.as_integer_str()?.parse()
+    ///             .map_err(|e| age_value.invalid(e))?;
+    ///         assert_eq!(age, 30);
+    ///     }
+    ///     None => println!("Age not provided"),
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn get(self) -> Option<RawJsonValue<'text, 'raw>> {
+        self.member
+    }
 }
 
 impl<'text, 'raw, 'a, T> TryFrom<RawJsonMember<'text, 'raw, 'a>> for Option<T>
