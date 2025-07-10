@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
-use crate::{DisplayJson, JsonFormatter, JsonValueKind, parse::JsonParser};
+use crate::{parse::JsonParser, DisplayJson, JsonFormatter, JsonValueKind};
 
 pub use crate::parse_error::JsonParseError;
 
@@ -724,6 +724,61 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// ```
     pub fn get(self) -> Option<RawJsonValue<'text, 'raw>> {
         self.member
+    }
+
+    /// Applies a transformation function to the member value if it exists.
+    ///
+    /// This method is similar to [`Option::map`], but designed for transformations
+    /// that can fail with a [`JsonParseError`]. If the member exists, the function
+    /// is applied to its value. If the member doesn't exist, `Ok(None)` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "Alice", "age": "30"}"#)?;
+    /// let obj = json.value();
+    ///
+    /// // Transform existing member
+    /// let age_member = obj.to_member("age")?;
+    /// let age: Option<i32> = age_member.map(|v| {
+    ///     v.to_unquoted_string_str()?.parse().map_err(|e| v.invalid(e))
+    /// })?;
+    /// assert_eq!(age, Some(30));
+    ///
+    /// // Transform missing member
+    /// let city_member = obj.to_member("city")?;
+    /// let city: Option<String> = city_member.map(|v| {
+    ///     Ok(v.to_unquoted_string_str()?.to_string())
+    /// })?;
+    /// assert_eq!(city, None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// This is particularly useful when you need to perform parsing or validation
+    /// on optional members without having to handle the `Option` separately:
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"score": "95.5"}"#)?;
+    /// let obj = json.value();
+    ///
+    /// // Parse optional numeric string
+    /// let score: Option<f64> = obj.to_member("score")?.map(|v| {
+    ///     v.to_unquoted_string_str()?.parse().map_err(|e| v.invalid(e))
+    /// })?;
+    /// assert_eq!(score, Some(95.5));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn map<F, T>(self, f: F) -> Result<Option<T>, JsonParseError>
+    where
+        F: FnOnce(RawJsonValue<'text, 'raw>) -> Result<T, JsonParseError>,
+    {
+        self.member.map(f).transpose()
     }
 }
 
