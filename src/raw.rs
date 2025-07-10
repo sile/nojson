@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
-use crate::{parse::JsonParser, DisplayJson, JsonFormatter, JsonValueKind};
+use crate::{DisplayJson, JsonFormatter, JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
