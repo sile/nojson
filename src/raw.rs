@@ -749,9 +749,7 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     ///
     /// // Transform missing member
     /// let city_member = obj.to_member("city")?;
-    /// let city: Option<String> = city_member.map(|v| {
-    ///     Ok(v.to_unquoted_string_str()?.to_string())
-    /// })?;
+    /// let city: Option<String> = city_member.map(|v| v.try_into())?;
     /// assert_eq!(city, None);
     /// # Ok(())
     /// # }
