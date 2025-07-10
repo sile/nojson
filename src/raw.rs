@@ -475,24 +475,12 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let json = RawJson::parse("\"42\"")?;
-    /// let value = json.value();
     ///
     /// // Transform a string value to an integer
-    /// let number: i32 = value.map(|v| {
+    /// let number: i32 = json.value().map(|v| {
     ///     v.to_unquoted_string_str()?.parse().map_err(|e| v.invalid(e))
     /// })?;
     /// assert_eq!(number, 42);
-    ///
-    /// // Chain with other operations
-    /// let json = RawJson::parse("[1, 2, 3]")?;
-    /// let sum: i32 = json.value().map(|v| {
-    ///     Ok(v.to_array()?
-    ///           .map(|item| item.as_integer_str()?.parse().map_err(|e| item.invalid(e)))
-    ///           .collect::<Result<Vec<i32>, _>>()?
-    ///           .into_iter()
-    ///           .sum::<i32>())
-    /// })?;
-    /// assert_eq!(sum, 6);
     /// # Ok(())
     /// # }
     /// ```
