@@ -455,7 +455,7 @@ where
                 return Err(e.take().expect("infallible"));
             }
         }
-        Ok(results.map(|r| r.ok().expect("infallible")))
+        Ok(results.map(|r| r.expect("infallible")))
     }
 }
 
