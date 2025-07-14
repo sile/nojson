@@ -350,18 +350,22 @@ where
     }
 }
 
+impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for Vec<RawJsonValue<'text, 'raw>> {
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        Ok(value.to_array()?.collect())
+    }
+}
+
 impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for Vec<T>
 where
-    T: TryFrom<RawJsonValue<'text, 'raw>>,
-    JsonParseError: From<T::Error>,
+    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        value
-            .to_array()?
-            .map(|v| T::try_from(v).map_err(JsonParseError::from))
-            .collect()
+        value.to_array()?.map(|v| T::try_from(v)).collect()
     }
 }
 
