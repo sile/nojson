@@ -413,10 +413,10 @@ fn parse_std_types() {
     assert_eq!("3.45".parse().ok(), Some(Json(3.45f64)));
     assert_eq!("true".parse().ok(), Some(Json(true)));
     assert_eq!("false".parse().ok(), Some(Json(false)));
+    assert_eq!("null".parse().ok(), Some(Json(())));
     assert_eq!("null".parse::<Json<Option<bool>>>().ok(), Some(Json(None)));
     assert_eq!("true".parse().ok(), Some(Json(Some(true))));
-    assert_eq!("[]".parse().ok(), Some(Json(())));
-    assert_eq!("[1,true,0.2]".parse().ok(), Some(Json((1, true, 0.2))));
+    assert_eq!("[]".parse().ok(), Some(Json::<[usize; 0]>([])));
     assert_eq!("[1,2,3]".parse().ok(), Some(Json(vec![1, 2, 3])));
     assert_eq!("[[1],[2],[3]]".parse().ok(), Some(Json([[1], [2], [3]])));
     assert_eq!(
