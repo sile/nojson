@@ -124,9 +124,37 @@ impl JsonParseError {
     /// an external crate such as [`unicode-width`](https://crates.io/crates/unicode-width).
     pub fn get_line_and_column_numbers(&self, text: &str) -> Option<(NonZeroUsize, NonZeroUsize)> {
         let position = self.position();
+
+        // Check if position is within bounds
+        if position > text.len() {
+            return None;
+        }
+
+        // If position is at the end of text, we need to handle it specially
+        if position == text.len() {
+            let mut line = 0;
+            let mut column = 0;
+            for c in text.chars() {
+                if c == '\n' {
+                    column = 0;
+                    line += 1;
+                } else {
+                    column += 1;
+                }
+            }
+            let line = NonZeroUsize::MIN.saturating_add(line);
+            let column = NonZeroUsize::MIN.saturating_add(column);
+            return Some((line, column));
+        }
+
+        // Check if position is on a valid UTF-8 boundary
+        if !text.is_char_boundary(position) {
+            return None;
+        }
+
         let mut line = 0;
         let mut column = 0;
-        for (i, c) in text.char_indices().take_while(|(i, _)| *i <= position) {
+        for (i, c) in text.char_indices() {
             if i == position {
                 let line = NonZeroUsize::MIN.saturating_add(line);
                 let column = NonZeroUsize::MIN.saturating_add(column);
@@ -144,7 +172,7 @@ impl JsonParseError {
             }
         }
 
-        // Position is beyond the end of the text or falls on an invalid UTF-8 boundary.
+        // This should not be reached given our bounds check above
         None
     }
 

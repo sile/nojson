@@ -376,6 +376,17 @@ fn error_context() {
             .map(|(l, c)| (l.get(), c.get())),
         Some((4, 3))
     );
+
+    // Test for unexpected EOF case
+    let text_eof = r#"[
+"foo"#;
+    let e = assert_parse_error_matches!(text_eof, JsonParseError::UnexpectedEos { .. });
+    assert_eq!(e.get_line(text_eof), Some(r#""foo"#));
+    assert_eq!(
+        e.get_line_and_column_numbers(text_eof)
+            .map(|(l, c)| (l.get(), c.get())),
+        Some((2, 5))
+    );
 }
 
 #[test]
