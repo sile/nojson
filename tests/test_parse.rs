@@ -377,7 +377,7 @@ fn error_context() {
         Some((4, 3))
     );
 
-    // Test for unexpected EOF case
+    // Test for unexpected EOS case
     let text_eof = r#"[
 "foo"#;
     let e = assert_parse_error_matches!(text_eof, JsonParseError::UnexpectedEos { .. });
