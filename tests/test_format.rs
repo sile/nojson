@@ -140,3 +140,13 @@ fn object() {
 ]"#
     );
 }
+
+#[test]
+fn raw_json() {
+    let text = r#"[ {"user": {"name": "John", "age": 30}, "count": 42} ]"#;
+    let json = nojson::RawJson::parse(text).expect("bug");
+    assert_eq!(
+        json.to_string(),
+        r#"[{"user":{"name":"John","age":30},"count":42}]"#
+    );
+}
