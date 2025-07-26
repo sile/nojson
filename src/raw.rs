@@ -449,12 +449,14 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
         &self.json.text[text.start..text.end]
     }
 
-    /// Converts this value to an owned [`RawJsonOwned`] containing just this value and its children.
+    /// Converts this value to a borrowed [`RawJson`] containing just this value and its children.
     ///
-    /// This method creates an owned copy of this specific JSON value and its text,
+    /// This method creates a borrowed view of this specific JSON value and its text,
     /// including all nested children if the value is an object or array. The resulting
-    /// [`RawJsonOwned`] contains only this value and its descendants as its root,
+    /// [`RawJson`] contains only this value and its descendants as its root,
     /// not the entire original JSON text.
+    ///
+    /// If you need an owned version, you can call `.into_owned()` on the result.
     ///
     /// # Example
     ///
@@ -465,18 +467,20 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// let json = RawJson::parse(text)?;
     /// let user_value = json.value().to_member("user")?.required()?;
     ///
-    /// // Extract the user object and its children to owned
-    /// let owned_user = user_value.extract_to_raw_json_owned();
+    /// // Extract the user object and its children to borrowed
+    /// let borrowed_user = user_value.extract_to_raw_json();
     ///
-    /// // The owned version can outlive the original text and includes all nested data
-    /// drop(text);
-    /// assert_eq!(owned_user.text(), r#"{"name": "John", "age": 30}"#);
-    /// let name: String = owned_user.value().to_member("name")?.required()?.try_into()?;
+    /// // The borrowed version references the original text
+    /// assert_eq!(borrowed_user.text(), r#"{"name": "John", "age": 30}"#);
+    /// let name: String = borrowed_user.value().to_member("name")?.required()?.try_into()?;
     /// assert_eq!(name, "John");
+    ///
+    /// // Convert to owned if needed
+    /// let owned_user = borrowed_user.into_owned();
     /// # Ok(())
     /// # }
     /// ```
-    pub fn extract_to_raw_json_owned(self) -> RawJsonOwned {
+    pub fn extract_to_raw_json(self) -> RawJson<'text> {
         let start_index = self.index;
         let end_index = self.entry().end_index;
 
@@ -499,8 +503,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
             })
             .collect();
 
-        RawJsonOwned {
-            text: value_text.to_string(),
+        RawJson {
+            text: value_text,
             values: new_values,
         }
     }
