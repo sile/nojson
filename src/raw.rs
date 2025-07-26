@@ -468,7 +468,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// let user_value = json.value().to_member("user")?.required()?;
     ///
     /// // Extract the user object and its children to borrowed
-    /// let borrowed_user = user_value.extract_to_raw_json();
+    /// let borrowed_user = user_value.extract();
     ///
     /// // The borrowed version references the original text
     /// assert_eq!(borrowed_user.text(), r#"{"name": "John", "age": 30}"#);
@@ -480,7 +480,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn extract_to_raw_json(self) -> RawJson<'text> {
+    pub fn extract(self) -> RawJson<'text> {
         let start_index = self.index;
         let end_index = self.entry().end_index;
 
