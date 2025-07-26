@@ -449,6 +449,70 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
         &self.json.text[text.start..text.end]
     }
 
+    /// Converts this value into an owned [`RawJsonOwned`] containing just this value and its children.
+    ///
+    /// This method creates an owned copy of this specific JSON value and its text,
+    /// including all nested children if the value is an object or array. The resulting
+    /// [`RawJsonOwned`] contains only this value and its descendants as its root,
+    /// not the entire original JSON document.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let text = r#"{"user": {"name": "John", "age": 30}, "count": 42}"#;
+    /// let json = RawJson::parse(text)?;
+    /// let user_value = json.value().to_member("user")?.required()?;
+    ///
+    /// // Convert the user object and its children to owned
+    /// let owned_user = user_value.into_raw_json_owned();
+    ///
+    /// // The owned version can outlive the original text and includes all nested data
+    /// drop(text);
+    /// assert_eq!(owned_user.text(), r#"{"name": "John", "age": 30}"#);
+    /// let name: String = owned_user.value().to_member("name")?.required()?.try_into()?;
+    /// assert_eq!(name, "John");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn into_raw_json_owned(self) -> RawJsonOwned {
+        let start_index = self.index;
+        let end_index = self.entry().end_index;
+
+        // Extract the text range that covers this value and all its children
+        let start_pos = self.entry().text.start;
+        let end_pos = self.entry().text.end; // Use this value's own end position, which includes closing braces/brackets
+
+        let value_text = &self.json.text[start_pos..end_pos];
+
+        // Extract all relevant value entries (this value and its children)
+        let relevant_entries = &self.json.values[start_index..end_index];
+
+        // Create new values vector with adjusted positions
+        let new_values: Vec<JsonValueIndexEntry> = relevant_entries
+            .iter()
+            .enumerate()
+            .map(|(i, entry)| JsonValueIndexEntry {
+                kind: entry.kind,
+                escaped: entry.escaped,
+                text: (entry.text.start - start_pos)..(entry.text.end - start_pos),
+                end_index: if i == 0 {
+                    // Root entry should have end_index equal to total number of entries
+                    relevant_entries.len()
+                } else {
+                    // Adjust relative to the new indexing
+                    entry.end_index - start_index
+                },
+            })
+            .collect();
+
+        RawJsonOwned {
+            text: value_text.to_string(),
+            values: new_values,
+        }
+    }
+
     /// Similar to [`RawJsonValue::as_raw_str()`],
     /// but this method verifies whether the value is a JSON boolean.
     ///
