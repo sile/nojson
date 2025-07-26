@@ -262,7 +262,7 @@ impl<'text> RawJson<'text> {
     /// ```
     pub fn into_owned(self) -> RawJsonOwned {
         RawJsonOwned {
-            text: self.text.to_string(),
+            text: self.text.to_owned(),
             values: self.values,
         }
     }
