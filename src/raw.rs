@@ -4,6 +4,143 @@ use crate::{DisplayJson, JsonFormatter, JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
+/// Owned version of [`RawJson`].
+#[derive(Debug, Clone)]
+pub struct RawJsonOwned {
+    text: String,
+    values: Vec<JsonValueIndexEntry>,
+}
+
+impl RawJsonOwned {
+    /// Parses a JSON string into a [`RawJsonOwned`] instance.
+    ///
+    /// This validates the JSON syntax without converting values to Rust types.
+    /// Unlike [`RawJson::parse`], this creates an owned version that doesn't
+    /// borrow from the input string.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJsonOwned;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let text = r#"{"name": "John", "age": 30}"#;
+    /// let json = RawJsonOwned::parse(text)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn parse<T>(text: T) -> Result<Self, JsonParseError>
+    where
+        T: Into<String>,
+    {
+        let text = text.into();
+        let values = JsonParser::new(&text).parse()?;
+        Ok(Self { text, values })
+    }
+
+    /// Returns the original JSON text.
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// Returns the top-level value of the JSON.
+    ///
+    /// This value can be used as an entry point to traverse the entire JSON structure
+    /// and convert it to Rust types.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJsonOwned;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let text = r#"{"name": "John", "age": 30}"#;
+    /// let json = RawJsonOwned::parse(text).unwrap();
+    /// let value = json.value();
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn value(&self) -> RawJsonValue<'_, '_> {
+        RawJsonValue {
+            json: self.as_raw_json_ref(),
+            index: 0,
+        }
+    }
+
+    /// Finds the JSON value at the specified byte position in the original text.
+    ///
+    /// This method traverses the JSON structure to find the most specific value
+    /// that contains the given position.
+    /// It returns `None` if the position is outside the bounds of the JSON text.
+    ///
+    /// This method is useful for retrieving the context
+    /// where a [`JsonParseError::InvalidValue`] error occurred.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJsonOwned;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJsonOwned::parse(r#"{"name": "John", "age": 30}"#)?;
+    ///
+    /// // Position at "name" key
+    /// let name_value = json.get_value_by_position(2).expect("infallible");
+    /// assert_eq!(name_value.as_raw_str(), r#""name""#);
+    ///
+    /// // Position at number value
+    /// let age_value = json.get_value_by_position(25).expect("infallible");
+    /// assert_eq!(age_value.as_raw_str(), "30");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue<'_, '_>> {
+        self.as_raw_json_ref().get_value_by_position(position)
+    }
+
+    fn as_raw_json_ref(&self) -> RawJsonRef<'_, '_> {
+        RawJsonRef {
+            text: &self.text,
+            values: &self.values,
+        }
+    }
+}
+
+impl PartialEq for RawJsonOwned {
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text
+    }
+}
+
+impl Eq for RawJsonOwned {}
+
+impl PartialOrd for RawJsonOwned {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RawJsonOwned {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.text.cmp(&other.text)
+    }
+}
+
+impl Hash for RawJsonOwned {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.text.hash(state);
+    }
+}
+
+impl Display for RawJsonOwned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", crate::Json(self))
+    }
+}
+
+impl DisplayJson for RawJsonOwned {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        DisplayJson::fmt(&self.value(), f)
+    }
+}
+
 /// Parsed JSON text (syntactically correct, but not yet converted to Rust types).
 ///
 /// This struct holds a JSON text in its original form
@@ -67,7 +204,7 @@ impl<'text> RawJson<'text> {
     /// ```
     pub fn value(&self) -> RawJsonValue<'text, '_> {
         RawJsonValue {
-            json: self,
+            json: self.as_raw_json_ref(),
             index: 0,
         }
     }
@@ -99,14 +236,42 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue<'text, '_>> {
-        let mut value = self.value();
-        if !value.entry().text.contains(&position) {
-            return None;
+        self.as_raw_json_ref().get_value_by_position(position)
+    }
+
+    /// Converts this borrowed [`RawJson`] into an owned [`RawJsonOwned`].
+    ///
+    /// This method creates an owned copy of the JSON data, allowing it to be used
+    /// beyond the lifetime of the original text. The resulting [`RawJsonOwned`]
+    /// contains its own copy of the JSON text and can be moved freely.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let text = r#"{"name": "John", "age": 30}"#;
+    /// let json = RawJson::parse(text)?;
+    /// let owned_json = json.into_owned();
+    ///
+    /// // The owned version can outlive the original text
+    /// drop(text);
+    /// assert_eq!(owned_json.text(), r#"{"name": "John", "age": 30}"#);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn into_owned(self) -> RawJsonOwned {
+        RawJsonOwned {
+            text: self.text.to_owned(),
+            values: self.values,
         }
-        while let Some(child) = Children::new(value).find(|c| c.entry().text.contains(&position)) {
-            value = child;
+    }
+
+    fn as_raw_json_ref(&self) -> RawJsonRef<'text, '_> {
+        RawJsonRef {
+            text: self.text,
+            values: &self.values,
         }
-        Some(value)
     }
 }
 
@@ -138,7 +303,7 @@ impl Hash for RawJson<'_> {
 
 impl Display for RawJson<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.text)
+        write!(f, "{}", crate::Json(self))
     }
 }
 
@@ -154,6 +319,70 @@ pub(crate) struct JsonValueIndexEntry {
     pub escaped: bool,
     pub text: Range<usize>,
     pub end_index: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RawJsonRef<'text, 'raw> {
+    text: &'text str,
+    values: &'raw [JsonValueIndexEntry],
+}
+
+impl<'text, 'raw> RawJsonRef<'text, 'raw> {
+    fn get_value_by_position(self, position: usize) -> Option<RawJsonValue<'text, 'raw>> {
+        let mut value = self.value();
+        if !value.entry().text.contains(&position) {
+            return None;
+        }
+        while let Some(child) = Children::new(value).find(|c| c.entry().text.contains(&position)) {
+            value = child;
+        }
+        Some(value)
+    }
+
+    fn value(self) -> RawJsonValue<'text, 'raw> {
+        RawJsonValue {
+            json: self,
+            index: 0,
+        }
+    }
+}
+
+impl PartialEq for RawJsonRef<'_, '_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text
+    }
+}
+
+impl Eq for RawJsonRef<'_, '_> {}
+
+impl PartialOrd for RawJsonRef<'_, '_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RawJsonRef<'_, '_> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.text.cmp(other.text)
+    }
+}
+
+impl Hash for RawJsonRef<'_, '_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.text.hash(state);
+    }
+}
+
+impl Display for RawJsonRef<'_, '_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", crate::Json(self))
+    }
+}
+
+impl DisplayJson for RawJsonRef<'_, '_> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        DisplayJson::fmt(&self.value(), f)
+    }
 }
 
 /// A JSON value in a [`RawJson`].
@@ -192,7 +421,7 @@ pub(crate) struct JsonValueIndexEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawJsonValue<'text, 'raw> {
     index: usize,
-    json: &'raw RawJson<'text>,
+    json: RawJsonRef<'text, 'raw>,
 }
 
 impl<'text, 'raw> RawJsonValue<'text, 'raw> {
@@ -204,11 +433,6 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// Returns the byte position where this value begins in the JSON text (`self.json().text()`).
     pub fn position(self) -> usize {
         self.json.values[self.index].text.start
-    }
-
-    /// Returns a reference to the [`RawJson`] instance that contains this value.
-    pub fn json(self) -> &'raw RawJson<'text> {
-        self.json
     }
 
     /// Returns the parent value (array or object) that contains this value.
@@ -223,6 +447,66 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     pub fn as_raw_str(self) -> &'text str {
         let text = &self.json.values[self.index].text;
         &self.json.text[text.start..text.end]
+    }
+
+    /// Converts this value to a borrowed [`RawJson`] containing just this value and its children.
+    ///
+    /// This method creates a borrowed view of this specific JSON value and its text,
+    /// including all nested children if the value is an object or array. The resulting
+    /// [`RawJson`] contains only this value and its descendants as its root,
+    /// not the entire original JSON text.
+    ///
+    /// If you need an owned version, you can call `.into_owned()` on the result.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let text = r#"{"user": {"name": "John", "age": 30}, "count": 42}"#;
+    /// let json = RawJson::parse(text)?;
+    /// let user_value = json.value().to_member("user")?.required()?;
+    ///
+    /// // Extract the user object and its children to borrowed
+    /// let borrowed_user = user_value.extract();
+    ///
+    /// // The borrowed version references the original text
+    /// assert_eq!(borrowed_user.text(), r#"{"name": "John", "age": 30}"#);
+    /// let name: String = borrowed_user.value().to_member("name")?.required()?.try_into()?;
+    /// assert_eq!(name, "John");
+    ///
+    /// // Convert to owned if needed
+    /// let owned_user = borrowed_user.into_owned();
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn extract(self) -> RawJson<'text> {
+        let start_index = self.index;
+        let end_index = self.entry().end_index;
+
+        // Extract the text range that covers this value and all its children
+        let start_pos = self.entry().text.start;
+        let end_pos = self.entry().text.end;
+        let value_text = &self.json.text[start_pos..end_pos];
+
+        // Extract all relevant value entries (this value and its children)
+        let relevant_entries = &self.json.values[start_index..end_index];
+
+        // Create new values vector with adjusted positions
+        let new_values = relevant_entries
+            .iter()
+            .map(|entry| JsonValueIndexEntry {
+                kind: entry.kind,
+                escaped: entry.escaped,
+                text: (entry.text.start - start_pos)..(entry.text.end - start_pos),
+                end_index: entry.end_index - start_index,
+            })
+            .collect();
+
+        RawJson {
+            text: value_text,
+            values: new_values,
+        }
     }
 
     /// Similar to [`RawJsonValue::as_raw_str()`],
@@ -586,7 +870,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
 
 impl Display for RawJsonValue<'_, '_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_raw_str())
+        write!(f, "{}", crate::Json(self))
     }
 }
 
