@@ -4,6 +4,12 @@ use crate::{DisplayJson, JsonFormatter, JsonValueKind, parse::JsonParser};
 
 pub use crate::parse_error::JsonParseError;
 
+// #[derive(Debug, Clone)]
+// pub struct RawJsonOnwed {
+//     text: String,
+//     values: Vec<JsonValueIndexEntry>,
+// }
+
 /// Parsed JSON text (syntactically correct, but not yet converted to Rust types).
 ///
 /// This struct holds a JSON text in its original form
@@ -67,7 +73,7 @@ impl<'text> RawJson<'text> {
     /// ```
     pub fn value(&self) -> RawJsonValue<'text, '_> {
         RawJsonValue {
-            json: self,
+            json: self.as_raw_json_ref(),
             index: 0,
         }
     }
@@ -99,14 +105,14 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue<'text, '_>> {
-        let mut value = self.value();
-        if !value.entry().text.contains(&position) {
-            return None;
+        self.as_raw_json_ref().get_value_by_position(position)
+    }
+
+    fn as_raw_json_ref(&self) -> RawJsonRef<'text, '_> {
+        RawJsonRef {
+            text: self.text,
+            values: &self.values,
         }
-        while let Some(child) = Children::new(value).find(|c| c.entry().text.contains(&position)) {
-            value = child;
-        }
-        Some(value)
     }
 }
 
@@ -138,7 +144,7 @@ impl Hash for RawJson<'_> {
 
 impl Display for RawJson<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.text)
+        write!(f, "{}", crate::Json(self))
     }
 }
 
@@ -154,6 +160,70 @@ pub(crate) struct JsonValueIndexEntry {
     pub escaped: bool,
     pub text: Range<usize>,
     pub end_index: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RawJsonRef<'text, 'raw> {
+    text: &'text str,
+    values: &'raw [JsonValueIndexEntry],
+}
+
+impl<'text, 'raw> RawJsonRef<'text, 'raw> {
+    fn get_value_by_position(self, position: usize) -> Option<RawJsonValue<'text, 'raw>> {
+        let mut value = self.value();
+        if !value.entry().text.contains(&position) {
+            return None;
+        }
+        while let Some(child) = Children::new(value).find(|c| c.entry().text.contains(&position)) {
+            value = child;
+        }
+        Some(value)
+    }
+
+    fn value(self) -> RawJsonValue<'text, 'raw> {
+        RawJsonValue {
+            json: self,
+            index: 0,
+        }
+    }
+}
+
+impl PartialEq for RawJsonRef<'_, '_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text
+    }
+}
+
+impl Eq for RawJsonRef<'_, '_> {}
+
+impl PartialOrd for RawJsonRef<'_, '_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RawJsonRef<'_, '_> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.text.cmp(other.text)
+    }
+}
+
+impl Hash for RawJsonRef<'_, '_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.text.hash(state);
+    }
+}
+
+impl Display for RawJsonRef<'_, '_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", crate::Json(self))
+    }
+}
+
+impl DisplayJson for RawJsonRef<'_, '_> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        DisplayJson::fmt(&self.value(), f)
+    }
 }
 
 /// A JSON value in a [`RawJson`].
@@ -192,7 +262,7 @@ pub(crate) struct JsonValueIndexEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawJsonValue<'text, 'raw> {
     index: usize,
-    json: &'raw RawJson<'text>,
+    json: RawJsonRef<'text, 'raw>,
 }
 
 impl<'text, 'raw> RawJsonValue<'text, 'raw> {
@@ -204,11 +274,6 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// Returns the byte position where this value begins in the JSON text (`self.json().text()`).
     pub fn position(self) -> usize {
         self.json.values[self.index].text.start
-    }
-
-    /// Returns a reference to the [`RawJson`] instance that contains this value.
-    pub fn json(self) -> &'raw RawJson<'text> {
-        self.json
     }
 
     /// Returns the parent value (array or object) that contains this value.
@@ -586,7 +651,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
 
 impl Display for RawJsonValue<'_, '_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_raw_str())
+        write!(f, "{}", crate::Json(self))
     }
 }
 
