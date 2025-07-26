@@ -193,7 +193,7 @@ use std::{fmt::Display, str::FromStr};
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
 pub use kind::JsonValueKind;
-pub use raw::{JsonParseError, RawJson, RawJsonMember, RawJsonValue};
+pub use raw::{JsonParseError, RawJson, RawJsonMember, RawJsonOwned, RawJsonValue};
 
 /// A marker struct that enables JSON parsing and generation through the [`FromStr`] and [`Display`] traits.
 ///
