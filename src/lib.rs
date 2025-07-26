@@ -344,3 +344,46 @@ where
         self.0(f)
     }
 }
+
+/// A convenience function for creating JSON objects.
+///
+/// This is shorthand for `json(|f| f.object(|f| fmt(f)))`, providing a more direct way
+/// to construct JSON objects without the extra nesting.
+///
+/// # Examples
+///
+/// ```
+/// let obj = nojson::object(|f| {
+///     f.member("name", "Alice")?;
+///     f.member("age", 30)
+/// });
+/// assert_eq!(obj.to_string(), r#"{"name":"Alice","age":30}"#);
+/// ```
+pub fn object<F>(fmt: F) -> impl DisplayJson + Display
+where
+    F: Fn(&mut JsonObjectFormatter<'_, '_, '_>) -> std::fmt::Result,
+{
+    json(move |f| f.object(|f| fmt(f)))
+}
+
+/// A convenience function for creating JSON arrays.
+///
+/// This is shorthand for `json(|f| f.array(|f| fmt(f)))`, providing a more direct way
+/// to construct JSON arrays without the extra nesting.
+///
+/// # Examples
+///
+/// ```
+/// let arr = nojson::array(|f| {
+///     f.element(1)?;
+///     f.element(2)?;
+///     f.element(3)
+/// });
+/// assert_eq!(arr.to_string(), "[1,2,3]");
+/// ```
+pub fn array<F>(fmt: F) -> impl DisplayJson + Display
+where
+    F: Fn(&mut JsonArrayFormatter<'_, '_, '_>) -> std::fmt::Result,
+{
+    json(move |f| f.array(|f| fmt(f)))
+}
