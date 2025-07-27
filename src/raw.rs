@@ -141,6 +141,14 @@ impl DisplayJson for RawJsonOwned {
     }
 }
 
+impl std::str::FromStr for RawJsonOwned {
+    type Err = JsonParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
+}
+
 /// Parsed JSON text (syntactically correct, but not yet converted to Rust types).
 ///
 /// This struct holds a JSON text in its original form
