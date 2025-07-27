@@ -149,6 +149,14 @@ impl std::str::FromStr for RawJsonOwned {
     }
 }
 
+impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for RawJsonOwned {
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        Ok(value.extract().into_owned())
+    }
+}
+
 /// Parsed JSON text (syntactically correct, but not yet converted to Rust types).
 ///
 /// This struct holds a JSON text in its original form
