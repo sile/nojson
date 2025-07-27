@@ -329,6 +329,14 @@ impl DisplayJson for RawJson<'_> {
     }
 }
 
+impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for RawJson<'text> {
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        Ok(value.extract())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct JsonValueIndexEntry {
     pub kind: JsonValueKind,
@@ -1119,16 +1127,11 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
 
 impl<'text, 'raw, 'a, T> TryFrom<RawJsonMember<'text, 'raw, 'a>> for Option<T>
 where
-    T: TryFrom<RawJsonValue<'text, 'raw>>,
-    JsonParseError: From<T::Error>,
+    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonMember<'text, 'raw, 'a>) -> Result<Self, Self::Error> {
-        value
-            .member
-            .map(T::try_from)
-            .transpose()
-            .map_err(JsonParseError::from)
+        value.member.map(T::try_from).transpose()
     }
 }
