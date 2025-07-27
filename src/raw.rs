@@ -883,7 +883,13 @@ impl DisplayJson for RawJsonValue<'_, '_> {
             | JsonValueKind::Float => write!(f.inner_mut(), "{}", self.as_raw_str()),
             JsonValueKind::String => f.string(self.unquote()),
             JsonValueKind::Array => f.array(|f| f.elements(self.to_array().expect("infallible"))),
-            JsonValueKind::Object => f.object(|f| f.members(self.to_object().expect("infallible"))),
+            JsonValueKind::Object => f.object(|f| {
+                f.members(
+                    self.to_object()
+                        .expect("infallible")
+                        .map(|(k, v)| (k.unquote(), v)),
+                )
+            }),
         }
     }
 }
