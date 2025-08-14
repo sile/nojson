@@ -8,14 +8,14 @@ use crate::{
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 
 pub trait HandleComment {
-    fn handle_comment<'a>(&mut self, position: usize, text: &'a str) -> Option<&'a str>;
+    fn handle_comment<'a>(&mut self, original_text: &'a str, text: &'a str) -> Option<&'a str>;
 }
 
 #[derive(Debug)]
 pub struct NoopCommentHandler;
 
 impl HandleComment for NoopCommentHandler {
-    fn handle_comment<'a>(&mut self, _position: usize, text: &'a str) -> Option<&'a str> {
+    fn handle_comment<'a>(&mut self, _original_text: &'a str, text: &'a str) -> Option<&'a str> {
         Some(text)
     }
 }
@@ -26,9 +26,10 @@ pub struct JsoncCommentHandler {
 }
 
 impl HandleComment for JsoncCommentHandler {
-    fn handle_comment<'a>(&mut self, mut start: usize, mut text: &'a str) -> Option<&'a str> {
+    fn handle_comment<'a>(&mut self, original_text: &'a str, mut text: &'a str) -> Option<&'a str> {
         loop {
-            let before_len = text.len();
+            let start = original_text.len() - text.len();
+
             text = if let Some(text) = text.strip_prefix("//") {
                 text.trim_start_matches(|c| c != '\n')
             } else if let Some(text) = text.strip_prefix("/*") {
@@ -38,10 +39,9 @@ impl HandleComment for JsoncCommentHandler {
                 break;
             };
 
-            let end = start + (before_len - text.len());
+            let end = original_text.len() - text.len();
             self.comments.push(Range { start, end });
             text = text.trim_start_matches(WHITESPACE_PATTERN);
-            start += before_len - text.len();
         }
         Some(text)
     }
@@ -86,8 +86,7 @@ impl<'a, H: HandleComment> JsonParser<'a, H> {
 
     fn skip_whitespaces_and_comments(&mut self, s: &'a str) -> Result<&'a str, JsonParseError> {
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
-        let position = self.original_text.len() - s.len();
-        if let Some(s) = self.handler.handle_comment(position, s) {
+        if let Some(s) = self.handler.handle_comment(self.original_text, s) {
             Ok(s)
         } else {
             Err(self.unexpected_eos())
