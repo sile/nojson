@@ -40,7 +40,43 @@ impl RawJsonOwned {
         Ok(Self { text, values })
     }
 
-    /// TODO: doc
+    /// Parses a JSONC (JSON with Comments) string into a [`RawJsonOwned`] instance.
+    ///
+    /// This validates the JSONC syntax and strips out comments, returning both
+    /// the parsed JSON structure and the byte ranges where comments were found
+    /// in the original text. Comments can be either line comments (`//`) or
+    /// block comments (`/* */`).
+    ///
+    /// Unlike [`RawJson::parse_jsonc`], this creates an owned version that doesn't
+    /// borrow from the input string.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJsonOwned;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let text = r#"{
+    ///     "name": "John", // This is a comment
+    ///     "age": 30,
+    ///     /* This is a block comment */
+    ///     "city": "New York"
+    /// }"#;
+    ///
+    /// let (json, comment_ranges) = RawJsonOwned::parse_jsonc(text)?;
+    ///
+    /// // The parsed JSON works normally
+    /// let name: String = json.value().to_member("name")?.required()?.try_into()?;
+    /// assert_eq!(name, "John");
+    ///
+    /// // Comment ranges indicate where comments were found in the original text
+    /// assert_eq!(comment_ranges.len(), 2); // Two comments found
+    ///
+    /// // You can extract the comment text if needed
+    /// let first_comment = &text[comment_ranges[0].clone()];
+    /// assert!(first_comment.contains("This is a comment"));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn parse_jsonc<T>(text: T) -> Result<(Self, Vec<Range<usize>>), JsonParseError>
     where
         T: Into<String>,

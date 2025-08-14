@@ -40,7 +40,7 @@ impl HandleComment for JsoncCommentHandler {
         let start = position;
         let end = start + (original_len - text.len());
         self.comments.push(Range { start, end });
-        Some(text)
+        Some(text.trim_start_matches(WHITESPACE_PATTERN))
     }
 }
 
