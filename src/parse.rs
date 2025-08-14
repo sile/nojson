@@ -26,21 +26,24 @@ pub struct JsoncCommentHandler {
 }
 
 impl HandleComment for JsoncCommentHandler {
-    fn handle_comment<'a>(&mut self, position: usize, text: &'a str) -> Option<&'a str> {
-        let original_len = text.len();
-        let text = if let Some(text) = text.strip_prefix("//") {
-            text.trim_start_matches(|c| c != '\n')
-        } else if let Some(text) = text.strip_prefix("/*") {
-            let offset = text.find("*/")?;
-            &text[offset + 2..]
-        } else {
-            return Some(text);
-        };
+    fn handle_comment<'a>(&mut self, mut start: usize, mut text: &'a str) -> Option<&'a str> {
+        loop {
+            let before_len = text.len();
+            text = if let Some(text) = text.strip_prefix("//") {
+                text.trim_start_matches(|c| c != '\n')
+            } else if let Some(text) = text.strip_prefix("/*") {
+                let offset = text.find("*/")?;
+                &text[offset + 2..]
+            } else {
+                break;
+            };
 
-        let start = position;
-        let end = start + (original_len - text.len());
-        self.comments.push(Range { start, end });
-        Some(text.trim_start_matches(WHITESPACE_PATTERN))
+            let end = start + (before_len - text.len());
+            self.comments.push(Range { start, end });
+            text = text.trim_start_matches(WHITESPACE_PATTERN);
+            start += before_len - text.len();
+        }
+        Some(text)
     }
 }
 

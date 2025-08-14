@@ -21,10 +21,10 @@ fn parse_jsonc_line_comments() -> Result<(), JsonParseError> {
 
     // Check comment content
     let first_comment = &text[comment_ranges[0].clone()];
-    assert!(first_comment.contains("This is a line comment"));
+    assert_eq!(first_comment, "// This is a line comment");
 
     let second_comment = &text[comment_ranges[1].clone()];
-    assert!(second_comment.contains("Another comment"));
+    assert_eq!(second_comment, "// Another comment");
 
     Ok(())
 }
@@ -55,7 +55,7 @@ fn parse_jsonc_block_comments() -> Result<(), JsonParseError> {
     assert!(first_comment.contains("multi-line block comment"));
 
     let second_comment = &text[comment_ranges[1].clone()];
-    assert!(second_comment.contains("inline block comment"));
+    assert_eq!(second_comment, "/* inline block comment */");
 
     Ok(())
 }
@@ -64,6 +64,7 @@ fn parse_jsonc_block_comments() -> Result<(), JsonParseError> {
 fn parse_jsonc_mixed_comments() -> Result<(), JsonParseError> {
     let text = r#"{
         // Line comment at start
+        // Multiple '//' comments
         "users": [ // Array with comments
             {
                 "name": "Bob", /* inline block */
@@ -92,7 +93,7 @@ fn parse_jsonc_mixed_comments() -> Result<(), JsonParseError> {
     assert_eq!(second_user_name, "Carol");
 
     // Verify all comments were detected
-    assert_eq!(comment_ranges.len(), 6);
+    assert_eq!(comment_ranges.len(), 7);
 
     Ok(())
 }
