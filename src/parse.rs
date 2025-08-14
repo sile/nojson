@@ -45,7 +45,7 @@ impl<'a> JsonParser<'a> {
     }
 
     fn check_trailing_char(&mut self) -> Result<(), JsonParseError> {
-        self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+        self.text = self.skip_whitespaces_and_comments(self.text)?;
         if !self.text.is_empty() {
             return Err(JsonParseError::UnexpectedTrailingChar {
                 kind: self.kind.expect("infallible"),
@@ -55,8 +55,13 @@ impl<'a> JsonParser<'a> {
         Ok(())
     }
 
+    fn skip_whitespaces_and_comments(&mut self, s: &'a str) -> Result<&'a str, JsonParseError> {
+        let s = s.trim_start_matches(WHITESPACE_PATTERN);
+        Ok(s)
+    }
+
     fn parse_value(&mut self) -> Result<(), JsonParseError> {
-        self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+        self.text = self.skip_whitespaces_and_comments(self.text)?;
         match self.text.chars().next() {
             Some('n') => self.parse_null(&self.text[1..]),
             Some('t') => self.parse_true(&self.text[1..]),
@@ -182,7 +187,7 @@ impl<'a> JsonParser<'a> {
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         self.kind = Some(JsonValueKind::Object);
 
-        let s = s.trim_start_matches(WHITESPACE_PATTERN);
+        let s = self.skip_whitespaces_and_comments(s)?;
         if let Some(s) = s.strip_prefix('}') {
             self.push_entry(self.offset(s));
             return Ok(());
@@ -203,12 +208,12 @@ impl<'a> JsonParser<'a> {
             self.kind = Some(JsonValueKind::Object);
 
             // Value.
-            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            self.text = self.skip_whitespaces_and_comments(self.text)?;
             self.text = self.strip_char(self.text, ':')?;
             self.parse_value()?;
             self.kind = Some(JsonValueKind::Object);
 
-            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            self.text = self.skip_whitespaces_and_comments(self.text)?;
             if let Some(s) = self.text.strip_prefix('}') {
                 self.text = s;
                 self.finalize_entry(index);
@@ -216,14 +221,14 @@ impl<'a> JsonParser<'a> {
             }
 
             self.text = self.strip_char(self.text, ',')?;
-            self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
+            self.text = self.skip_whitespaces_and_comments(self.text)?;
         }
     }
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         self.kind = Some(JsonValueKind::Array);
 
-        let s = s.trim_start_matches(WHITESPACE_PATTERN);
+        let s = self.skip_whitespaces_and_comments(s)?;
         if let Some(s) = s.strip_prefix(']') {
             self.push_entry(self.offset(s));
             return Ok(());
@@ -236,13 +241,13 @@ impl<'a> JsonParser<'a> {
             self.parse_value()?;
             self.kind = Some(JsonValueKind::Array);
 
-            let s = self.text.trim_start_matches(WHITESPACE_PATTERN);
-            if let Some(s) = s.strip_prefix(']') {
+            self.text = self.skip_whitespaces_and_comments(self.text)?;
+            if let Some(s) = self.text.strip_prefix(']') {
                 self.text = s;
                 self.finalize_entry(index);
                 return Ok(());
             } else {
-                self.text = self.strip_char(s, ',')?;
+                self.text = self.strip_char(self.text, ',')?;
             }
         }
     }
