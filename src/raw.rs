@@ -58,7 +58,10 @@ impl RawJsonOwned {
     /// let text = r#"{
     ///     "name": "John", // This is a comment
     ///     "age": 30,
-    ///     /* This is a block comment */
+    ///     /*
+    ///      * This is a multi-line
+    ///      * block comment
+    ///      */
     ///     "city": "New York"
     /// }"#;
     ///
