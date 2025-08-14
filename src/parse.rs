@@ -35,7 +35,7 @@ impl<'a> JsoncParser<'a> {
                 let Some(offset) = text.find("*/") else {
                     return Err(self.inner.unexpected_eos());
                 };
-                self.inner.text = &self.inner.text[offset..];
+                self.inner.text = &text[offset + 2..];
             } else {
                 return Err(e);
             }
