@@ -7,12 +7,12 @@ use crate::{
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 
-trait HandleComment {
+pub trait HandleComment {
     fn handle_comment<'a>(&mut self, position: usize, text: &'a str) -> Option<&'a str>;
 }
 
 #[derive(Debug)]
-struct NoopCommentHandler;
+pub struct NoopCommentHandler;
 
 impl HandleComment for NoopCommentHandler {
     fn handle_comment<'a>(&mut self, _position: usize, text: &'a str) -> Option<&'a str> {
@@ -21,8 +21,8 @@ impl HandleComment for NoopCommentHandler {
 }
 
 #[derive(Debug, Default)]
-struct JsoncCommentHandler {
-    comments: Vec<Range<usize>>,
+pub struct JsoncCommentHandler {
+    pub comments: Vec<Range<usize>>,
 }
 
 impl HandleComment for JsoncCommentHandler {
@@ -45,7 +45,7 @@ impl HandleComment for JsoncCommentHandler {
 }
 
 #[derive(Debug)]
-pub(crate) struct JsonParser<'a, H> {
+pub struct JsonParser<'a, H> {
     original_text: &'a str,
     text: &'a str,
     kind: Option<JsonValueKind>,

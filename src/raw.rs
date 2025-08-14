@@ -1,6 +1,9 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
-use crate::{DisplayJson, JsonFormatter, JsonValueKind, parse::JsonParser};
+use crate::{
+    DisplayJson, JsonFormatter, JsonValueKind,
+    parse::{JsonParser, JsoncCommentHandler, NoopCommentHandler},
+};
 
 pub use crate::parse_error::JsonParseError;
 
@@ -33,7 +36,7 @@ impl RawJsonOwned {
         T: Into<String>,
     {
         let text = text.into();
-        let values = JsonParser::new(&text).parse()?;
+        let (values, _) = JsonParser::new(&text, NoopCommentHandler).parse()?;
         Ok(Self { text, values })
     }
 
@@ -43,8 +46,8 @@ impl RawJsonOwned {
         T: Into<String>,
     {
         let text = text.into();
-        let (values, comments) = JsonParser::new(&text).parse_jsonc()?;
-        Ok((Self { text, values }, comments))
+        let (values, handler) = JsonParser::new(&text, JsoncCommentHandler::default()).parse()?;
+        Ok((Self { text, values }, handler.comments))
     }
 
     /// Returns the original JSON text.
@@ -203,7 +206,7 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn parse(text: &'text str) -> Result<Self, JsonParseError> {
-        let values = JsonParser::new(text).parse()?;
+        let (values, _) = JsonParser::new(text, NoopCommentHandler).parse()?;
         Ok(Self { text, values })
     }
 
@@ -216,7 +219,7 @@ impl<'text> RawJson<'text> {
     ///
     /// # Example
     ///
-    /// ```text
+    /// ```
     /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{
@@ -242,8 +245,8 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn parse_jsonc(text: &'text str) -> Result<(Self, Vec<Range<usize>>), JsonParseError> {
-        let (values, comments) = JsonParser::new(text).parse_jsonc()?;
-        Ok((Self { text, values }, comments))
+        let (values, handler) = JsonParser::new(text, JsoncCommentHandler::default()).parse()?;
+        Ok((Self { text, values }, handler.comments))
     }
 
     /// Returns the original JSON text.
