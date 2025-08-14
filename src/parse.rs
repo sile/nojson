@@ -8,6 +8,48 @@ use crate::{
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 
 #[derive(Debug)]
+pub(crate) struct JsoncParser<'a> {
+    inner: JsonParser<'a>,
+    comments: Vec<Range<usize>>,
+}
+
+impl<'a> JsoncParser<'a> {
+    pub fn new(text: &'a str) -> Self {
+        Self {
+            inner: JsonParser::new(text),
+            comments: Vec::new(),
+        }
+    }
+
+    pub fn parse(
+        mut self,
+    ) -> Result<(Vec<JsonValueIndexEntry>, Vec<Range<usize>>), JsonParseError> {
+        while let Err(e) = self.inner.parse_value() {
+            let JsonParseError::UnexpectedValueChar { position, .. } = e else {
+                return Err(e);
+            };
+
+            if let Some(text) = self.inner.text.strip_prefix("//") {
+                self.inner.text = text.trim_start_matches(|c| c != '\n');
+            } else if let Some(text) = self.inner.text.strip_prefix("/*") {
+                let Some(offset) = text.find("*/") else {
+                    return Err(self.inner.unexpected_eos());
+                };
+                self.inner.text = &self.inner.text[offset..];
+            } else {
+                return Err(e);
+            }
+
+            let start = position;
+            let end = self.inner.position();
+            self.comments.push(Range { start, end });
+        }
+        self.inner.check_trailing_char()?;
+        Ok((self.inner.values, self.comments))
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct JsonParser<'a> {
     original_text: &'a str,
     text: &'a str,
@@ -27,7 +69,11 @@ impl<'a> JsonParser<'a> {
 
     pub fn parse(mut self) -> Result<Vec<JsonValueIndexEntry>, JsonParseError> {
         self.parse_value()?;
+        self.check_trailing_char()?;
+        Ok(self.values)
+    }
 
+    fn check_trailing_char(&mut self) -> Result<(), JsonParseError> {
         self.text = self.text.trim_start_matches(WHITESPACE_PATTERN);
         if !self.text.is_empty() {
             return Err(JsonParseError::UnexpectedTrailingChar {
@@ -35,8 +81,7 @@ impl<'a> JsonParser<'a> {
                 position: self.position(),
             });
         }
-
-        Ok(self.values)
+        Ok(())
     }
 
     fn parse_value(&mut self) -> Result<(), JsonParseError> {

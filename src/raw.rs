@@ -1,6 +1,9 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
-use crate::{DisplayJson, JsonFormatter, JsonValueKind, parse::JsonParser};
+use crate::{
+    DisplayJson, JsonFormatter, JsonValueKind,
+    parse::{JsonParser, JsoncParser},
+};
 
 pub use crate::parse_error::JsonParseError;
 
@@ -35,6 +38,15 @@ impl RawJsonOwned {
         let text = text.into();
         let values = JsonParser::new(&text).parse()?;
         Ok(Self { text, values })
+    }
+
+    pub fn parse_jsonc<T>(text: T) -> Result<(Self, Vec<Range<usize>>), JsonParseError>
+    where
+        T: Into<String>,
+    {
+        let text = text.into();
+        let (values, comments) = JsoncParser::new(&text).parse()?;
+        Ok((Self { text, values }, comments))
     }
 
     /// Returns the original JSON text.
@@ -195,6 +207,14 @@ impl<'text> RawJson<'text> {
     pub fn parse(text: &'text str) -> Result<Self, JsonParseError> {
         let values = JsonParser::new(text).parse()?;
         Ok(Self { text, values })
+    }
+
+    pub fn parse_jsonc<T>(text: &'text str) -> Result<(Self, Vec<Range<usize>>), JsonParseError>
+    where
+        T: Into<String>,
+    {
+        let (values, comments) = JsoncParser::new(text).parse()?;
+        Ok((Self { text, values }, comments))
     }
 
     /// Returns the original JSON text.
