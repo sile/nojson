@@ -7,41 +7,67 @@ use crate::{
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 
+trait HandleComment {
+    fn handle_comment<'a>(&mut self, position: usize, text: &'a str) -> Option<&'a str>;
+}
+
 #[derive(Debug)]
-pub(crate) struct JsonParser<'a> {
+struct NoopCommentHandler;
+
+impl HandleComment for NoopCommentHandler {
+    fn handle_comment<'a>(&mut self, _position: usize, text: &'a str) -> Option<&'a str> {
+        Some(text)
+    }
+}
+
+#[derive(Debug, Default)]
+struct JsoncCommentHandler {
+    comments: Vec<Range<usize>>,
+}
+
+impl HandleComment for JsoncCommentHandler {
+    fn handle_comment<'a>(&mut self, position: usize, text: &'a str) -> Option<&'a str> {
+        let original_len = text.len();
+        let text = if let Some(text) = text.strip_prefix("//") {
+            text.trim_start_matches(|c| c != '\n')
+        } else if let Some(text) = text.strip_prefix("/*") {
+            let offset = text.find("*/")?;
+            &text[offset + 2..]
+        } else {
+            return Some(text);
+        };
+
+        let start = position;
+        let end = start + (original_len - text.len());
+        self.comments.push(Range { start, end });
+        Some(text)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct JsonParser<'a, H> {
     original_text: &'a str,
     text: &'a str,
     kind: Option<JsonValueKind>,
     values: Vec<JsonValueIndexEntry>,
-    allow_comments: bool,
-    comments: Vec<Range<usize>>,
+    handler: H,
 }
 
-impl<'a> JsonParser<'a> {
-    pub fn new(text: &'a str) -> Self {
+impl<'a, H: HandleComment> JsonParser<'a, H> {
+    pub fn new(text: &'a str, handler: H) -> Self {
         Self {
             original_text: text,
             text,
             kind: None,
             values: Vec::new(),
-            allow_comments: false,
-            comments: Vec::new(),
+            handler,
         }
     }
 
-    pub fn parse(mut self) -> Result<Vec<JsonValueIndexEntry>, JsonParseError> {
+    pub fn parse(mut self) -> Result<(Vec<JsonValueIndexEntry>, H), JsonParseError> {
         self.parse_value()?;
         self.check_trailing_char()?;
-        Ok(self.values)
-    }
-
-    pub fn parse_jsonc(
-        mut self,
-    ) -> Result<(Vec<JsonValueIndexEntry>, Vec<Range<usize>>), JsonParseError> {
-        self.allow_comments = true;
-        self.parse_value()?;
-        self.check_trailing_char()?;
-        Ok((self.values, self.comments))
+        Ok((self.values, self.handler))
     }
 
     fn check_trailing_char(&mut self) -> Result<(), JsonParseError> {
@@ -57,7 +83,12 @@ impl<'a> JsonParser<'a> {
 
     fn skip_whitespaces_and_comments(&mut self, s: &'a str) -> Result<&'a str, JsonParseError> {
         let s = s.trim_start_matches(WHITESPACE_PATTERN);
-        Ok(s)
+        let position = self.original_text.len() - s.len();
+        if let Some(s) = self.handler.handle_comment(position, s) {
+            Ok(s)
+        } else {
+            Err(self.unexpected_eos())
+        }
     }
 
     fn parse_value(&mut self) -> Result<(), JsonParseError> {
@@ -70,29 +101,9 @@ impl<'a> JsonParser<'a> {
             Some('[') => self.parse_array(&self.text[1..]),
             Some('{') => self.parse_object(&self.text[1..]),
             Some('0'..='9' | '-') => self.parse_number(),
-            Some(_) if !self.allow_comments => Err(self.unexpected_value_char(0)),
-            Some(_) => self.parse_comment(),
+            Some(_) => Err(self.unexpected_value_char(0)),
             None => Err(self.unexpected_eos()),
         }
-    }
-
-    fn parse_comment(&mut self) -> Result<(), JsonParseError> {
-        let start = self.position();
-
-        if let Some(text) = self.text.strip_prefix("//") {
-            self.text = text.trim_start_matches(|c| c != '\n');
-        } else if let Some(text) = self.text.strip_prefix("/*") {
-            let Some(offset) = text.find("*/") else {
-                return Err(self.unexpected_eos());
-            };
-            self.text = &text[offset + 2..];
-        } else {
-            return Err(self.unexpected_value_char(0));
-        }
-
-        let end = self.position();
-        self.comments.push(Range { start, end });
-        Ok(())
     }
 
     fn parse_null(&mut self, s: &'a str) -> Result<(), JsonParseError> {
@@ -198,10 +209,6 @@ impl<'a> JsonParser<'a> {
         self.text = s;
 
         loop {
-            if self.allow_comments && self.text.starts_with('/') {
-                self.parse_comment()?;
-            }
-
             // Key.
             let s = self.strip_char(self.text, '"')?;
             self.parse_string(s)?;
