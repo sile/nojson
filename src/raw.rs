@@ -45,7 +45,8 @@ impl RawJsonOwned {
     /// This validates the JSONC syntax and strips out comments, returning both
     /// the parsed JSON structure and the byte ranges where comments were found
     /// in the original text. Comments can be either line comments (`//`) or
-    /// block comments (`/* */`).
+    /// block comments (`/* */`). Additionally, this parser allows trailing commas
+    /// in objects and arrays.
     ///
     /// Unlike [`RawJson::parse_jsonc`], this creates an owned version that doesn't
     /// borrow from the input string.
@@ -62,7 +63,7 @@ impl RawJsonOwned {
     ///      * This is a multi-line
     ///      * block comment
     ///      */
-    ///     "city": "New York"
+    ///     "city": "New York", // Trailing comma is allowed
     /// }"#;
     ///
     /// let (json, comment_ranges) = RawJsonOwned::parse_jsonc(text)?;
@@ -254,7 +255,8 @@ impl<'text> RawJson<'text> {
     /// This validates the JSONC syntax and strips out comments, returning both
     /// the parsed JSON structure and the byte ranges where comments were found
     /// in the original text. Comments can be either line comments (`//`) or
-    /// block comments (`/* */`).
+    /// block comments (`/* */`). Additionally, this parser allows trailing commas
+    /// in objects and arrays.
     ///
     /// # Example
     ///
@@ -265,7 +267,7 @@ impl<'text> RawJson<'text> {
     ///     "name": "John", // This is a comment
     ///     "age": 30,
     ///     /* This is a block comment */
-    ///     "city": "New York"
+    ///     "city": "New York", // Trailing comma is allowed
     /// }"#;
     ///
     /// let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
