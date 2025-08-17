@@ -73,7 +73,7 @@ impl RawJsonOwned {
     /// assert_eq!(name, "John");
     ///
     /// // Comment ranges indicate where comments were found in the original text
-    /// assert_eq!(comment_ranges.len(), 2); // Two comments found
+    /// assert_eq!(comment_ranges.len(), 3); // Three comments found
     ///
     /// // You can extract the comment text if needed
     /// let first_comment = &text[comment_ranges[0].clone()];
@@ -277,7 +277,7 @@ impl<'text> RawJson<'text> {
     /// assert_eq!(name, "John");
     ///
     /// // Comment ranges indicate where comments were found in the original text
-    /// assert_eq!(comment_ranges.len(), 2); // Two comments found
+    /// assert_eq!(comment_ranges.len(), 3); // Three comments found
     ///
     /// // You can extract the comment text if needed
     /// let first_comment = &text[comment_ranges[0].clone()];
