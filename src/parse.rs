@@ -9,7 +9,7 @@ const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 
 pub trait Extensions {
     const ALLOW_COMMENTS: bool;
-    const ALLOW_TRAILING_COMMANS: bool;
+    const ALLOW_TRAILING_COMMAS: bool;
 }
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct Plain;
 
 impl Extensions for Plain {
     const ALLOW_COMMENTS: bool = false;
-    const ALLOW_TRAILING_COMMANS: bool = false;
+    const ALLOW_TRAILING_COMMAS: bool = false;
 }
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ pub struct Jsonc;
 
 impl Extensions for Jsonc {
     const ALLOW_COMMENTS: bool = true;
-    const ALLOW_TRAILING_COMMANS: bool = true;
+    const ALLOW_TRAILING_COMMAS: bool = true;
 }
 
 #[derive(Debug)]
@@ -234,7 +234,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
             self.text = self.strip_char(self.text, ',')?;
             self.text = self.skip_whitespaces_and_comments(self.text)?;
-            if E::ALLOW_TRAILING_COMMANS
+            if E::ALLOW_TRAILING_COMMAS
                 && let Some(s) = self.text.strip_prefix('}')
             {
                 self.text = s;
@@ -269,7 +269,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
                 self.text = self.strip_char(self.text, ',')?;
             }
 
-            if E::ALLOW_TRAILING_COMMANS {
+            if E::ALLOW_TRAILING_COMMAS {
                 self.text = self.skip_whitespaces_and_comments(self.text)?;
                 if let Some(s) = self.text.strip_prefix(']') {
                     self.text = s;
