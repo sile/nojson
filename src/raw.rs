@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
 use crate::{
     DisplayJson, JsonFormatter, JsonValueKind,
-    parse::{JsonParser, JsoncCommentHandler, NoopCommentHandler},
+    parse::{JsonParser, Jsonc, Plain},
 };
 
 pub use crate::parse_error::JsonParseError;
@@ -36,7 +36,7 @@ impl RawJsonOwned {
         T: Into<String>,
     {
         let text = text.into();
-        let (values, _) = JsonParser::new(&text, NoopCommentHandler).parse()?;
+        let (values, _) = JsonParser::<Plain>::new(&text).parse()?;
         Ok(Self { text, values })
     }
 
@@ -45,7 +45,8 @@ impl RawJsonOwned {
     /// This validates the JSONC syntax and strips out comments, returning both
     /// the parsed JSON structure and the byte ranges where comments were found
     /// in the original text. Comments can be either line comments (`//`) or
-    /// block comments (`/* */`).
+    /// block comments (`/* */`). Additionally, this parser allows trailing commas
+    /// in objects and arrays.
     ///
     /// Unlike [`RawJson::parse_jsonc`], this creates an owned version that doesn't
     /// borrow from the input string.
@@ -62,7 +63,7 @@ impl RawJsonOwned {
     ///      * This is a multi-line
     ///      * block comment
     ///      */
-    ///     "city": "New York"
+    ///     "city": "New York", // Trailing comma is allowed
     /// }"#;
     ///
     /// let (json, comment_ranges) = RawJsonOwned::parse_jsonc(text)?;
@@ -72,7 +73,7 @@ impl RawJsonOwned {
     /// assert_eq!(name, "John");
     ///
     /// // Comment ranges indicate where comments were found in the original text
-    /// assert_eq!(comment_ranges.len(), 2); // Two comments found
+    /// assert_eq!(comment_ranges.len(), 3); // Three comments found
     ///
     /// // You can extract the comment text if needed
     /// let first_comment = &text[comment_ranges[0].clone()];
@@ -85,8 +86,8 @@ impl RawJsonOwned {
         T: Into<String>,
     {
         let text = text.into();
-        let (values, handler) = JsonParser::new(&text, JsoncCommentHandler::default()).parse()?;
-        Ok((Self { text, values }, handler.comments))
+        let (values, comments) = JsonParser::<Jsonc>::new(&text).parse()?;
+        Ok((Self { text, values }, comments))
     }
 
     /// Returns the original JSON text.
@@ -245,7 +246,7 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn parse(text: &'text str) -> Result<Self, JsonParseError> {
-        let (values, _) = JsonParser::new(text, NoopCommentHandler).parse()?;
+        let (values, _) = JsonParser::<Plain>::new(text).parse()?;
         Ok(Self { text, values })
     }
 
@@ -254,7 +255,8 @@ impl<'text> RawJson<'text> {
     /// This validates the JSONC syntax and strips out comments, returning both
     /// the parsed JSON structure and the byte ranges where comments were found
     /// in the original text. Comments can be either line comments (`//`) or
-    /// block comments (`/* */`).
+    /// block comments (`/* */`). Additionally, this parser allows trailing commas
+    /// in objects and arrays.
     ///
     /// # Example
     ///
@@ -265,7 +267,7 @@ impl<'text> RawJson<'text> {
     ///     "name": "John", // This is a comment
     ///     "age": 30,
     ///     /* This is a block comment */
-    ///     "city": "New York"
+    ///     "city": "New York", // Trailing comma is allowed
     /// }"#;
     ///
     /// let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
@@ -275,7 +277,7 @@ impl<'text> RawJson<'text> {
     /// assert_eq!(name, "John");
     ///
     /// // Comment ranges indicate where comments were found in the original text
-    /// assert_eq!(comment_ranges.len(), 2); // Two comments found
+    /// assert_eq!(comment_ranges.len(), 3); // Three comments found
     ///
     /// // You can extract the comment text if needed
     /// let first_comment = &text[comment_ranges[0].clone()];
@@ -284,8 +286,8 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn parse_jsonc(text: &'text str) -> Result<(Self, Vec<Range<usize>>), JsonParseError> {
-        let (values, handler) = JsonParser::new(text, JsoncCommentHandler::default()).parse()?;
-        Ok((Self { text, values }, handler.comments))
+        let (values, comments) = JsonParser::<Jsonc>::new(text).parse()?;
+        Ok((Self { text, values }, comments))
     }
 
     /// Returns the original JSON text.

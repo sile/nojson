@@ -7,70 +7,55 @@ use crate::{
 
 const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
 
-pub trait HandleComment {
-    fn handle_comment<'a>(&mut self, original_text: &'a str, text: &'a str) -> Option<&'a str>;
+pub trait Extensions {
+    const ALLOW_COMMENTS: bool;
+    const ALLOW_TRAILING_COMMAS: bool;
 }
 
 #[derive(Debug)]
-pub struct NoopCommentHandler;
+pub struct Plain;
 
-impl HandleComment for NoopCommentHandler {
-    fn handle_comment<'a>(&mut self, _original_text: &'a str, text: &'a str) -> Option<&'a str> {
-        Some(text)
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct JsoncCommentHandler {
-    pub comments: Vec<Range<usize>>,
-}
-
-impl HandleComment for JsoncCommentHandler {
-    fn handle_comment<'a>(&mut self, original_text: &'a str, mut text: &'a str) -> Option<&'a str> {
-        loop {
-            let start = original_text.len() - text.len();
-
-            text = if let Some(text) = text.strip_prefix("//") {
-                text.trim_start_matches(|c| c != '\n')
-            } else if let Some(text) = text.strip_prefix("/*") {
-                let offset = text.find("*/")?;
-                &text[offset + 2..]
-            } else {
-                break;
-            };
-
-            let end = original_text.len() - text.len();
-            self.comments.push(Range { start, end });
-            text = text.trim_start_matches(WHITESPACE_PATTERN);
-        }
-        Some(text)
-    }
+impl Extensions for Plain {
+    const ALLOW_COMMENTS: bool = false;
+    const ALLOW_TRAILING_COMMAS: bool = false;
 }
 
 #[derive(Debug)]
-pub struct JsonParser<'a, H> {
+pub struct Jsonc;
+
+impl Extensions for Jsonc {
+    const ALLOW_COMMENTS: bool = true;
+    const ALLOW_TRAILING_COMMAS: bool = true;
+}
+
+#[derive(Debug)]
+pub struct JsonParser<'a, X> {
     original_text: &'a str,
     text: &'a str,
     kind: Option<JsonValueKind>,
     values: Vec<JsonValueIndexEntry>,
-    handler: H,
+    comments: Vec<Range<usize>>,
+    _extensions: std::marker::PhantomData<X>,
 }
 
-impl<'a, H: HandleComment> JsonParser<'a, H> {
-    pub fn new(text: &'a str, handler: H) -> Self {
+impl<'a, E: Extensions> JsonParser<'a, E> {
+    pub fn new(text: &'a str) -> Self {
         Self {
             original_text: text,
             text,
             kind: None,
             values: Vec::new(),
-            handler,
+            comments: Vec::new(),
+            _extensions: std::marker::PhantomData,
         }
     }
 
-    pub fn parse(mut self) -> Result<(Vec<JsonValueIndexEntry>, H), JsonParseError> {
+    pub fn parse(
+        mut self,
+    ) -> Result<(Vec<JsonValueIndexEntry>, Vec<Range<usize>>), JsonParseError> {
         self.parse_value()?;
         self.check_trailing_char()?;
-        Ok((self.values, self.handler))
+        Ok((self.values, self.comments))
     }
 
     fn check_trailing_char(&mut self) -> Result<(), JsonParseError> {
@@ -85,12 +70,30 @@ impl<'a, H: HandleComment> JsonParser<'a, H> {
     }
 
     fn skip_whitespaces_and_comments(&mut self, s: &'a str) -> Result<&'a str, JsonParseError> {
-        let s = s.trim_start_matches(WHITESPACE_PATTERN);
-        if let Some(s) = self.handler.handle_comment(self.original_text, s) {
-            Ok(s)
-        } else {
-            Err(self.unexpected_eos())
+        let mut s = s.trim_start_matches(WHITESPACE_PATTERN);
+        if !E::ALLOW_COMMENTS {
+            return Ok(s);
         }
+
+        loop {
+            let start = self.original_text.len() - s.len();
+
+            s = if let Some(s) = s.strip_prefix("//") {
+                s.trim_start_matches(|c| c != '\n')
+            } else if let Some(s) = s.strip_prefix("/*") {
+                let Some(offset) = s.find("*/") else {
+                    return Err(self.unexpected_eos());
+                };
+                &s[offset + 2..]
+            } else {
+                break;
+            };
+
+            let end = self.original_text.len() - s.len();
+            self.comments.push(Range { start, end });
+            s = s.trim_start_matches(WHITESPACE_PATTERN);
+        }
+        Ok(s)
     }
 
     fn parse_value(&mut self) -> Result<(), JsonParseError> {
@@ -231,6 +234,13 @@ impl<'a, H: HandleComment> JsonParser<'a, H> {
 
             self.text = self.strip_char(self.text, ',')?;
             self.text = self.skip_whitespaces_and_comments(self.text)?;
+            if E::ALLOW_TRAILING_COMMAS
+                && let Some(s) = self.text.strip_prefix('}')
+            {
+                self.text = s;
+                self.finalize_entry(index);
+                return Ok(());
+            }
         }
     }
 
@@ -257,6 +267,15 @@ impl<'a, H: HandleComment> JsonParser<'a, H> {
                 return Ok(());
             } else {
                 self.text = self.strip_char(self.text, ',')?;
+            }
+
+            if E::ALLOW_TRAILING_COMMAS {
+                self.text = self.skip_whitespaces_and_comments(self.text)?;
+                if let Some(s) = self.text.strip_prefix(']') {
+                    self.text = s;
+                    self.finalize_entry(index);
+                    return Ok(());
+                }
             }
         }
     }

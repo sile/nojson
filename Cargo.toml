@@ -2,6 +2,7 @@
 name = "nojson"
 version = "0.3.3"
 edition = "2024"
+rust-version = "1.88"
 authors = ["Takeru Ohta <phjgt308@gmail.com>"]
 license = "MIT"
 description = "A flexible JSON library with no dependencies and no macros"
