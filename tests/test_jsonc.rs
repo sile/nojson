@@ -97,3 +97,156 @@ fn parse_jsonc_mixed_comments() -> Result<(), JsonParseError> {
 
     Ok(())
 }
+
+#[test]
+fn parse_jsonc_trailing_commas_object() -> Result<(), JsonParseError> {
+    let text = r#"{
+        "name": "John",
+        "age": 30,
+        "active": true,
+    }"#;
+
+    let (json, _comment_ranges) = RawJson::parse_jsonc(text)?;
+
+    // Verify JSON parsing works correctly with trailing comma
+    let name: String = json.value().to_member("name")?.required()?.try_into()?;
+    assert_eq!(name, "John");
+
+    let age: i32 = json.value().to_member("age")?.required()?.try_into()?;
+    assert_eq!(age, 30);
+
+    let active: bool = json.value().to_member("active")?.required()?.try_into()?;
+    assert_eq!(active, true);
+
+    Ok(())
+}
+
+#[test]
+fn parse_jsonc_trailing_commas_array() -> Result<(), JsonParseError> {
+    let text = r#"{
+        "fruits": [
+            "apple",
+            "banana",
+            "cherry",
+        ],
+        "numbers": [1, 2, 3,]
+    }"#;
+
+    let (json, _comment_ranges) = RawJson::parse_jsonc(text)?;
+
+    // Verify array parsing with trailing commas
+    let fruits_array = json.value().to_member("fruits")?.required()?.to_array()?;
+    let fruits: Vec<String> = fruits_array
+        .map(|item| item.try_into())
+        .collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(fruits, vec!["apple", "banana", "cherry"]);
+
+    let numbers_array = json.value().to_member("numbers")?.required()?.to_array()?;
+    let numbers: Vec<i32> = numbers_array
+        .map(|item| item.try_into())
+        .collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(numbers, vec![1, 2, 3]);
+
+    Ok(())
+}
+
+#[test]
+fn parse_jsonc_trailing_commas_with_comments() -> Result<(), JsonParseError> {
+    let text = r#"{
+        "config": {
+            "debug": true, // Enable debug mode
+            "port": 8080, // Server port
+        }, // End config
+        "features": [
+            "auth", // Authentication
+            "logging", // Request logging
+        ], // End features
+    }"#;
+
+    let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
+
+    // Verify parsing with both trailing commas and comments
+    let debug: bool = json
+        .value()
+        .to_member("config")?
+        .required()?
+        .to_member("debug")?
+        .required()?
+        .try_into()?;
+    assert_eq!(debug, true);
+
+    let port: i32 = json
+        .value()
+        .to_member("config")?
+        .required()?
+        .to_member("port")?
+        .required()?
+        .try_into()?;
+    assert_eq!(port, 8080);
+
+    let features_array = json.value().to_member("features")?.required()?.to_array()?;
+    let features: Vec<String> = features_array
+        .map(|item| item.try_into())
+        .collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(features, vec!["auth", "logging"]);
+
+    // Verify comments were detected
+    assert_eq!(comment_ranges.len(), 5);
+
+    Ok(())
+}
+
+#[test]
+fn parse_jsonc_abnormal_trailing_commas() {
+    // Test cases for abnormal trailing commas that should all fail to parse
+    let test_cases = vec![
+        // Empty containers with commas
+        ("[,]", "Empty array with comma"),
+        ("{,}", "Empty object with comma"),
+        // Double commas
+        ("[1,,]", "Array with double comma at end"),
+        (r#"{"a": 1,,}"#, "Object with double comma at end"),
+        ("[1,2,,3]", "Array with double comma in middle"),
+        (r#"{"a":1,,"b":2}"#, "Object with double comma in middle"),
+        // Leading commas
+        ("[,1,2]", "Array with leading comma"),
+        (r#"{,"a": 1}"#, "Object with leading comma"),
+        // Multiple consecutive commas
+        ("[1,,,2]", "Array with multiple consecutive commas"),
+        ("[,,,]", "Array with only commas"),
+        ("{,,}", "Object with only commas"),
+        // Abnormal commas with comments
+        (
+            r#"[
+            1, // First element
+            , // This comma has no element before it
+            2
+        ]"#,
+            "Array with abnormal comma placement with comments",
+        ),
+        // Nested structures with abnormal commas
+        (
+            r#"{
+            "outer": {
+                "inner": [1,,2]
+            }
+        }"#,
+            "Nested structure with abnormal comma",
+        ),
+        // Additional edge cases
+        ("[1,,]", "Double comma at end"),
+        ("[,,1]", "Multiple leading commas"),
+        (r#"{"a":,}"#, "Object with comma after key-value separator"),
+        ("[1,2,3,,]", "Multiple trailing commas"),
+    ];
+
+    for (test_case, description) in test_cases {
+        let result = RawJson::parse_jsonc(test_case);
+        assert!(
+            result.is_err(),
+            "{} should fail to parse. Input: '{}'",
+            description,
+            test_case
+        );
+    }
+}
