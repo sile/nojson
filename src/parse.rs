@@ -234,6 +234,13 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
             self.text = self.strip_char(self.text, ',')?;
             self.text = self.skip_whitespaces_and_comments(self.text)?;
+            if E::ALLOW_TRAILING_COMMANS {
+                if let Some(s) = self.text.strip_prefix('}') {
+                    self.text = s;
+                    self.finalize_entry(index);
+                    return Ok(());
+                }
+            }
         }
     }
 
@@ -260,6 +267,15 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
                 return Ok(());
             } else {
                 self.text = self.strip_char(self.text, ',')?;
+            }
+
+            if E::ALLOW_TRAILING_COMMANS {
+                self.text = self.skip_whitespaces_and_comments(self.text)?;
+                if let Some(s) = self.text.strip_prefix(']') {
+                    self.text = s;
+                    self.finalize_entry(index);
+                    return Ok(());
+                }
             }
         }
     }

@@ -191,7 +191,7 @@ fn parse_jsonc_trailing_commas_with_comments() -> Result<(), JsonParseError> {
     assert_eq!(features, vec!["auth", "logging"]);
 
     // Verify comments were detected
-    assert_eq!(comment_ranges.len(), 5);
+    assert_eq!(comment_ranges.len(), 6);
 
     Ok(())
 }
