@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
 use crate::{
     DisplayJson, JsonFormatter, JsonValueKind,
-    parse::{JsonParser, JsoncCommentHandler, NoopCommentHandler},
+    parse::{JsonParser, Jsonc, Plain},
 };
 
 pub use crate::parse_error::JsonParseError;
@@ -36,7 +36,7 @@ impl RawJsonOwned {
         T: Into<String>,
     {
         let text = text.into();
-        let (values, _) = JsonParser::new(&text, NoopCommentHandler).parse()?;
+        let (values, _) = JsonParser::<Plain>::new(&text).parse()?;
         Ok(Self { text, values })
     }
 
@@ -85,8 +85,8 @@ impl RawJsonOwned {
         T: Into<String>,
     {
         let text = text.into();
-        let (values, handler) = JsonParser::new(&text, JsoncCommentHandler::default()).parse()?;
-        Ok((Self { text, values }, handler.comments))
+        let (values, comments) = JsonParser::<Jsonc>::new(&text).parse()?;
+        Ok((Self { text, values }, comments))
     }
 
     /// Returns the original JSON text.
@@ -245,7 +245,7 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn parse(text: &'text str) -> Result<Self, JsonParseError> {
-        let (values, _) = JsonParser::new(text, NoopCommentHandler).parse()?;
+        let (values, _) = JsonParser::<Plain>::new(text).parse()?;
         Ok(Self { text, values })
     }
 
@@ -284,8 +284,8 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn parse_jsonc(text: &'text str) -> Result<(Self, Vec<Range<usize>>), JsonParseError> {
-        let (values, handler) = JsonParser::new(text, JsoncCommentHandler::default()).parse()?;
-        Ok((Self { text, values }, handler.comments))
+        let (values, comments) = JsonParser::<Jsonc>::new(text).parse()?;
+        Ok((Self { text, values }, comments))
     }
 
     /// Returns the original JSON text.
