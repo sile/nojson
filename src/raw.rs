@@ -566,25 +566,34 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// regardless of where this value is located in the JSON hierarchy. This is
     /// useful when you want to access other parts of the JSON from a nested value.
     ///
+    /// This operation is O(1) and more efficient than repeatedly calling [`parent()`](Self::parent)
+    /// to reach the root.
+    ///
     /// # Examples
     ///
     /// ```
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = nojson::RawJson::parse(r#"{"user": {"name": "John", "profile": {"age": 30}}, "count": 42}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"user": {"name": "John", "age": 30}, "count": 42}"#)?;
     /// let age_value = json.value()
     ///     .to_member("user")?
-    ///     .required()?
-    ///     .to_member("profile")?
     ///     .required()?
     ///     .to_member("age")?
     ///     .required()?;
     ///
-    /// // From the deeply nested age value, we can get back to the root
+    /// // From the nested age value, navigate back to the root
     /// let root = age_value.root();
     ///
-    /// // Now we can access any part of the original JSON
+    /// // Access any part of the original JSON structure
     /// let count: i32 = root.to_member("count")?.required()?.try_into()?;
     /// assert_eq!(count, 42);
+    ///
+    /// let user_name: String = root
+    ///     .to_member("user")?
+    ///     .required()?
+    ///     .to_member("name")?
+    ///     .required()?
+    ///     .try_into()?;
+    /// assert_eq!(user_name, "John");
     /// # Ok(())
     /// # }
     /// ```
