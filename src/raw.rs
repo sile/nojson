@@ -560,6 +560,41 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
         self.json.get_value_by_position(self.position() - 1)
     }
 
+    /// Returns the root (top-level) value of the JSON data.
+    ///
+    /// This method navigates back to the root value of the entire JSON structure,
+    /// regardless of where this value is located in the JSON hierarchy. This is
+    /// useful when you want to access other parts of the JSON from a nested value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = nojson::RawJson::parse(r#"{"user": {"name": "John", "profile": {"age": 30}}, "count": 42}"#)?;
+    /// let age_value = json.value()
+    ///     .to_member("user")?
+    ///     .required()?
+    ///     .to_member("profile")?
+    ///     .required()?
+    ///     .to_member("age")?
+    ///     .required()?;
+    ///
+    /// // From the deeply nested age value, we can get back to the root
+    /// let root = age_value.root();
+    ///
+    /// // Now we can access any part of the original JSON
+    /// let count: i32 = root.to_member("count")?.required()?.try_into()?;
+    /// assert_eq!(count, 42);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn root(self) -> Self {
+        Self {
+            json: self.json,
+            index: 0,
+        }
+    }
+
     /// Returns the raw JSON text of this value as-is.
     pub fn as_raw_str(self) -> &'text str {
         let text = &self.json.values[self.index].text;
