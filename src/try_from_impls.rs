@@ -241,6 +241,23 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for f64 {
     }
 }
 
+impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for char {
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        let s = value.to_unquoted_string_str()?;
+        let mut chars = s.chars();
+        match (chars.next(), chars.next()) {
+            (Some(c), None) => Ok(c),
+            (Some(_), Some(_)) => Err(value.invalid(
+                "expected a string with exactly one character, but got multiple characters",
+            )),
+            _ => Err(value
+                .invalid("expected a string with exactly one character, but got an empty string")),
+        }
+    }
+}
+
 impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for String {
     type Error = JsonParseError;
 

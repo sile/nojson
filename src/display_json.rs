@@ -293,6 +293,12 @@ impl DisplayJson for f64 {
     }
 }
 
+impl DisplayJson for char {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        f.string(self)
+    }
+}
+
 impl DisplayJson for str {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.string(self)
