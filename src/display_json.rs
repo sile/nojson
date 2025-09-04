@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Display};
+use std::{borrow::Cow, fmt::Display, rc::Rc, sync::Arc};
 
 use crate::JsonFormatter;
 
@@ -108,6 +108,18 @@ impl<T: DisplayJson + ?Sized> DisplayJson for &mut T {
 }
 
 impl<T: DisplayJson + ?Sized> DisplayJson for Box<T> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        (**self).fmt(f)
+    }
+}
+
+impl<T: DisplayJson + ?Sized> DisplayJson for Rc<T> {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+        (**self).fmt(f)
+    }
+}
+
+impl<T: DisplayJson + ?Sized> DisplayJson for Arc<T> {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
         (**self).fmt(f)
     }
