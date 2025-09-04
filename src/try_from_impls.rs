@@ -1,5 +1,4 @@
-use std::convert::TryFrom;
-use std::str::FromStr;
+use std::{convert::TryFrom, rc::Rc, str::FromStr, sync::Arc};
 
 use crate::{JsonParseError, RawJsonValue};
 
@@ -349,6 +348,28 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for std::net::SocketAddrV6 
             .to_unquoted_string_str()?
             .parse()
             .map_err(|e| value.invalid(e))
+    }
+}
+
+impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for Rc<T>
+where
+    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+{
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        T::try_from(value).map(Rc::new)
+    }
+}
+
+impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for Arc<T>
+where
+    T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
+{
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        T::try_from(value).map(Arc::new)
     }
 }
 
