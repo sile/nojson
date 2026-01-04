@@ -12,3 +12,6 @@ readme = "README.md"
 categories = ["encoding", "parser-implementations"]
 
 [dependencies]
+
+[dev-dependencies]
+proptest = "1.9"
