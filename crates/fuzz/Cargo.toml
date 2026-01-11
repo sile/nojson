@@ -1,0 +1,19 @@
+[package]
+name = "fuzz"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[[bin]]
+name = "fuzz_target"
+path = "src/fuzz_target.rs"
+test = false
+doc = false
+bench = false
+
+[dependencies]
+libfuzzer-sys = "0.4.10"
+nojson = { path = "../../" }
