@@ -12,4 +12,4 @@ readme = "README.md"
 categories = ["encoding", "parser-implementations"]
 
 [workspace]
-members = ["pbt"]
+members = ["fuzz", "pbt"]
