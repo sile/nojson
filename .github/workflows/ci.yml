@@ -53,6 +53,7 @@ jobs:
       - run: rustup update nightly
       - run: rustup default nightly
       - run: rustup component add rust-src
+      - run: cargo install cargo-fuzz
       - name: Run fuzz target
         run: cargo +nightly fuzz run fuzz_target -- -max_len=4096 -max_total_time=60
         working-directory: crates/fuzz
