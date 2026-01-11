@@ -11,4 +11,5 @@ repository = "https://github.com/sile/nojson"
 readme = "README.md"
 categories = ["encoding", "parser-implementations"]
 
-[dependencies]
+[workspace]
+members = ["pbt"]
