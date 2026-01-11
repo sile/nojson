@@ -43,3 +43,17 @@ jobs:
       - run: rustup component add rustfmt clippy
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all -- -D warnings
+
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v5
+      - run: rustup update nightly
+      - run: rustup default nightly
+      - run: rustup component add rust-src
+      - name: Run fuzz target
+        run: cargo +nightly fuzz run fuzz_target -- -max_len=4096 -max_total_time=60
+        working-directory: crates/fuzz
+
