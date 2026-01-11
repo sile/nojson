@@ -86,6 +86,7 @@ name = "fuzz"
 version = "0.1.0"
 dependencies = [
  "libfuzzer-sys",
+ "nojson",
 ]
 
 [[package]]
