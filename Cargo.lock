@@ -82,6 +82,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "fuzz"
+version = "0.0.0"
+dependencies = [
+ "libfuzzer-sys",
+ "nojson",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -130,22 +138,6 @@ name = "nojson"
 version = "0.3.6"
 
 [[package]]
-name = "nojson-fuzz"
-version = "0.0.0"
-dependencies = [
- "libfuzzer-sys",
- "nojson",
-]
-
-[[package]]
-name = "nojson-pbt"
-version = "0.1.0"
-dependencies = [
- "nojson",
- "proptest",
-]
-
-[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -159,6 +151,14 @@ name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
+
+[[package]]
+name = "pbt"
+version = "0.0.0"
+dependencies = [
+ "nojson",
+ "proptest",
+]
 
 [[package]]
 name = "ppv-lite86"
