@@ -148,6 +148,42 @@ impl RawJsonOwned {
         self.as_raw_json_ref().get_value_by_position(position)
     }
 
+    /// Returns the JSON value at the specified index in the internal value array.
+    ///
+    /// This method provides direct access to any value in the JSON structure by its
+    /// internal index. It's useful when you need to access a value after validation
+    /// or when you've stored an index for later retrieval, allowing constant-time
+    /// access without traversing the JSON structure.
+    ///
+    /// Returns `None` if the index is out of bounds.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJsonOwned;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJsonOwned::parse(r#"{"name": "John", "age": 30}"#)?;
+    ///
+    /// // Get the root object (always at index 0)
+    /// let root = json.get_value_by_index(0).expect("root exists");
+    ///
+    /// // Access nested values by storing their indices
+    /// let name_value = root.to_member("name")?.required()?;
+    /// let name_index = name_value.index();
+    ///
+    /// // Later, retrieve the value directly by index
+    /// let same_value = json.get_value_by_index(name_index).expect("index is valid");
+    /// assert_eq!(same_value.as_raw_str(), r#""John""#);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn get_value_by_index(&self, index: usize) -> Option<RawJsonValue<'_, '_>> {
+        (index < self.values.len()).then(|| RawJsonValue {
+            json: self.as_raw_json_ref(),
+            index,
+        })
+    }
+
     fn as_raw_json_ref(&self) -> RawJsonRef<'_, '_> {
         RawJsonRef {
             text: &self.text,
@@ -346,6 +382,42 @@ impl<'text> RawJson<'text> {
     /// ```
     pub fn get_value_by_position(&self, position: usize) -> Option<RawJsonValue<'text, '_>> {
         self.as_raw_json_ref().get_value_by_position(position)
+    }
+
+    /// Returns the JSON value at the specified index in the internal value array.
+    ///
+    /// This method provides direct access to any value in the JSON structure by its
+    /// internal index. It's useful when you need to access a value after validation
+    /// or when you've stored an index for later retrieval, allowing constant-time
+    /// access without traversing the JSON structure.
+    ///
+    /// Returns `None` if the index is out of bounds.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"name": "John", "age": 30}"#)?;
+    ///
+    /// // Get the root object (always at index 0)
+    /// let root = json.get_value_by_index(0).expect("root exists");
+    ///
+    /// // Access nested values by storing their indices
+    /// let name_value = root.to_member("name")?.required()?;
+    /// let name_index = name_value.index();
+    ///
+    /// // Later, retrieve the value directly by index
+    /// let same_value = json.get_value_by_index(name_index).expect("index is valid");
+    /// assert_eq!(same_value.as_raw_str(), r#""John""#);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn get_value_by_index(&self, index: usize) -> Option<RawJsonValue<'text, '_>> {
+        (index < self.values.len()).then(|| RawJsonValue {
+            json: self.as_raw_json_ref(),
+            index,
+        })
     }
 
     /// Converts this borrowed [`RawJson`] into an owned [`RawJsonOwned`].
@@ -550,6 +622,36 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// Returns the byte position where this value begins in the JSON text (`self.json().text()`).
     pub fn position(self) -> usize {
         self.json.values[self.index].text.start
+    }
+
+    /// Returns the internal index of this value in the JSON structure.
+    ///
+    /// Each value in a parsed JSON document is assigned a unique index in the
+    /// internal value array. This method returns that index, which can be used
+    /// later with [`RawJson::get_value_by_index`] or [`RawJsonOwned::get_value_by_index`]
+    /// to retrieve the same value in constant time without traversing the JSON structure.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nojson::RawJson;
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = RawJson::parse(r#"{"users": [{"name": "Alice"}, {"name": "Bob"}]}"#)?;
+    ///
+    /// // Find and store the index of a specific user
+    /// let users = json.value().to_member("users")?.required()?.to_array()?;
+    /// let bob = users.skip(1).next().expect("Bob exists");
+    /// let bob_index = bob.index();
+    ///
+    /// // Later, retrieve Bob directly by index
+    /// let bob_again = json.get_value_by_index(bob_index).expect("index is valid");
+    /// let name: String = bob_again.to_member("name")?.required()?.try_into()?;
+    /// assert_eq!(name, "Bob");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn index(self) -> usize {
+        self.index
     }
 
     /// Returns the parent value (array or object) that contains this value.
