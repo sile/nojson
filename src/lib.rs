@@ -27,12 +27,10 @@
 //! The [`Json<T>`] wrapper allows parsing JSON text into Rust types that implement `TryFrom<RawJsonValue<'_, '_>>`:
 //!
 //! ```
-//! use nojson::Json;
-//!
 //! fn main() -> Result<(), nojson::JsonParseError> {
 //!     // Parse a JSON array into a typed Rust array
 //!     let text = "[1, null, 2]";
-//!     let value: Json<[Option<u32>; 3]> = text.parse()?;
+//!     let value: nojson::Json<[Option<u32>; 3]> = text.parse()?;
 //!     assert_eq!(value.0, [Some(1), None, Some(2)]);
 //!     Ok(())
 //! }
@@ -43,11 +41,9 @@
 //! The [`DisplayJson`] trait allows converting Rust types to JSON:
 //!
 //! ```
-//! use nojson::Json;
-//!
 //! // Generate a JSON array from a Rust array
 //! let value = [Some(1), None, Some(2)];
-//! assert_eq!(Json(value).to_string(), "[1,null,2]");
+//! assert_eq!(nojson::Json(value).to_string(), "[1,null,2]");
 //! ```
 //!
 //! ### In-place JSON Generation with Formatting
@@ -55,14 +51,12 @@
 //! The [`json()`] function provides a convenient way to generate JSON with custom formatting:
 //!
 //! ```
-//! use nojson::json;
-//!
 //! // Compact JSON
-//! let compact = json(|f| f.value([1, 2, 3]));
+//! let compact = nojson::json(|f| f.value([1, 2, 3]));
 //! assert_eq!(compact.to_string(), "[1,2,3]");
 //!
 //! // Pretty-printed JSON with custom indentation
-//! let pretty = json(|f| {
+//! let pretty = nojson::json(|f| {
 //!     f.set_indent_size(2);
 //!     f.set_spacing(true);
 //!     f.array(|f| {
@@ -88,15 +82,13 @@
 //! Implementing [`DisplayJson`] and `TryFrom<RawJsonValue<'_, '_>>` for your own types:
 //!
 //! ```
-//! use nojson::{DisplayJson, Json, JsonFormatter, JsonParseError, RawJsonValue};
-//!
 //! struct Person {
 //!     name: String,
 //!     age: u32,
 //! }
 //!
-//! impl DisplayJson for Person {
-//!     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+//! impl nojson::DisplayJson for Person {
+//!     fn fmt(&self, f: &mut nojson::JsonFormatter<'_, '_>) -> std::fmt::Result {
 //!         f.object(|f| {
 //!             f.member("name", &self.name)?;
 //!             f.member("age", self.age)
@@ -104,10 +96,10 @@
 //!     }
 //! }
 //!
-//! impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for Person {
-//!     type Error = JsonParseError;
+//! impl<'text, 'raw> TryFrom<nojson::RawJsonValue<'text, 'raw>> for Person {
+//!     type Error = nojson::JsonParseError;
 //!
-//!     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+//!     fn try_from(value: nojson::RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
 //!         let name = value.to_member("name")?.required()?;
 //!         let age = value.to_member("age")?.required()?;
 //!         Ok(Person {
@@ -117,13 +109,13 @@
 //!     }
 //! }
 //!
-//! fn main() -> Result<(), JsonParseError> {
+//! fn main() -> Result<(), nojson::JsonParseError> {
 //!     // Parse JSON to Person
 //!     let json_text = r#"{"name":"Alice","age":30}"#;
-//!     let person: Json<Person> = json_text.parse()?;
+//!     let person: nojson::Json<Person> = json_text.parse()?;
 //!
 //!     // Generate JSON from Person
-//!     assert_eq!(Json(&person.0).to_string(), json_text);
+//!     assert_eq!(nojson::Json(&person.0).to_string(), json_text);
 //!
 //!     Ok(())
 //! }
@@ -136,10 +128,8 @@
 //! You can add custom validations using [`RawJsonValue::invalid()`]:
 //!
 //! ```
-//! use nojson::{JsonParseError, RawJson, RawJsonValue};
-//!
-//! fn parse_positive_number(text: &str) -> Result<u32, JsonParseError> {
-//!     let json = RawJson::parse(text)?;
+//! fn parse_positive_number(text: &str) -> Result<u32, nojson::JsonParseError> {
+//!     let json = nojson::RawJson::parse(text)?;
 //!     let raw_value = json.value();
 //!
 //!     let num: u32 = raw_value.as_number_str()?
@@ -159,10 +149,8 @@
 //! Rich error information helps with debugging:
 //!
 //! ```
-//! use nojson::{JsonParseError, RawJson};
-//!
 //! let text = r#"{"invalid": 123e++}"#;
-//! let result = RawJson::parse(text);
+//! let result = nojson::RawJson::parse(text);
 //!
 //! if let Err(error) = result {
 //!     println!("Error: {}", error);
@@ -204,13 +192,11 @@ pub use raw::{JsonParseError, RawJson, RawJsonMember, RawJsonOwned, RawJsonValue
 ///
 /// Parsing JSON text:
 /// ```
-/// use nojson::Json;
-///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
 /// // Since the `[Option<u32>; 3]` type implements `TryFrom<RawJsonValue<'_, '_>>`,
 /// // you can use the `std::str::parse()` method to parse JSON by wrapping the type with `Json`.
 /// let text = "[1, null, 2]";
-/// let value: Json<[Option<u32>; 3]> = text.parse()?;
+/// let value: nojson::Json<[Option<u32>; 3]> = text.parse()?;
 /// assert_eq!(value.0, [Some(1), None, Some(2)]);
 /// # Ok(())
 /// # }
@@ -218,14 +204,12 @@ pub use raw::{JsonParseError, RawJson, RawJsonMember, RawJsonOwned, RawJsonValue
 ///
 /// Generating JSON from a Rust type:
 /// ```
-/// use nojson::Json;
-///
 /// # fn main() -> Result<(), nojson::JsonParseError> {
 /// // Since the `[Option<u32>; 3]` type also implements the `DisplayJson` trait,
 /// // you can use the `std::fmt::Display::to_string()` method to
 /// // generate JSON by wrapping the type with `Json`.
 /// let value = [Some(1), None, Some(2)];
-/// assert_eq!(Json(value).to_string(), "[1,null,2]");
+/// assert_eq!(nojson::Json(value).to_string(), "[1,null,2]");
 /// # Ok(())
 /// # }
 /// ```
@@ -259,20 +243,16 @@ where
 /// ## Basic usage
 ///
 /// ```
-/// use nojson::json;
-///
 /// // Standard JSON serialization (compact)
-/// let compact = json(|f| f.value([1, 2, 3]));
+/// let compact = nojson::json(|f| f.value([1, 2, 3]));
 /// assert_eq!(compact.to_string(), "[1,2,3]");
 /// ```
 ///
 /// ## Pretty printing with custom indentation
 ///
 /// ```
-/// use nojson::json;
-///
 /// // Pretty-printed JSON with 2-space indentation
-/// let pretty = json(|f| {
+/// let pretty = nojson::json(|f| {
 ///     f.set_indent_size(2);
 ///     f.set_spacing(true);
 ///     f.value([1, 2, 3])
@@ -292,15 +272,13 @@ where
 /// ## Mixing formatting styles
 ///
 /// ```
-/// use nojson::{json, DisplayJson};
-///
 /// // You can nest formatters with different settings
-/// let mixed = json(|f| {
+/// let mixed = nojson::json(|f| {
 ///     f.set_indent_size(2);
 ///     f.set_spacing(true);
 ///     f.value([
-///         &vec![1] as &dyn DisplayJson,
-///         &json(|f| {
+///         &vec![1] as &dyn nojson::DisplayJson,
+///         &nojson::json(|f| {
 ///             f.set_indent_size(0);
 ///             f.value(vec![2, 3])
 ///         }),
