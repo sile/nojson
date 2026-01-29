@@ -24,10 +24,9 @@ impl RawJsonOwned {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJsonOwned;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"name": "John", "age": 30}"#;
-    /// let json = RawJsonOwned::parse(text)?;
+    /// let json = nojson::RawJsonOwned::parse(text)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -54,7 +53,6 @@ impl RawJsonOwned {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJsonOwned;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{
     ///     "name": "John", // This is a comment
@@ -66,7 +64,7 @@ impl RawJsonOwned {
     ///     "city": "New York", // Trailing comma is allowed
     /// }"#;
     ///
-    /// let (json, comment_ranges) = RawJsonOwned::parse_jsonc(text)?;
+    /// let (json, comment_ranges) = nojson::RawJsonOwned::parse_jsonc(text)?;
     ///
     /// // The parsed JSON works normally
     /// let name: String = json.value().to_member("name")?.required()?.try_into()?;
@@ -103,10 +101,9 @@ impl RawJsonOwned {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJsonOwned;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"name": "John", "age": 30}"#;
-    /// let json = RawJsonOwned::parse(text).unwrap();
+    /// let json = nojson::RawJsonOwned::parse(text).unwrap();
     /// let value = json.value();
     /// # Ok(())
     /// # }
@@ -130,9 +127,8 @@ impl RawJsonOwned {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJsonOwned;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJsonOwned::parse(r#"{"name": "John", "age": 30}"#)?;
+    /// let json = nojson::RawJsonOwned::parse(r#"{"name": "John", "age": 30}"#)?;
     ///
     /// // Position at "name" key
     /// let name_value = json.get_value_by_position(2).expect("infallible");
@@ -160,9 +156,8 @@ impl RawJsonOwned {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJsonOwned;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJsonOwned::parse(r#"{"name": "John", "age": 30}"#)?;
+    /// let json = nojson::RawJsonOwned::parse(r#"{"name": "John", "age": 30}"#)?;
     ///
     /// // Get the root object (always at index 0)
     /// let root = json.get_value_by_index(0).expect("root exists");
@@ -274,10 +269,9 @@ impl<'text> RawJson<'text> {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"name": "John", "age": 30}"#;
-    /// let json = RawJson::parse(text)?;
+    /// let json = nojson::RawJson::parse(text)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -297,7 +291,6 @@ impl<'text> RawJson<'text> {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{
     ///     "name": "John", // This is a comment
@@ -306,7 +299,7 @@ impl<'text> RawJson<'text> {
     ///     "city": "New York", // Trailing comma is allowed
     /// }"#;
     ///
-    /// let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
+    /// let (json, comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
     ///
     /// // The parsed JSON works normally
     /// let name: String = json.value().to_member("name")?.required()?.try_into()?;
@@ -339,10 +332,9 @@ impl<'text> RawJson<'text> {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"name": "John", "age": 30}"#;
-    /// let json = RawJson::parse(text).unwrap();
+    /// let json = nojson::RawJson::parse(text).unwrap();
     /// let value = json.value();
     /// # Ok(())
     /// # }
@@ -366,9 +358,8 @@ impl<'text> RawJson<'text> {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "John", "age": 30}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"name": "John", "age": 30}"#)?;
     ///
     /// // Position at "name" key
     /// let name_value = json.get_value_by_position(2).expect("infallible");
@@ -396,9 +387,8 @@ impl<'text> RawJson<'text> {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "John", "age": 30}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"name": "John", "age": 30}"#)?;
     ///
     /// // Get the root object (always at index 0)
     /// let root = json.get_value_by_index(0).expect("root exists");
@@ -429,10 +419,9 @@ impl<'text> RawJson<'text> {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"name": "John", "age": 30}"#;
-    /// let json = RawJson::parse(text)?;
+    /// let json = nojson::RawJson::parse(text)?;
     /// let owned_json = json.into_owned();
     ///
     /// // The owned version can outlive the original text
@@ -584,11 +573,10 @@ impl DisplayJson for RawJsonRef<'_, '_> {
 /// to parse the underlying JSON text of this value as shown below:
 ///
 /// ```
-/// # use nojson::{RawJson, RawJsonValue, JsonParseError};
-/// # fn main() -> Result<(), JsonParseError> {
+/// # fn main() -> Result<(), nojson::JsonParseError> {
 /// let text = "1.23";
-/// let json = RawJson::parse(text)?;
-/// let raw: RawJsonValue = json.value();
+/// let json = nojson::RawJson::parse(text)?;
+/// let raw = json.value();
 /// let parsed: f32 =
 ///     raw.as_number_str()?.parse().map_err(|e| raw.invalid(e))?;
 /// assert_eq!(parsed, 1.23);
@@ -599,9 +587,8 @@ impl DisplayJson for RawJsonRef<'_, '_> {
 /// For types that implement `TryFrom<RawJsonValue<'_, '_>>`, you can use the [`TryInto`] trait:
 ///
 /// ```
-/// # use nojson::{RawJson, JsonParseError};
-/// # fn main() -> Result<(), JsonParseError> {
-/// let json = RawJson::parse("[1, 2, 3]")?;
+/// # fn main() -> Result<(), nojson::JsonParseError> {
+/// let json = nojson::RawJson::parse("[1, 2, 3]")?;
 /// let numbers: [u32; 3] = json.value().try_into()?;
 /// assert_eq!(numbers, [1, 2, 3]);
 /// # Ok(())
@@ -634,9 +621,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"users": [{"name": "Alice"}, {"name": "Bob"}]}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"users": [{"name": "Alice"}, {"name": "Bob"}]}"#)?;
     ///
     /// // Find and store the index of a specific user
     /// let users = json.value().to_member("users")?.required()?.to_array()?;
@@ -724,10 +710,9 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Example
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"user": {"name": "John", "age": 30}, "count": 42}"#;
-    /// let json = RawJson::parse(text)?;
+    /// let json = nojson::RawJson::parse(text)?;
     /// let user_value = json.value().to_member("user")?.required()?;
     ///
     /// // Extract the user object and its children to borrowed
@@ -778,12 +763,11 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("false")?;
+    /// let json = nojson::RawJson::parse("false")?;
     /// assert_eq!(json.value().as_boolean_str()?.parse(), Ok(false));
     ///
-    /// let json = RawJson::parse("10")?;
+    /// let json = nojson::RawJson::parse("10")?;
     /// assert!(json.value().as_boolean_str().is_err());
     /// # Ok(())
     /// # }
@@ -799,12 +783,11 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("123")?;
+    /// let json = nojson::RawJson::parse("123")?;
     /// assert_eq!(json.value().as_integer_str()?.parse(), Ok(123));
     ///
-    /// let json = RawJson::parse("12.3")?;
+    /// let json = nojson::RawJson::parse("12.3")?;
     /// assert!(json.value().as_integer_str().is_err());
     /// # Ok(())
     /// # }
@@ -820,12 +803,11 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("12.3")?;
+    /// let json = nojson::RawJson::parse("12.3")?;
     /// assert_eq!(json.value().as_float_str()?.parse(), Ok(12.3));
     ///
-    /// let json = RawJson::parse("123")?;
+    /// let json = nojson::RawJson::parse("123")?;
     /// assert!(json.value().as_float_str().is_err());
     /// # Ok(())
     /// # }
@@ -840,15 +822,14 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("123")?;
+    /// let json = nojson::RawJson::parse("123")?;
     /// assert_eq!(json.value().as_number_str()?.parse(), Ok(123));
     ///
-    /// let json = RawJson::parse("12.3")?;
+    /// let json = nojson::RawJson::parse("12.3")?;
     /// assert_eq!(json.value().as_number_str()?.parse(), Ok(12.3));
     ///
-    /// let json = RawJson::parse("null")?;
+    /// let json = nojson::RawJson::parse("null")?;
     /// assert!(json.value().as_number_str().is_err());
     /// # Ok(())
     /// # }
@@ -864,13 +845,12 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("\"123\"")?;
+    /// let json = nojson::RawJson::parse("\"123\"")?;
     /// assert_eq!(json.value().to_unquoted_string_str()?, "123");
     /// assert_eq!(json.value().to_unquoted_string_str()?.parse(), Ok(123));
     ///
-    /// let json = RawJson::parse("123")?;
+    /// let json = nojson::RawJson::parse("123")?;
     /// assert!(json.value().to_unquoted_string_str().is_err());
     /// # Ok(())
     /// # }
@@ -885,14 +865,13 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("[0, 1, 2]")?;
+    /// let json = nojson::RawJson::parse("[0, 1, 2]")?;
     /// for (i, v) in json.value().to_array()?.enumerate() {
     ///     assert_eq!(v.as_integer_str()?.parse(), Ok(i));
     /// }
     ///
-    /// let json = RawJson::parse("null")?;
+    /// let json = nojson::RawJson::parse("null")?;
     /// assert!(json.value().to_array().is_err());
     /// # Ok(())
     /// # }
@@ -902,9 +881,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     ///
     /// For converting to a fixed-size array, you can use the `TryInto` trait instead:
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("[0, 1, 2]")?;
+    /// let json = nojson::RawJson::parse("[0, 1, 2]")?;
     /// let fixed_array: [usize; 3] = json.value().try_into()?;
     /// # Ok(())
     /// # }
@@ -920,15 +898,14 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"a": 1, "b": 2, "c": 3}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"a": 1, "b": 2, "c": 3}"#)?;
     /// let mut members = json.value().to_object()?;
     /// let (k, v) = members.next().expect("some");
     /// assert_eq!(k.to_unquoted_string_str()?, "a");
     /// assert_eq!(v.as_integer_str()?.parse(), Ok(1));
     ///
-    /// let json = RawJson::parse("null")?;
+    /// let json = nojson::RawJson::parse("null")?;
     /// assert!(json.value().to_object().is_err());
     /// # Ok(())
     /// # }
@@ -948,9 +925,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
     /// let obj = json.value();
     ///
     /// // Access existing member
@@ -974,9 +950,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// all members once and extract the values you need more efficiently.
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30, "city": "New York"}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"name": "Alice", "age": 30, "city": "New York"}"#)?;
     /// let obj = json.value();
     ///
     /// // Efficient: single iteration for multiple members
@@ -1019,9 +994,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("\"42\"")?;
+    /// let json = nojson::RawJson::parse("\"42\"")?;
     ///
     /// // Transform a string value to an integer
     /// let number: i32 = json.value().map(|v| {
@@ -1049,9 +1023,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse("\"not_a_number\"")?;
+    /// let json = nojson::RawJson::parse("\"not_a_number\"")?;
     /// let value = json.value();
     ///
     /// // These are equivalent:
@@ -1216,9 +1189,8 @@ impl<'text, 'raw> Iterator for JsonKeyValuePairs<'text, 'raw> {
 /// # Examples
 ///
 /// ```
-/// # use nojson::RawJson;
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// let json = RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+/// let json = nojson::RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
 /// let obj = json.value();
 ///
 /// // Access an existing member
@@ -1249,9 +1221,8 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "Alice"}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"name": "Alice"}"#)?;
     /// let obj = json.value();
     ///
     /// // Required member exists
@@ -1279,9 +1250,8 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
     /// let obj = json.value();
     ///
     /// // Existing member
@@ -1319,9 +1289,8 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// # Examples
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"name": "Alice", "age": "30"}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"name": "Alice", "age": "30"}"#)?;
     /// let obj = json.value();
     ///
     /// // Transform existing member
@@ -1343,9 +1312,8 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// on optional members without having to handle the `Option` separately:
     ///
     /// ```
-    /// # use nojson::RawJson;
     /// # fn main() -> Result<(), nojson::JsonParseError> {
-    /// let json = RawJson::parse(r#"{"score": "95.5"}"#)?;
+    /// let json = nojson::RawJson::parse(r#"{"score": "95.5"}"#)?;
     /// let obj = json.value();
     ///
     /// // Parse optional numeric string
