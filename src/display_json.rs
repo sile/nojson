@@ -21,8 +21,6 @@ use crate::JsonFormatter;
 ///
 /// Implementing `DisplayJson` for a struct:
 /// ```
-/// use std::collections::BTreeMap;
-///
 /// struct Person {
 ///     name: String,
 ///     age: u32,
@@ -54,8 +52,6 @@ use crate::JsonFormatter;
 ///
 /// Generating JSON in-place using [`json()`](crate::json):
 /// ```
-/// use std::collections::BTreeMap;
-///
 /// // Build a JSON object with pretty-printing.
 /// let object = nojson::json(|f| {
 ///     f.set_indent_size(2);
