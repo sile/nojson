@@ -35,12 +35,10 @@ Unlike [`serde`](https://crates.io/crates/serde), which typically requires one-t
 The `Json<T>` wrapper allows parsing JSON text into Rust types that implement `TryFrom<RawJsonValue<'_, '_>>`:
 
 ```rust
-use nojson::Json;
-
 fn main() -> Result<(), nojson::JsonParseError> {
     // Parse a JSON array into a typed Rust array
     let text = "[1, null, 2]";
-    let value: Json<[Option<u32>; 3]> = text.parse()?;
+    let value: nojson::Json<[Option<u32>; 3]> = text.parse()?;
     assert_eq!(value.0, [Some(1), None, Some(2)]);
     Ok(())
 }
@@ -51,11 +49,9 @@ fn main() -> Result<(), nojson::JsonParseError> {
 The `DisplayJson` trait allows converting Rust types to JSON:
 
 ```rust
-use nojson::Json;
-
 // Generate a JSON array from a Rust array
 let value = [Some(1), None, Some(2)];
-assert_eq!(Json(value).to_string(), "[1,null,2]");
+assert_eq!(nojson::Json(value).to_string(), "[1,null,2]");
 ```
 
 ### In-place JSON Generation with Formatting
@@ -63,14 +59,12 @@ assert_eq!(Json(value).to_string(), "[1,null,2]");
 The `json()` function provides a convenient way to generate JSON with custom formatting:
 
 ```rust
-use nojson::json;
-
 // Compact JSON
-let compact = json(|f| f.value([1, 2, 3]));
+let compact = nojson::json(|f| f.value([1, 2, 3]));
 assert_eq!(compact.to_string(), "[1,2,3]");
 
 // Pretty-printed JSON with custom indentation
-let pretty = json(|f| {
+let pretty = nojson::json(|f| {
     f.set_indent_size(2);
     f.set_spacing(true);
     f.array(|f| {
@@ -96,15 +90,13 @@ assert_eq!(
 Implementing `DisplayJson` and `TryFrom<RawJsonValue<'_, '_>>` for your own types:
 
 ```rust
-use nojson::{DisplayJson, Json, JsonFormatter, JsonParseError, RawJsonValue};
-
 struct Person {
     name: String,
     age: u32,
 }
 
-impl DisplayJson for Person {
-    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+impl nojson::DisplayJson for Person {
+    fn fmt(&self, f: &mut nojson::JsonFormatter<'_, '_>) -> std::fmt::Result {
         f.object(|f| {
             f.member("name", &self.name)?;
             f.member("age", self.age)
@@ -112,10 +104,10 @@ impl DisplayJson for Person {
     }
 }
 
-impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for Person {
-    type Error = JsonParseError;
+impl<'text, 'raw> TryFrom<nojson::RawJsonValue<'text, 'raw>> for Person {
+    type Error = nojson::JsonParseError;
 
-    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+    fn try_from(value: nojson::RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
         let name = value.to_member("name")?.required()?;
         let age = value.to_member("age")?.required()?;
         Ok(Person {
@@ -125,13 +117,13 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for Person {
     }
 }
 
-fn main() -> Result<(), JsonParseError> {
+fn main() -> Result<(), nojson::JsonParseError> {
     // Parse JSON to Person
     let json_text = r#"{"name":"Alice","age":30}"#;
-    let person: Json<Person> = json_text.parse()?;
+    let person: nojson::Json<Person> = json_text.parse()?;
 
     // Generate JSON from Person
-    assert_eq!(Json(&person.0).to_string(), json_text);
+    assert_eq!(nojson::Json(&person.0).to_string(), json_text);
 
     Ok(())
 }
@@ -144,10 +136,8 @@ fn main() -> Result<(), JsonParseError> {
 You can add custom validations using `RawJsonValue::invalid()`:
 
 ```rust
-use nojson::{JsonParseError, RawJson, RawJsonValue};
-
-fn parse_positive_number(text: &str) -> Result<u32, JsonParseError> {
-    let json = RawJson::parse(text)?;
+fn parse_positive_number(text: &str) -> Result<u32, nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(text)?;
     let raw_value = json.value();
 
     let num: u32 = raw_value.as_number_str()?
@@ -167,10 +157,8 @@ fn parse_positive_number(text: &str) -> Result<u32, JsonParseError> {
 Rich error information helps with debugging:
 
 ```rust
-use nojson::{JsonParseError, RawJson};
-
 let text = r#"{"invalid": 123e++}"#;
-let result = RawJson::parse(text);
+let result = nojson::RawJson::parse(text);
 
 if let Err(error) = result {
     println!("Error: {}", error);

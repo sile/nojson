@@ -21,16 +21,14 @@ use crate::JsonFormatter;
 ///
 /// Implementing `DisplayJson` for a struct:
 /// ```
-/// use nojson::{DisplayJson, JsonFormatter, Json};
-///
 /// struct Person {
 ///     name: String,
 ///     age: u32,
 ///     email: Option<String>,
 /// }
 ///
-/// impl DisplayJson for Person {
-///     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+/// impl nojson::DisplayJson for Person {
+///     fn fmt(&self, f: &mut nojson::JsonFormatter<'_, '_>) -> std::fmt::Result {
 ///         f.object(|f| {
 ///             f.member("name", &self.name)?;
 ///             f.member("age", &self.age)?;
@@ -47,24 +45,21 @@ use crate::JsonFormatter;
 /// };
 ///
 /// assert_eq!(
-///     Json(&person).to_string(),
+///     nojson::Json(&person).to_string(),
 ///     r#"{"name":"Alice","age":30,"email":"alice@example.com"}"#
 /// );
 /// ```
 ///
 /// Generating JSON in-place using [`json()`](crate::json):
 /// ```
-/// use nojson::{DisplayJson, json};
-/// use std::collections::BTreeMap;
-///
 /// // Build a JSON object with pretty-printing.
-/// let object = json(|f| {
+/// let object = nojson::json(|f| {
 ///     f.set_indent_size(2);
 ///     f.set_spacing(true);
 ///     f.object(|f| {
 ///         f.member("name", "Example")?;
 ///         f.member("counts", &[1, 2, 3])?;
-///         f.member("config", json(|f| f.object(|f| {
+///         f.member("config", nojson::json(|f| f.object(|f| {
 ///             f.member("enabled", true);
 ///             f.member("visible", false)
 ///         })))
