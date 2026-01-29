@@ -14,14 +14,12 @@ use crate::DisplayJson;
 ///
 /// Basic usage with the [`json()`](crate::json) function:
 /// ```
-/// use nojson::json;
-///
 /// // Generate compact JSON
-/// let compact = json(|f| f.value([1, 2, 3]));
+/// let compact = nojson::json(|f| f.value([1, 2, 3]));
 /// assert_eq!(compact.to_string(), "[1,2,3]");
 ///
 /// // Generate pretty-printed JSON
-/// let pretty = json(|f| {
+/// let pretty = nojson::json(|f| {
 ///     f.set_indent_size(2);
 ///     f.set_spacing(true);
 ///     f.value([1, 2, 3])
@@ -61,9 +59,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use nojson::json;
-    ///
-    /// let output = json(|f| f.value([1, 2, 3]));
+    /// let output = nojson::json(|f| f.value([1, 2, 3]));
     /// assert_eq!(output.to_string(), "[1,2,3]");
     /// ```
     pub fn value<T: DisplayJson>(&mut self, value: T) -> std::fmt::Result {
@@ -78,9 +74,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use nojson::json;
-    ///
-    /// let output = json(|f| f.string("Hello\nWorld"));
+    /// let output = nojson::json(|f| f.string("Hello\nWorld"));
     /// assert_eq!(output.to_string(), r#""Hello\nWorld""#);
     /// ```
     pub fn string<T: Display>(&mut self, content: T) -> std::fmt::Result {
@@ -102,9 +96,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use nojson::json;
-    ///
-    /// let output = json(|f| {
+    /// let output = nojson::json(|f| {
     ///     f.array(|f| {
     ///         f.element(1)?;
     ///         f.element(2)?;
@@ -114,7 +106,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// assert_eq!(output.to_string(), "[1,2,3]");
     ///
     /// // With pretty-printing
-    /// let pretty = json(|f| {
+    /// let pretty = nojson::json(|f| {
     ///     f.set_indent_size(2);
     ///     f.set_spacing(true);
     ///     f.array(|f| {
@@ -160,10 +152,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use nojson::json;
-    /// use std::collections::HashMap;
-    ///
-    /// let output = json(|f| {
+    /// let output = nojson::json(|f| {
     ///     f.object(|f| {
     ///         f.member("name", "Alice")?;
     ///         f.member("age", 30)
@@ -172,7 +161,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// assert_eq!(output.to_string(), r#"{"name":"Alice","age":30}"#);
     ///
     /// // With pretty-printing
-    /// let pretty = json(|f| {
+    /// let pretty = nojson::json(|f| {
     ///     f.set_indent_size(2);
     ///     f.set_spacing(true);
     ///     f.object(|f| {
@@ -307,19 +296,17 @@ impl std::fmt::Write for JsonStringContentFormatter<'_, '_> {
 /// # Examples
 ///
 /// ```
-/// use nojson::json;
-///
-/// let output = json(|f| {
+/// let output = nojson::json(|f| {
 ///     f.array(|f| {
 ///         f.element(1)?;
 ///         f.element("test")?;
 ///         f.element(true)
 ///     })
 /// });
-/// assert_eq!(output.to_string(), "[1,\"test\",true]");
+/// assert_eq!(output.to_string(), r#"[1,"test",true]"#);
 ///
 /// // With pretty-printing
-/// let pretty = json(|f| {
+/// let pretty = nojson::json(|f| {
 ///     f.set_indent_size(2);
 ///     f.set_spacing(true);
 ///     f.array(|f| {
@@ -341,9 +328,7 @@ impl JsonArrayFormatter<'_, '_, '_> {
     /// # Examples
     ///
     /// ```
-    /// use nojson::json;
-    ///
-    /// let output = json(|f| {
+    /// let output = nojson::json(|f| {
     ///     f.array(|f| {
     ///         f.element(1)?;
     ///         f.element("text")?;
@@ -372,16 +357,14 @@ impl JsonArrayFormatter<'_, '_, '_> {
     /// # Examples
     ///
     /// ```
-    /// use nojson::json;
-    ///
     /// let values = vec![1, 2, 3];
-    /// let output = json(|f| {
+    /// let output = nojson::json(|f| {
     ///     f.array(|f| f.elements(&values))
     /// });
     /// assert_eq!(output.to_string(), "[1,2,3]");
     ///
     /// // Works with any iterable collection
-    /// let output = json(|f| {
+    /// let output = nojson::json(|f| {
     ///     f.array(|f| f.elements([true, false, true]))
     /// });
     /// ```
@@ -406,9 +389,7 @@ impl JsonArrayFormatter<'_, '_, '_> {
 /// # Examples
 ///
 /// ```
-/// use nojson::json;
-///
-/// let output = json(|f| {
+/// let output = nojson::json(|f| {
 ///     f.object(|f| {
 ///         f.member("name", "Alice")?;
 ///         f.member("age", 30)
@@ -417,7 +398,7 @@ impl JsonArrayFormatter<'_, '_, '_> {
 /// assert_eq!(output.to_string(), r#"{"name":"Alice","age":30}"#);
 ///
 /// // With pretty-printing
-/// let pretty = json(|f| {
+/// let pretty = nojson::json(|f| {
 ///     f.set_indent_size(2);
 ///     f.set_spacing(true);
 ///     f.object(|f| {
@@ -440,9 +421,7 @@ impl JsonObjectFormatter<'_, '_, '_> {
     /// # Examples
     ///
     /// ```
-    /// use nojson::json;
-    ///
-    /// let output = json(|f| {
+    /// let output = nojson::json(|f| {
     ///     f.object(|f| {
     ///         f.member("name", "Alice")?;
     ///         f.member("age", 30)?;
@@ -483,14 +462,13 @@ impl JsonObjectFormatter<'_, '_, '_> {
     /// # Examples
     ///
     /// ```
-    /// use nojson::json;
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert("name", "Alice");
     /// map.insert("age", "30");
     ///
-    /// let output = json(|f| {
+    /// let output = nojson::json(|f| {
     ///     f.object(|f| f.members(&map))
     /// });
     /// ```
