@@ -840,6 +840,54 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     }
 
     /// Similar to [`RawJsonValue::as_raw_str()`],
+    /// but this method verifies whether the value is a JSON string and returns
+    /// the unquoted content only if the string doesn't require unescaping.
+    ///
+    /// Returns the unquoted string content as a borrowed `&'text str` if the value
+    /// is a JSON string without escape sequences. If the string contains any escape
+    /// sequences (like `\n`, `\t`, `\"`, etc.), this method returns an error instead
+    /// of performing the unescaping.
+    ///
+    /// For strings that may require unescaping, use [`to_unquoted_string_str()`] instead.
+    ///
+    /// This is useful when you want to work directly with the original string content
+    /// without the overhead of unescaping or allocation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// // Simple string without escapes - succeeds
+    /// let json = nojson::RawJson::parse(r#""hello""#)?;
+    /// assert_eq!(json.value().as_string_str()?, "hello");
+    ///
+    /// // String with escape sequences - fails
+    /// let json = nojson::RawJson::parse(r#""hello\nworld""#)?;
+    /// assert!(json.value().as_string_str().is_err());
+    ///
+    /// // String with unicode escapes - fails
+    /// let json = nojson::RawJson::parse(r#""hello\u0041""#)?;
+    /// assert!(json.value().as_string_str().is_err());
+    ///
+    /// // Non-string value - fails
+    /// let json = nojson::RawJson::parse("123")?;
+    /// assert!(json.value().as_string_str().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn as_string_str(self) -> Result<&'text str, JsonParseError> {
+        self.expect([JsonValueKind::String]).and_then(|v| {
+            if v.entry().escaped {
+                Err(v.invalid("string requires unescaping"))
+            } else {
+                // Safe to unwrap: we know it's a valid JSON string with quotes
+                let raw = v.as_raw_str();
+                Ok(&raw[1..raw.len() - 1])
+            }
+        })
+    }
+
+    /// Similar to [`RawJsonValue::as_raw_str()`],
     /// but this method verifies whether the value is a JSON string and returns the unquoted content of the string.
     ///
     /// # Examples
