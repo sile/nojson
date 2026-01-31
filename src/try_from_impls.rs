@@ -257,6 +257,14 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for char {
     }
 }
 
+impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for &'text str {
+    type Error = JsonParseError;
+
+    fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        value.as_string_str()
+    }
+}
+
 impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for String {
     type Error = JsonParseError;
 
