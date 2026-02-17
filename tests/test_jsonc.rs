@@ -10,10 +10,10 @@ fn parse_jsonc_line_comments() -> Result<(), JsonParseError> {
     let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
 
     // Verify JSON parsing works correctly
-    let name: String = json.value().to_member("name")?.required()?.try_into()?;
+    let name: String = json.value().to_required_member("name")?.try_into()?;
     assert_eq!(name, "John");
 
-    let age: i32 = json.value().to_member("age")?.required()?.try_into()?;
+    let age: i32 = json.value().to_required_member("age")?.try_into()?;
     assert_eq!(age, 30);
 
     // Verify comments were detected
@@ -41,10 +41,10 @@ fn parse_jsonc_block_comments() -> Result<(), JsonParseError> {
     let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
 
     // Verify JSON parsing works correctly
-    let name: String = json.value().to_member("name")?.required()?.try_into()?;
+    let name: String = json.value().to_required_member("name")?.try_into()?;
     assert_eq!(name, "Alice");
 
-    let city: String = json.value().to_member("city")?.required()?.try_into()?;
+    let city: String = json.value().to_required_member("city")?.try_into()?;
     assert_eq!(city, "New York");
 
     // Verify comments were detected
@@ -82,14 +82,14 @@ fn parse_jsonc_mixed_comments() -> Result<(), JsonParseError> {
     let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
 
     // Verify JSON structure
-    let users_array = json.value().to_member("users")?.required()?.to_array()?;
+    let users_array = json.value().to_required_member("users")?.to_array()?;
     let users: Vec<_> = users_array.collect();
     assert_eq!(users.len(), 2);
 
-    let first_user_name: String = users[0].to_member("name")?.required()?.try_into()?;
+    let first_user_name: String = users[0].to_required_member("name")?.try_into()?;
     assert_eq!(first_user_name, "Bob");
 
-    let second_user_name: String = users[1].to_member("name")?.required()?.try_into()?;
+    let second_user_name: String = users[1].to_required_member("name")?.try_into()?;
     assert_eq!(second_user_name, "Carol");
 
     // Verify all comments were detected
@@ -109,13 +109,13 @@ fn parse_jsonc_trailing_commas_object() -> Result<(), JsonParseError> {
     let (json, _comment_ranges) = RawJson::parse_jsonc(text)?;
 
     // Verify JSON parsing works correctly with trailing comma
-    let name: String = json.value().to_member("name")?.required()?.try_into()?;
+    let name: String = json.value().to_required_member("name")?.try_into()?;
     assert_eq!(name, "John");
 
-    let age: i32 = json.value().to_member("age")?.required()?.try_into()?;
+    let age: i32 = json.value().to_required_member("age")?.try_into()?;
     assert_eq!(age, 30);
 
-    let active: bool = json.value().to_member("active")?.required()?.try_into()?;
+    let active: bool = json.value().to_required_member("active")?.try_into()?;
     assert_eq!(active, true);
 
     Ok(())
@@ -135,13 +135,13 @@ fn parse_jsonc_trailing_commas_array() -> Result<(), JsonParseError> {
     let (json, _comment_ranges) = RawJson::parse_jsonc(text)?;
 
     // Verify array parsing with trailing commas
-    let fruits_array = json.value().to_member("fruits")?.required()?.to_array()?;
+    let fruits_array = json.value().to_required_member("fruits")?.to_array()?;
     let fruits: Vec<String> = fruits_array
         .map(|item| item.try_into())
         .collect::<Result<Vec<_>, _>>()?;
     assert_eq!(fruits, vec!["apple", "banana", "cherry"]);
 
-    let numbers_array = json.value().to_member("numbers")?.required()?.to_array()?;
+    let numbers_array = json.value().to_required_member("numbers")?.to_array()?;
     let numbers: Vec<i32> = numbers_array
         .map(|item| item.try_into())
         .collect::<Result<Vec<_>, _>>()?;
@@ -168,23 +168,19 @@ fn parse_jsonc_trailing_commas_with_comments() -> Result<(), JsonParseError> {
     // Verify parsing with both trailing commas and comments
     let debug: bool = json
         .value()
-        .to_member("config")?
-        .required()?
-        .to_member("debug")?
-        .required()?
+        .to_required_member("config")?
+        .to_required_member("debug")?
         .try_into()?;
     assert_eq!(debug, true);
 
     let port: i32 = json
         .value()
-        .to_member("config")?
-        .required()?
-        .to_member("port")?
-        .required()?
+        .to_required_member("config")?
+        .to_required_member("port")?
         .try_into()?;
     assert_eq!(port, 8080);
 
-    let features_array = json.value().to_member("features")?.required()?.to_array()?;
+    let features_array = json.value().to_required_member("features")?.to_array()?;
     let features: Vec<String> = features_array
         .map(|item| item.try_into())
         .collect::<Result<Vec<_>, _>>()?;
