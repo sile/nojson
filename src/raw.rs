@@ -1014,6 +1014,14 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     ///
     /// Returns an error if the object does not contain the specified member.
     ///
+    /// # Performance
+    ///
+    /// This method has O(n) complexity where n is the number of members in the object,
+    /// because it performs a linear search internally (same as
+    /// [`RawJsonValue::to_optional_member()`]).
+    /// If you need to access multiple members from the same object, consider using
+    /// [`RawJsonValue::to_object()`] and scanning members once.
+    ///
     /// # Examples
     ///
     /// ```
