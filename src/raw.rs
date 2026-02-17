@@ -67,7 +67,7 @@ impl RawJsonOwned {
     /// let (json, comment_ranges) = nojson::RawJsonOwned::parse_jsonc(text)?;
     ///
     /// // The parsed JSON works normally
-    /// let name: String = json.value().to_member("name")?.required()?.try_into()?;
+    /// let name: String = json.value().to_required_member("name")?.try_into()?;
     /// assert_eq!(name, "John");
     ///
     /// // Comment ranges indicate where comments were found in the original text
@@ -163,7 +163,7 @@ impl RawJsonOwned {
     /// let root = json.get_value_by_index(0).expect("root exists");
     ///
     /// // Access nested values by storing their indices
-    /// let name_value = root.to_member("name")?.required()?;
+    /// let name_value = root.to_required_member("name")?;
     /// let name_index = name_value.index();
     ///
     /// // Later, retrieve the value directly by index
@@ -302,7 +302,7 @@ impl<'text> RawJson<'text> {
     /// let (json, comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
     ///
     /// // The parsed JSON works normally
-    /// let name: String = json.value().to_member("name")?.required()?.try_into()?;
+    /// let name: String = json.value().to_required_member("name")?.try_into()?;
     /// assert_eq!(name, "John");
     ///
     /// // Comment ranges indicate where comments were found in the original text
@@ -394,7 +394,7 @@ impl<'text> RawJson<'text> {
     /// let root = json.get_value_by_index(0).expect("root exists");
     ///
     /// // Access nested values by storing their indices
-    /// let name_value = root.to_member("name")?.required()?;
+    /// let name_value = root.to_required_member("name")?;
     /// let name_index = name_value.index();
     ///
     /// // Later, retrieve the value directly by index
@@ -625,13 +625,13 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// let json = nojson::RawJson::parse(r#"{"users": [{"name": "Alice"}, {"name": "Bob"}]}"#)?;
     ///
     /// // Find and store the index of a specific user
-    /// let users = json.value().to_member("users")?.required()?.to_array()?;
+    /// let users = json.value().to_required_member("users")?.to_array()?;
     /// let bob = users.skip(1).next().expect("Bob exists");
     /// let bob_index = bob.index();
     ///
     /// // Later, retrieve Bob directly by index
     /// let bob_again = json.get_value_by_index(bob_index).expect("index is valid");
-    /// let name: String = bob_again.to_member("name")?.required()?.try_into()?;
+    /// let name: String = bob_again.to_required_member("name")?.try_into()?;
     /// assert_eq!(name, "Bob");
     /// # Ok(())
     /// # }
@@ -662,24 +662,21 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// ```
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let json = nojson::RawJson::parse(r#"{"user": {"name": "John", "age": 30}, "count": 42}"#)?;
-    /// let age_value = json.value()
-    ///     .to_member("user")?
-    ///     .required()?
-    ///     .to_member("age")?
-    ///     .required()?;
+    /// let age_value = json
+    ///     .value()
+    ///     .to_required_member("user")?
+    ///     .to_required_member("age")?;
     ///
     /// // From the nested age value, navigate back to the root
     /// let root = age_value.root();
     ///
     /// // Access any part of the original JSON structure
-    /// let count: i32 = root.to_member("count")?.required()?.try_into()?;
+    /// let count: i32 = root.to_required_member("count")?.try_into()?;
     /// assert_eq!(count, 42);
     ///
     /// let user_name: String = root
-    ///     .to_member("user")?
-    ///     .required()?
-    ///     .to_member("name")?
-    ///     .required()?
+    ///     .to_required_member("user")?
+    ///     .to_required_member("name")?
     ///     .try_into()?;
     /// assert_eq!(user_name, "John");
     /// # Ok(())
@@ -713,14 +710,14 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"user": {"name": "John", "age": 30}, "count": 42}"#;
     /// let json = nojson::RawJson::parse(text)?;
-    /// let user_value = json.value().to_member("user")?.required()?;
+    /// let user_value = json.value().to_required_member("user")?;
     ///
     /// // Extract the user object and its children to borrowed
     /// let borrowed_user = user_value.extract();
     ///
     /// // The borrowed version references the original text
     /// assert_eq!(borrowed_user.text(), r#"{"name": "John", "age": 30}"#);
-    /// let name: String = borrowed_user.value().to_member("name")?.required()?.try_into()?;
+    /// let name: String = borrowed_user.value().to_required_member("name")?.try_into()?;
     /// assert_eq!(name, "John");
     ///
     /// // Convert to owned if needed
@@ -963,12 +960,9 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
             .map(JsonKeyValuePairs::new)
     }
 
-    /// Attempts to access a member of a JSON object by name.
+    /// Attempts to access an optional member of a JSON object by name.
     ///
-    /// This method returns a [`RawJsonMember`] that represents the result of
-    /// looking up the specified member name. The member may or may not exist,
-    /// and you can use methods like [`RawJsonMember::required()`] or convert
-    /// it to an `Option<T>` to handle both cases.
+    /// The returned `Option` is `Some` when the member exists and `None` otherwise.
     ///
     /// # Examples
     ///
@@ -977,13 +971,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// let json = nojson::RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
     /// let obj = json.value();
     ///
-    /// // Access existing member
-    /// let name_value: String = obj.to_member("name")?.required()?.try_into()?;
-    /// assert_eq!(name_value, "Alice");
-    ///
-    /// // Handle optional member
-    /// let city_member = obj.to_member("city")?;
-    /// let city: Option<String> = city_member.try_into()?;
+    /// // Access optional member
+    /// let city = obj.to_optional_member("city")?;
     /// assert_eq!(city, None);
     /// # Ok(())
     /// # }
@@ -1017,14 +1006,57 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// # Ok(())
     /// # }
     /// ```
+    pub fn to_optional_member(self, name: &str) -> Result<Option<Self>, JsonParseError> {
+        self.find_member_by_name(name)
+    }
+
+    /// Attempts to access a required member of a JSON object by name.
+    ///
+    /// Returns an error if the object does not contain the specified member.
+    ///
+    /// # Performance
+    ///
+    /// This method has O(n) complexity where n is the number of members in the object,
+    /// because it performs a linear search internally (same as
+    /// [`RawJsonValue::to_optional_member()`]).
+    /// If you need to access multiple members from the same object, consider using
+    /// [`RawJsonValue::to_object()`] and scanning members once.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = nojson::RawJson::parse(r#"{"name": "Alice", "age": 30}"#)?;
+    /// let obj = json.value();
+    ///
+    /// let name_value: String = obj.to_required_member("name")?.try_into()?;
+    /// assert_eq!(name_value, "Alice");
+    ///
+    /// assert!(obj.to_required_member("city").is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn to_required_member(self, name: &str) -> Result<Self, JsonParseError> {
+        self.to_optional_member(name)?
+            .ok_or_else(|| self.invalid(format!("required member '{}' is missing", name)))
+    }
+
+    /// Attempts to access a member of a JSON object by name.
+    ///
+    /// This method is deprecated. Use [`RawJsonValue::to_optional_member()`] or
+    /// [`RawJsonValue::to_required_member()`] instead.
+    #[expect(
+        deprecated,
+        reason = "to_member is kept for backward compatibility until v0.4.0"
+    )]
+    #[deprecated(
+        note = "use RawJsonValue::to_optional_member() or RawJsonValue::to_required_member(); this method will be removed in v0.4.0"
+    )]
     pub fn to_member<'a>(
         self,
         name: &'a str,
     ) -> Result<RawJsonMember<'text, 'raw, 'a>, JsonParseError> {
-        let member = self
-            .to_object()?
-            .find(|(key, _)| key.unquote() == name)
-            .map(|(_, value)| value);
+        let member = self.to_optional_member(name)?;
 
         Ok(RawJsonMember {
             object: self,
@@ -1147,6 +1179,12 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
         }
     }
 
+    fn find_member_by_name(self, name: &str) -> Result<Option<Self>, JsonParseError> {
+        Ok(self
+            .to_object()?
+            .find_map(|(k, v)| (k.unquote() == name).then_some(v)))
+    }
+
     fn entry(&self) -> &JsonValueIndexEntry {
         &self.json.values[self.index]
     }
@@ -1230,6 +1268,9 @@ impl<'text, 'raw> Iterator for JsonKeyValuePairs<'text, 'raw> {
 
 /// Represents a member access result for a JSON object.
 ///
+/// Deprecated: use [`RawJsonValue::to_optional_member()`] and
+/// [`RawJsonValue::to_required_member()`] instead.
+///
 /// This struct is returned by [`RawJsonValue::to_member()`] and allows you to handle
 /// both present and missing object members. It wraps an optional value that is
 /// `Some` if the member exists and `None` if it doesn't.
@@ -1254,12 +1295,19 @@ impl<'text, 'raw> Iterator for JsonKeyValuePairs<'text, 'raw> {
 /// # }
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[deprecated(
+    note = "use RawJsonValue::to_optional_member() or RawJsonValue::to_required_member(); this type will be removed in v0.4.0"
+)]
 pub struct RawJsonMember<'text, 'raw, 'a> {
     object: RawJsonValue<'text, 'raw>,
     name: &'a str,
     member: Option<RawJsonValue<'text, 'raw>>,
 }
 
+#[expect(
+    deprecated,
+    reason = "RawJsonMember impl remains for backward compatibility until v0.4.0"
+)]
 impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// Returns the member value if it exists, or an error if it's missing.
     ///
@@ -1274,7 +1322,7 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// let obj = json.value();
     ///
     /// // Required member exists
-    /// let name = obj.to_member("name")?.required()?;
+    /// let name = obj.to_required_member("name")?;
     /// assert_eq!(name.to_unquoted_string_str()?, "Alice");
     ///
     /// // Required member missing - returns error
@@ -1283,6 +1331,9 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// # Ok(())
     /// # }
     /// ```
+    #[deprecated(
+        note = "use RawJsonValue::to_required_member(); this method will be removed in v0.4.0"
+    )]
     pub fn required(self) -> Result<RawJsonValue<'text, 'raw>, JsonParseError> {
         self.member.ok_or_else(|| {
             self.object
@@ -1324,6 +1375,9 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// # Ok(())
     /// # }
     /// ```
+    #[deprecated(
+        note = "use RawJsonValue::to_optional_member(); this method will be removed in v0.4.0"
+    )]
     pub fn get(self) -> Option<RawJsonValue<'text, 'raw>> {
         self.member
     }
@@ -1372,6 +1426,9 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     /// # Ok(())
     /// # }
     /// ```
+    #[deprecated(
+        note = "use RawJsonValue::to_optional_member(); this method will be removed in v0.4.0"
+    )]
     pub fn map<F, T>(self, f: F) -> Result<Option<T>, JsonParseError>
     where
         F: FnOnce(RawJsonValue<'text, 'raw>) -> Result<T, JsonParseError>,
@@ -1380,6 +1437,10 @@ impl<'text, 'raw, 'a> RawJsonMember<'text, 'raw, 'a> {
     }
 }
 
+#[expect(
+    deprecated,
+    reason = "TryFrom<RawJsonMember> remains for backward compatibility until v0.4.0"
+)]
 impl<'text, 'raw, 'a, T> TryFrom<RawJsonMember<'text, 'raw, 'a>> for Option<T>
 where
     T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,

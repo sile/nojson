@@ -390,7 +390,7 @@ fn error_context() {
 }
 
 #[test]
-fn to_member() -> Result<(), JsonParseError> {
+fn to_required_member() -> Result<(), JsonParseError> {
     struct Person {
         name: String,
         age: u32,
@@ -400,8 +400,8 @@ fn to_member() -> Result<(), JsonParseError> {
         type Error = JsonParseError;
 
         fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-            let name = value.to_member("name")?.required()?;
-            let age = value.to_member("age")?.required()?;
+            let name = value.to_required_member("name")?;
+            let age = value.to_required_member("age")?;
             Ok(Person {
                 name: name.try_into()?,
                 age: age.try_into()?,
@@ -412,6 +412,86 @@ fn to_member() -> Result<(), JsonParseError> {
     let person: Json<Person> = r#"{"name":"Alice","age":30}"#.parse()?;
     assert_eq!(person.0.name, "Alice");
     assert_eq!(person.0.age, 30);
+
+    Ok(())
+}
+
+#[test]
+fn to_optional_member() -> Result<(), JsonParseError> {
+    let json = RawJson::parse(r#"{"name":"Alice","age":30}"#)?;
+    let value = json.value();
+
+    let name: String = value
+        .to_optional_member("name")?
+        .expect("some")
+        .try_into()?;
+    assert_eq!(name, "Alice");
+
+    let city = value.to_optional_member("city")?;
+    assert_eq!(city, None);
+
+    Ok(())
+}
+
+#[test]
+fn required_member_missing() -> Result<(), JsonParseError> {
+    let json = RawJson::parse(r#"{"name":"Alice"}"#)?;
+    let e = json
+        .value()
+        .to_required_member("age")
+        .expect_err("required member should be missing");
+    assert!(matches!(
+        e,
+        JsonParseError::InvalidValue {
+            kind: JsonValueKind::Object,
+            position: 0,
+            ..
+        }
+    ));
+    assert!(
+        e.to_string().contains("required member 'age' is missing"),
+        "unexpected error: {e}"
+    );
+    Ok(())
+}
+
+#[test]
+fn member_access_requires_object() -> Result<(), JsonParseError> {
+    let json = RawJson::parse("null")?;
+
+    let e = json
+        .value()
+        .to_optional_member("x")
+        .expect_err("non-object should fail");
+    assert!(matches!(
+        e,
+        JsonParseError::InvalidValue {
+            kind: JsonValueKind::Null,
+            position: 0,
+            ..
+        }
+    ));
+    assert!(
+        e.to_string().contains("expected Object, but found Null"),
+        "unexpected error: {e}"
+    );
+
+    let e = json
+        .value()
+        .to_required_member("x")
+        .expect_err("non-object should fail");
+    assert!(matches!(
+        e,
+        JsonParseError::InvalidValue {
+            kind: JsonValueKind::Null,
+            position: 0,
+            ..
+        }
+    ));
+    assert!(
+        e.to_string().contains("expected Object, but found Null"),
+        "unexpected error: {e}"
+    );
 
     Ok(())
 }

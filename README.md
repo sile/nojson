@@ -108,8 +108,8 @@ impl<'text, 'raw> TryFrom<nojson::RawJsonValue<'text, 'raw>> for Person {
     type Error = nojson::JsonParseError;
 
     fn try_from(value: nojson::RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        let name = value.to_member("name")?.required()?;
-        let age = value.to_member("age")?.required()?;
+        let name = value.to_required_member("name")?;
+        let age = value.to_required_member("age")?;
         Ok(Person {
             name: name.try_into()?,
             age: age.try_into()?,
