@@ -1182,8 +1182,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     fn find_member_by_name(self, name: &str) -> Result<Option<Self>, JsonParseError> {
         Ok(self
             .to_object()?
-            .find(|(key, _)| key.unquote() == name)
-            .map(|(_, value)| value))
+            .find_map(|(k, v)| (k.unquote() == name).then_some(v)))
     }
 
     fn entry(&self) -> &JsonValueIndexEntry {
