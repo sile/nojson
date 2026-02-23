@@ -150,3 +150,14 @@ fn raw_json() {
         r#"[{"user":{"name":"John","age":30},"count":42}]"#
     );
 }
+
+#[test]
+fn to_raw_json_owned() {
+    let value = vec![Some(1), None, Some(3)];
+    let raw = value.to_raw_json_owned();
+    assert_eq!(raw.to_string(), Json(&value).to_string());
+
+    let value_dyn: &dyn DisplayJson = &value;
+    let raw_dyn = value_dyn.to_raw_json_owned();
+    assert_eq!(raw_dyn.to_string(), Json(value_dyn).to_string());
+}

@@ -88,6 +88,15 @@ pub trait DisplayJson {
     /// This method is similar to [`Display::fmt()`], but accepts a
     /// [`JsonFormatter`] which provides additional methods for JSON-specific formatting.
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result;
+
+    /// Converts this value to an owned parsed JSON value.
+    ///
+    /// This first renders the value into a JSON string via [`crate::Json`], then
+    /// parses that string as [`crate::RawJsonOwned`].
+    fn to_raw_json_owned(&self) -> crate::RawJsonOwned {
+        crate::RawJsonOwned::parse(crate::Json(self).to_string())
+            .expect("bug: DisplayJson must produce valid JSON")
+    }
 }
 
 impl<T: DisplayJson + ?Sized> DisplayJson for &T {
