@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
 use crate::{
-    DisplayJson, JsonFormatter, JsonValueKind,
+    DisplayJson, JsonFormatter, JsonObjectFormatter, JsonValueKind,
     parse::{JsonParser, Jsonc, Plain},
 };
 
@@ -86,6 +86,32 @@ impl RawJsonOwned {
         let text = text.into();
         let (values, comments) = JsonParser::<Jsonc>::new(&text).parse()?;
         Ok((Self { text, values }, comments))
+    }
+
+    /// Creates an owned JSON object using the in-place object formatter.
+    ///
+    /// This is a convenience for building a [`RawJsonOwned`] object directly
+    /// without going through intermediate parsing calls in user code.
+    /// It is a shorthand for
+    /// `RawJsonOwned::parse(nojson::object(|f| ...).to_string())`,
+    /// provided for this common pattern.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let json = nojson::RawJsonOwned::object(|f| {
+    ///     f.member("name", "Alice")?;
+    ///     f.member("age", 30)
+    /// });
+    ///
+    /// assert_eq!(json.text(), r#"{"name":"Alice","age":30}"#);
+    /// ```
+    pub fn object<F>(fmt: F) -> Self
+    where
+        F: Fn(&mut JsonObjectFormatter<'_, '_, '_>) -> std::fmt::Result,
+    {
+        Self::parse(crate::object(fmt).to_string())
+            .expect("bug: object formatter must produce valid JSON")
     }
 
     /// Returns the original JSON text.
