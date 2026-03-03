@@ -100,8 +100,8 @@
 //!     type Error = nojson::JsonParseError;
 //!
 //!     fn try_from(value: nojson::RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-//!         let name = value.to_required_member("name")?;
-//!         let age = value.to_required_member("age")?;
+//!         let name = value.to_member("name")?.required()?;
+//!         let age = value.to_member("age")?.required()?;
 //!         Ok(Person {
 //!             name: name.try_into()?,
 //!             age: age.try_into()?,
@@ -181,13 +181,6 @@ use std::{fmt::Display, str::FromStr};
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
 pub use kind::JsonValueKind;
-#[deprecated(
-    note = "use RawJsonValue::to_optional_member() or RawJsonValue::to_required_member(); this type will be removed in v0.4.0"
-)]
-#[expect(
-    deprecated,
-    reason = "RawJsonMember re-export is kept for backward compatibility until v0.4.0"
-)]
 pub use raw::RawJsonMember;
 pub use raw::{JsonParseError, RawJson, RawJsonOwned, RawJsonValue};
 
