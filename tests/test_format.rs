@@ -163,3 +163,30 @@ fn raw_json_owned_object() -> Result<(), JsonParseError> {
     assert_eq!(name, "Alice");
     Ok(())
 }
+
+#[test]
+fn raw_json_owned_json() -> Result<(), JsonParseError> {
+    let raw = nojson::RawJsonOwned::json(|f| f.value([1, 2, 3]));
+    assert_eq!(raw.to_string(), "[1,2,3]");
+
+    let values: Vec<u8> = raw.value().try_into()?;
+    assert_eq!(values, vec![1, 2, 3]);
+    Ok(())
+}
+
+#[test]
+fn raw_json_owned_array() -> Result<(), JsonParseError> {
+    let raw = nojson::RawJsonOwned::array(|f| {
+        f.element("Alice")?;
+        f.element(30)
+    });
+    assert_eq!(raw.to_string(), r#"["Alice",30]"#);
+
+    let mut values = raw.value().to_array()?;
+    let name: String = values.next().expect("some").try_into()?;
+    let age: u32 = values.next().expect("some").try_into()?;
+    assert_eq!(name, "Alice");
+    assert_eq!(age, 30);
+    assert_eq!(values.next(), None);
+    Ok(())
+}
