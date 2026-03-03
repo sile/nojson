@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::BTreeMap};
 
-use nojson::{DisplayJson, Json, json};
+use nojson::{DisplayJson, Json, JsonParseError, json};
 
 #[test]
 fn float() {
@@ -152,20 +152,14 @@ fn raw_json() {
 }
 
 #[test]
-fn raw_json_owned_object() {
+fn raw_json_owned_object() -> Result<(), JsonParseError> {
     let raw = nojson::RawJsonOwned::object(|f| {
         f.member("name", "Alice")?;
         f.member("age", 30)
     });
     assert_eq!(raw.to_string(), r#"{"name":"Alice","age":30}"#);
 
-    let name: String = raw
-        .value()
-        .to_member("name")
-        .expect("member lookup should succeed")
-        .required()
-        .expect("name should exist")
-        .try_into()
-        .expect("name should be string");
+    let name: String = raw.value().to_member("name")?.required()?.try_into()?;
     assert_eq!(name, "Alice");
+    Ok(())
 }

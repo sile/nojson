@@ -204,7 +204,7 @@ fn parse_strings() -> Result<(), JsonParseError> {
         assert_eq!(value.as_raw_str(), text.trim());
         assert_eq!(value.position(), 1);
         assert!(matches!(value.to_unquoted_string_str(), Ok(Cow::Owned(_))));
-        assert_eq!(value.to_unquoted_string_str().expect("ok"), unescaped);
+        assert_eq!(value.to_unquoted_string_str()?, unescaped);
     }
 
     // Malformed strings.
