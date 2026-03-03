@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
 
 use crate::{
-    DisplayJson, JsonFormatter, JsonObjectFormatter, JsonValueKind,
+    DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, JsonValueKind,
     parse::{JsonParser, Jsonc, Plain},
 };
 
@@ -112,6 +112,55 @@ impl RawJsonOwned {
     {
         Self::parse(crate::object(fmt).to_string())
             .expect("bug: object formatter must produce valid JSON")
+    }
+
+    /// Creates owned JSON using the in-place formatter.
+    ///
+    /// This is a convenience for building a [`RawJsonOwned`] value directly
+    /// without going through intermediate parsing calls in user code.
+    /// It is a shorthand for
+    /// `RawJsonOwned::parse(nojson::json(|f| ...).to_string())`,
+    /// provided for this common pattern.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let json = nojson::RawJsonOwned::json(|f| f.value([1, 2, 3]));
+    /// assert_eq!(json.text(), "[1,2,3]");
+    /// ```
+    pub fn json<F>(fmt: F) -> Self
+    where
+        F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
+    {
+        Self::parse(crate::json(fmt).to_string())
+            .expect("bug: json formatter must produce valid JSON")
+    }
+
+    /// Creates an owned JSON array using the in-place array formatter.
+    ///
+    /// This is a convenience for building a [`RawJsonOwned`] array directly
+    /// without going through intermediate parsing calls in user code.
+    /// It is a shorthand for
+    /// `RawJsonOwned::parse(nojson::array(|f| ...).to_string())`,
+    /// provided for this common pattern.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let json = nojson::RawJsonOwned::array(|f| {
+    ///     f.element(1)?;
+    ///     f.element(2)?;
+    ///     f.element(3)
+    /// });
+    ///
+    /// assert_eq!(json.text(), "[1,2,3]");
+    /// ```
+    pub fn array<F>(fmt: F) -> Self
+    where
+        F: Fn(&mut JsonArrayFormatter<'_, '_, '_>) -> std::fmt::Result,
+    {
+        Self::parse(crate::array(fmt).to_string())
+            .expect("bug: array formatter must produce valid JSON")
     }
 
     /// Returns the original JSON text.
