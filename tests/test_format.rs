@@ -152,12 +152,20 @@ fn raw_json() {
 }
 
 #[test]
-fn to_raw_json_owned() {
-    let value = vec![Some(1), None, Some(3)];
-    let raw = value.to_raw_json_owned();
-    assert_eq!(raw.to_string(), Json(&value).to_string());
+fn raw_json_owned_object() {
+    let raw = nojson::RawJsonOwned::object(|f| {
+        f.member("name", "Alice")?;
+        f.member("age", 30)
+    });
+    assert_eq!(raw.to_string(), r#"{"name":"Alice","age":30}"#);
 
-    let value_dyn: &dyn DisplayJson = &value;
-    let raw_dyn = value_dyn.to_raw_json_owned();
-    assert_eq!(raw_dyn.to_string(), Json(value_dyn).to_string());
+    let name: String = raw
+        .value()
+        .to_member("name")
+        .expect("member lookup should succeed")
+        .required()
+        .expect("name should exist")
+        .try_into()
+        .expect("name should be string");
+    assert_eq!(name, "Alice");
 }
