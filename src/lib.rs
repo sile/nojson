@@ -84,22 +84,14 @@
 //! ```
 //! struct Person {
 //!     name: String,
-//!     age: Option<u32>,
+//!     age: u32,
 //! }
 //!
 //! impl nojson::DisplayJson for Person {
 //!     fn fmt(&self, f: &mut nojson::JsonFormatter<'_, '_>) -> std::fmt::Result {
 //!         f.object(|f| {
-//!             f.member(
-//!                 "profile",
-//!                 nojson::object(|f| {
-//!                     f.member("name", &self.name)?;
-//!                     if let Some(age) = self.age {
-//!                         f.member("age", age)?;
-//!                     }
-//!                     Ok(())
-//!                 }),
-//!             )
+//!             f.member("name", &self.name)?;
+//!             f.member("age", self.age)
 //!         })
 //!     }
 //! }
@@ -108,21 +100,19 @@
 //!     type Error = nojson::JsonParseError;
 //!
 //!     fn try_from(value: nojson::RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-//!         let name = value.to_path_member(&["profile", "name"])?.required()?;
-//!         let age: Option<u32> = value.to_path_member(&["profile", "age"])?.try_into()?;
+//!         let name = value.to_member("name")?.required()?;
+//!         let age = value.to_member("age")?.required()?;
 //!         Ok(Person {
 //!             name: name.try_into()?,
-//!             age,
+//!             age: age.try_into()?,
 //!         })
 //!     }
 //! }
 //!
 //! fn main() -> Result<(), nojson::JsonParseError> {
 //!     // Parse JSON to Person
-//!     let json_text = r#"{"profile":{"name":"Alice"}}"#;
+//!     let json_text = r#"{"name":"Alice","age":30}"#;
 //!     let person: nojson::Json<Person> = json_text.parse()?;
-//!     assert_eq!(person.0.name, "Alice");
-//!     assert_eq!(person.0.age, None);
 //!
 //!     // Generate JSON from Person
 //!     assert_eq!(nojson::Json(&person.0).to_string(), json_text);
@@ -131,9 +121,33 @@
 //! }
 //! ```
 //!
-//! `to_path_member` is a convenience API. If you access multiple nested fields under
+//! ### Nested Member Access
+//!
+//! For simple nested lookups, you can use [`RawJsonValue::to_path_member()`]:
+//!
+//! ```
+//! fn main() -> Result<(), nojson::JsonParseError> {
+//!     let json = nojson::RawJson::parse(r#"{"user":{"profile":{"name":"Alice"}}}"#)?;
+//!
+//!     let name: String = json
+//!         .value()
+//!         .to_path_member(&["user", "profile", "name"])?
+//!         .required()?
+//!         .try_into()?;
+//!     let city = json
+//!         .value()
+//!         .to_path_member(&["user", "profile", "city"])?
+//!         .optional();
+//!
+//!     assert_eq!(name, "Alice");
+//!     assert_eq!(city, None);
+//!     Ok(())
+//! }
+//! ```
+//!
+//! `to_path_member` is a convenience API. If you need to access multiple fields under
 //! the same parent in performance-critical code, resolve the parent once and use
-//! `to_member` for sibling fields. It is often sufficient for tests and small inputs.
+//! [`RawJsonValue::to_member()`] for sibling fields.
 //!
 //! ## Advanced Features
 //!
