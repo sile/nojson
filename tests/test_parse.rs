@@ -511,7 +511,10 @@ fn to_path_member_success_required() -> Result<(), JsonParseError> {
     let json = RawJson::parse(r#"{"a":{"b":{"c":42}}}"#)?;
     let value = json.value();
 
-    let c: u64 = value.to_path_member(&["a", "b", "c"])?.required()?.try_into()?;
+    let c: u64 = value
+        .to_path_member(&["a", "b", "c"])?
+        .required()?
+        .try_into()?;
     assert_eq!(c, 42);
 
     Ok(())
