@@ -84,14 +84,22 @@
 //! ```
 //! struct Person {
 //!     name: String,
-//!     age: u32,
+//!     age: Option<u32>,
 //! }
 //!
 //! impl nojson::DisplayJson for Person {
 //!     fn fmt(&self, f: &mut nojson::JsonFormatter<'_, '_>) -> std::fmt::Result {
 //!         f.object(|f| {
-//!             f.member("name", &self.name)?;
-//!             f.member("age", self.age)
+//!             f.member(
+//!                 "profile",
+//!                 nojson::object(|f| {
+//!                     f.member("name", &self.name)?;
+//!                     if let Some(age) = self.age {
+//!                         f.member("age", age)?;
+//!                     }
+//!                     Ok(())
+//!                 }),
+//!             )
 //!         })
 //!     }
 //! }
@@ -100,19 +108,21 @@
 //!     type Error = nojson::JsonParseError;
 //!
 //!     fn try_from(value: nojson::RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-//!         let name = value.to_member("name")?.required()?;
-//!         let age = value.to_member("age")?.required()?;
+//!         let name = value.to_path_member(&["profile", "name"])?.required()?;
+//!         let age: Option<u32> = value.to_path_member(&["profile", "age"])?.try_into()?;
 //!         Ok(Person {
 //!             name: name.try_into()?,
-//!             age: age.try_into()?,
+//!             age,
 //!         })
 //!     }
 //! }
 //!
 //! fn main() -> Result<(), nojson::JsonParseError> {
 //!     // Parse JSON to Person
-//!     let json_text = r#"{"name":"Alice","age":30}"#;
+//!     let json_text = r#"{"profile":{"name":"Alice"}}"#;
 //!     let person: nojson::Json<Person> = json_text.parse()?;
+//!     assert_eq!(person.0.name, "Alice");
+//!     assert_eq!(person.0.age, None);
 //!
 //!     // Generate JSON from Person
 //!     assert_eq!(nojson::Json(&person.0).to_string(), json_text);
@@ -120,6 +130,10 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! `to_path_member` is a convenience API. If you access multiple nested fields under
+//! the same parent in performance-critical code, resolve the parent once and use
+//! `to_member` for sibling fields. It is often sufficient for tests and small inputs.
 //!
 //! ## Advanced Features
 //!
