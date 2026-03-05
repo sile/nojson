@@ -129,6 +129,34 @@ fn main() -> Result<(), nojson::JsonParseError> {
 }
 ```
 
+### Nested Member Access
+
+For simple nested lookups, you can use `to_path_member` directly:
+
+```rust
+fn main() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"user":{"profile":{"name":"Alice"}}}"#)?;
+
+    let name: String = json
+        .value()
+        .to_path_member(&["user", "profile", "name"])?
+        .required()?
+        .try_into()?;
+    let city = json
+        .value()
+        .to_path_member(&["user", "profile", "city"])?
+        .optional();
+
+    assert_eq!(name, "Alice");
+    assert_eq!(city, None);
+    Ok(())
+}
+```
+
+`to_path_member` is a convenience API. If you need to access multiple fields under
+the same parent in performance-critical code, resolve the parent once and use
+`to_member` for sibling fields.
+
 ## Advanced Features
 
 ### Custom Validations

@@ -1075,6 +1075,64 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
         })
     }
 
+    /// Attempts to access a nested member in a JSON object by a path of member names.
+    ///
+    /// All intermediate members in `path` are treated as required object members.
+    /// The final member is returned as [`RawJsonMember`], so you can choose required
+    /// or optional handling with [`RawJsonMember::required()`] or
+    /// [`RawJsonMember::optional()`].
+    ///
+    /// # Performance
+    ///
+    /// This method is a convenience API. When you access multiple nested members
+    /// under the same parent, each call starts from `self` and repeats intermediate
+    /// lookups. For performance-critical paths, prefer resolving the parent once
+    /// and then using [`RawJsonValue::to_member()`] for sibling fields.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `path` is empty,
+    /// - an intermediate member is missing,
+    /// - an intermediate value is not an object.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), nojson::JsonParseError> {
+    /// let json = nojson::RawJson::parse(r#"{"user": {"profile": {"name": "Alice"}}}"#)?;
+    ///
+    /// let name: String = json
+    ///     .value()
+    ///     .to_path_member(&["user", "profile", "name"])?
+    ///     .required()?
+    ///     .try_into()?;
+    /// assert_eq!(name, "Alice");
+    ///
+    /// let city = json
+    ///     .value()
+    ///     .to_path_member(&["user", "profile", "city"])?
+    ///     .optional();
+    /// assert_eq!(city, None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn to_path_member<'a>(
+        self,
+        path: &'a [&str],
+    ) -> Result<RawJsonMember<'text, 'raw, 'a>, JsonParseError> {
+        let (last, parents) = path
+            .split_last()
+            .ok_or_else(|| self.invalid("path must not be empty"))?;
+
+        let mut current = self;
+        for name in parents {
+            current = current.to_member(name)?.required()?;
+        }
+
+        current.to_member(last)
+    }
+
     /// Applies a transformation function to this JSON value.
     ///
     /// This method allows you to transform a `RawJsonValue` into any other type `T`

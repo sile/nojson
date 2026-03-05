@@ -507,6 +507,121 @@ fn to_member_optional_try_from() -> Result<(), JsonParseError> {
 }
 
 #[test]
+fn to_path_member_success_required() -> Result<(), JsonParseError> {
+    let json = RawJson::parse(r#"{"a":{"b":{"c":42}}}"#)?;
+    let value = json.value();
+
+    let c: u64 = value
+        .to_path_member(&["a", "b", "c"])?
+        .required()?
+        .try_into()?;
+    assert_eq!(c, 42);
+
+    Ok(())
+}
+
+#[test]
+fn to_path_member_final_missing_optional() -> Result<(), JsonParseError> {
+    let json = RawJson::parse(r#"{"a":{"b":{}}}"#)?;
+    let value = json.value();
+
+    let missing = value.to_path_member(&["a", "b", "c"])?.optional();
+    assert_eq!(missing, None);
+
+    Ok(())
+}
+
+#[test]
+fn to_path_member_empty_path_error() -> Result<(), JsonParseError> {
+    let json = RawJson::parse(r#"{"a":1}"#)?;
+    let e = json
+        .value()
+        .to_path_member(&[])
+        .expect_err("empty path should fail");
+    assert!(matches!(
+        e,
+        JsonParseError::InvalidValue {
+            kind: JsonValueKind::Object,
+            position: 0,
+            ..
+        }
+    ));
+    assert!(
+        e.to_string().contains("path must not be empty"),
+        "unexpected error: {e}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn to_path_member_intermediate_missing_error() -> Result<(), JsonParseError> {
+    let json = RawJson::parse(r#"{"a":{}}"#)?;
+    let e = json
+        .value()
+        .to_path_member(&["a", "b", "c"])
+        .expect_err("intermediate missing should fail");
+    assert!(matches!(
+        e,
+        JsonParseError::InvalidValue {
+            kind: JsonValueKind::Object,
+            ..
+        }
+    ));
+    assert!(
+        e.to_string().contains("required member 'b' is missing"),
+        "unexpected error: {e}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn to_path_member_intermediate_not_object_error() -> Result<(), JsonParseError> {
+    let json = RawJson::parse(r#"{"a":1}"#)?;
+    let e = json
+        .value()
+        .to_path_member(&["a", "b"])
+        .expect_err("non-object intermediate should fail");
+    assert!(matches!(
+        e,
+        JsonParseError::InvalidValue {
+            kind: JsonValueKind::Integer,
+            ..
+        }
+    ));
+    assert!(
+        e.to_string().contains("expected Object, but found Integer"),
+        "unexpected error: {e}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn to_path_member_root_not_object_error() -> Result<(), JsonParseError> {
+    let json = RawJson::parse("null")?;
+    let e = json
+        .value()
+        .to_path_member(&["x"])
+        .expect_err("root non-object should fail");
+    assert!(matches!(
+        e,
+        JsonParseError::InvalidValue {
+            kind: JsonValueKind::Null,
+            position: 0,
+            ..
+        }
+    ));
+    assert!(
+        e.to_string().contains("expected Object, but found Null"),
+        "unexpected error: {e}"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn parse_std_types() {
     assert_eq!("-1".parse().ok(), Some(Json(-1i8)));
     assert_eq!("\"a\"".parse().ok(), Some(Json("a".to_owned())));
