@@ -1,4 +1,5 @@
-use std::num::NonZeroUsize;
+use alloc::boxed::Box;
+use core::num::NonZeroUsize;
 
 #[cfg(doc)]
 use crate::RawJson;
@@ -70,7 +71,7 @@ pub enum JsonParseError {
         position: usize,
 
         /// Error reason that describes why the value is invalid.
-        error: Box<dyn Send + Sync + std::error::Error>,
+        error: Box<dyn Send + Sync + core::error::Error>,
     },
 }
 
@@ -78,7 +79,7 @@ impl JsonParseError {
     /// Makes a [`JsonParseError::InvalidValue`] error.
     pub fn invalid_value<E>(value: RawJsonValue<'_, '_>, error: E) -> JsonParseError
     where
-        E: Into<Box<dyn Send + Sync + std::error::Error>>,
+        E: Into<Box<dyn Send + Sync + core::error::Error>>,
     {
         JsonParseError::InvalidValue {
             kind: value.kind(),
@@ -197,8 +198,8 @@ impl JsonParseError {
     }
 }
 
-impl std::fmt::Display for JsonParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for JsonParseError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             JsonParseError::UnexpectedEos { kind, position } => {
                 if let Some(kind) = kind {
@@ -240,8 +241,8 @@ impl std::fmt::Display for JsonParseError {
     }
 }
 
-impl std::error::Error for JsonParseError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+impl core::error::Error for JsonParseError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         if let Self::InvalidValue { error, .. } = self {
             Some(&**error)
         } else {

@@ -1,4 +1,7 @@
-use std::{borrow::Cow, fmt::Display, hash::Hash, ops::Range};
+use alloc::{
+    borrow::Cow, borrow::ToOwned, boxed::Box, format, string::String, string::ToString, vec::Vec,
+};
+use core::{fmt::Display, hash::Hash, ops::Range};
 
 use crate::{
     DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, JsonValueKind,
@@ -108,7 +111,7 @@ impl RawJsonOwned {
     /// ```
     pub fn object<F>(fmt: F) -> Self
     where
-        F: Fn(&mut JsonObjectFormatter<'_, '_, '_>) -> std::fmt::Result,
+        F: Fn(&mut JsonObjectFormatter<'_, '_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::object(fmt).to_string())
             .expect("bug: object formatter must produce valid JSON")
@@ -130,7 +133,7 @@ impl RawJsonOwned {
     /// ```
     pub fn json<F>(fmt: F) -> Self
     where
-        F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
+        F: Fn(&mut JsonFormatter<'_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::json(fmt).to_string())
             .expect("bug: json formatter must produce valid JSON")
@@ -157,7 +160,7 @@ impl RawJsonOwned {
     /// ```
     pub fn array<F>(fmt: F) -> Self
     where
-        F: Fn(&mut JsonArrayFormatter<'_, '_, '_>) -> std::fmt::Result,
+        F: Fn(&mut JsonArrayFormatter<'_, '_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::array(fmt).to_string())
             .expect("bug: array formatter must produce valid JSON")
@@ -271,36 +274,36 @@ impl PartialEq for RawJsonOwned {
 impl Eq for RawJsonOwned {}
 
 impl PartialOrd for RawJsonOwned {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for RawJsonOwned {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.text.cmp(&other.text)
     }
 }
 
 impl Hash for RawJsonOwned {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.text.hash(state);
     }
 }
 
 impl Display for RawJsonOwned {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", crate::Json(self))
     }
 }
 
 impl DisplayJson for RawJsonOwned {
-    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> core::fmt::Result {
         DisplayJson::fmt(&self.value(), f)
     }
 }
 
-impl std::str::FromStr for RawJsonOwned {
+impl core::str::FromStr for RawJsonOwned {
     type Err = JsonParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -529,31 +532,31 @@ impl PartialEq for RawJson<'_> {
 impl Eq for RawJson<'_> {}
 
 impl PartialOrd for RawJson<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for RawJson<'_> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.text.cmp(other.text)
     }
 }
 
 impl Hash for RawJson<'_> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.text.hash(state);
     }
 }
 
 impl Display for RawJson<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", crate::Json(self))
     }
 }
 
 impl DisplayJson for RawJson<'_> {
-    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> core::fmt::Result {
         DisplayJson::fmt(&self.value(), f)
     }
 }
@@ -609,31 +612,31 @@ impl PartialEq for RawJsonRef<'_, '_> {
 impl Eq for RawJsonRef<'_, '_> {}
 
 impl PartialOrd for RawJsonRef<'_, '_> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for RawJsonRef<'_, '_> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.text.cmp(other.text)
     }
 }
 
 impl Hash for RawJsonRef<'_, '_> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.text.hash(state);
     }
 }
 
 impl Display for RawJsonRef<'_, '_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", crate::Json(self))
     }
 }
 
 impl DisplayJson for RawJsonRef<'_, '_> {
-    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> core::fmt::Result {
         DisplayJson::fmt(&self.value(), f)
     }
 }
@@ -920,7 +923,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// sequences (like `\n`, `\t`, `\"`, etc.), this method returns an error instead
     /// of performing the unescaping.
     ///
-    /// For strings that may require unescaping, use [`to_unquoted_string_str()`] instead.
+    /// For strings that may require unescaping, use [`RawJsonValue::to_unquoted_string_str()`] instead.
     ///
     /// This is useful when you want to work directly with the original string content
     /// without the overhead of unescaping or allocation.
@@ -1183,7 +1186,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// ```
     pub fn invalid<E>(self, error: E) -> JsonParseError
     where
-        E: Into<Box<dyn Send + Sync + std::error::Error>>,
+        E: Into<Box<dyn Send + Sync + core::error::Error>>,
     {
         JsonParseError::invalid_value(self, error)
     }
@@ -1210,7 +1213,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
                         'b' => unescaped.push('\u{8}'),
                         'f' => unescaped.push('\u{c}'),
                         'u' => {
-                            let c = std::str::from_utf8(&[
+                            let c = core::str::from_utf8(&[
                                 chars.next().expect("infallible") as u8,
                                 chars.next().expect("infallible") as u8,
                                 chars.next().expect("infallible") as u8,
@@ -1259,13 +1262,13 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
 }
 
 impl Display for RawJsonValue<'_, '_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", crate::Json(self))
     }
 }
 
 impl DisplayJson for RawJsonValue<'_, '_> {
-    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> core::fmt::Result {
         match self.kind() {
             JsonValueKind::Null
             | JsonValueKind::Boolean
