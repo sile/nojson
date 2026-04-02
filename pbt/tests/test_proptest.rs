@@ -11,6 +11,26 @@ use std::sync::Arc;
 use nojson::Json;
 use proptest::prelude::*;
 
+fn plain_ascii_string() -> impl Strategy<Value = String> {
+    prop::collection::vec(
+        prop_oneof![0x20u8..=0x21u8, 0x23u8..=0x5Bu8, 0x5Du8..=0x7Eu8],
+        1..8,
+    )
+    .prop_map(|bytes| bytes.into_iter().map(char::from).collect())
+}
+
+fn mixed_unicode_ascii_string() -> impl Strategy<Value = String> {
+    (
+        any::<String>(),
+        any::<char>().prop_filter("non-ASCII", |c| !c.is_ascii()),
+        plain_ascii_string(),
+        any::<String>(),
+    )
+        .prop_map(|(prefix, non_ascii, ascii, suffix)| {
+            format!("{prefix}{non_ascii}{ascii}{suffix}")
+        })
+}
+
 proptest! {
     #[test]
     fn roundtrip_bool(b: bool) {
@@ -105,6 +125,13 @@ proptest! {
 
     #[test]
     fn roundtrip_string(s: String) {
+        let json_str = Json(&s).to_string();
+        let parsed: Json<String> = json_str.parse().unwrap();
+        prop_assert_eq!(parsed.0, s);
+    }
+
+    #[test]
+    fn roundtrip_string_with_non_ascii_followed_by_ascii(s in mixed_unicode_ascii_string()) {
         let json_str = Json(&s).to_string();
         let parsed: Json<String> = json_str.parse().unwrap();
         prop_assert_eq!(parsed.0, s);

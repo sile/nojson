@@ -270,18 +270,29 @@ struct JsonStringContentFormatter<'a, 'b> {
 
 impl core::fmt::Write for JsonStringContentFormatter<'_, '_> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for c in s.chars() {
-            match c {
-                '"' => write!(self.inner, r#"\""#)?,
-                '\\' => write!(self.inner, r#"\\"#)?,
-                '\n' => write!(self.inner, r#"\n"#)?,
-                '\r' => write!(self.inner, r#"\r"#)?,
-                '\t' => write!(self.inner, r#"\t"#)?,
-                '\u{0008}' => write!(self.inner, r#"\b"#)?,
-                '\u{000C}' => write!(self.inner, r#"\f"#)?,
-                _ if c.is_ascii_control() => write!(self.inner, "\\u{:04x}", c as u32)?,
-                _ => write!(self.inner, "{c}")?,
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            let skip = crate::swar::skip_plain_ascii_bytes(&bytes[i..]);
+            if skip > 0 {
+                self.inner.write_str(&s[i..i + skip])?;
+                i += skip;
+                continue;
             }
+            // Current byte needs escaping or is non-ASCII
+            let c = s[i..].chars().next().unwrap();
+            match c {
+                '"' => self.inner.write_str("\\\"")?,
+                '\\' => self.inner.write_str("\\\\")?,
+                '\n' => self.inner.write_str("\\n")?,
+                '\r' => self.inner.write_str("\\r")?,
+                '\t' => self.inner.write_str("\\t")?,
+                '\u{0008}' => self.inner.write_str("\\b")?,
+                '\u{000C}' => self.inner.write_str("\\f")?,
+                _ if c.is_ascii_control() => write!(self.inner, "\\u{:04x}", c as u32)?,
+                _ => self.inner.write_str(&s[i..i + c.len_utf8()])?,
+            }
+            i += c.len_utf8();
         }
         Ok(())
     }

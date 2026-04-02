@@ -116,7 +116,7 @@ fn parse_jsonc_trailing_commas_object() -> Result<(), JsonParseError> {
     assert_eq!(age, 30);
 
     let active: bool = json.value().to_member("active")?.required()?.try_into()?;
-    assert_eq!(active, true);
+    assert!(active);
 
     Ok(())
 }
@@ -173,7 +173,7 @@ fn parse_jsonc_trailing_commas_with_comments() -> Result<(), JsonParseError> {
         .to_member("debug")?
         .required()?
         .try_into()?;
-    assert_eq!(debug, true);
+    assert!(debug);
 
     let port: i32 = json
         .value()
