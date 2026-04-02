@@ -47,65 +47,57 @@ pub(crate) fn skip_plain_ascii_bytes(s: &[u8]) -> usize {
 #[inline(always)]
 pub(crate) fn skip_non_ascii_bytes(s: &[u8]) -> usize {
     let mut i = 0;
+
+    // Process 8 bytes at a time: all non-ASCII bytes have bit 7 set
+    while i + 8 <= s.len() {
+        let chunk: [u8; 8] = s[i..i + 8].try_into().unwrap();
+        let w = u64::from_ne_bytes(chunk);
+        if w & MASK_80 == MASK_80 {
+            i += 8;
+        } else {
+            break;
+        }
+    }
+
     while i < s.len() && s[i] & 0x80 != 0 {
         i += 1;
     }
     i
 }
 
+/// Build a mask with bit 7 set for each byte in `w` that is NOT plain ASCII for JSON strings.
+/// A byte is non-plain if: >= 128, < 32, == 0x22 (`"`), or == 0x5C (`\`).
+#[inline(always)]
+fn non_plain_mask(w: u64) -> u64 {
+    // Non-ASCII: byte >= 128
+    let non_ascii = w & MASK_80;
+
+    // Control chars: byte < 32 (for bytes < 128)
+    // For b in [0x00, 0x7F]: b + 0x60 sets bit 7 iff b >= 0x20
+    let control = (w.wrapping_add(0x6060606060606060) ^ MASK_80) & MASK_80;
+
+    // Quote (0x22): Mycroft's zero-byte detection
+    let xor_quote = w ^ 0x2222222222222222;
+    let quote = xor_quote.wrapping_sub(MASK_01) & !xor_quote & MASK_80;
+
+    // Backslash (0x5C): Mycroft's zero-byte detection
+    let xor_bslash = w ^ 0x5C5C5C5C5C5C5C5C;
+    let bslash = xor_bslash.wrapping_sub(MASK_01) & !xor_bslash & MASK_80;
+
+    non_ascii | control | quote | bslash
+}
+
 /// Check if all 8 bytes in `w` are plain ASCII for JSON strings.
 #[inline(always)]
 fn is_all_plain_ascii(w: u64) -> bool {
-    // 1. All bytes < 128 (ASCII)
-    if w & MASK_80 != 0 {
-        return false;
-    }
-
-    // 2. All bytes >= 32 (no control chars)
-    //    For b in [0x00, 0x7F]: b + 0x60 sets bit 7 iff b >= 0x20
-    if (w.wrapping_add(0x6060606060606060)) & MASK_80 != MASK_80 {
-        return false;
-    }
-
-    // 3. No double quote (0x22) — Mycroft's zero-byte detection
-    //    Since all bytes < 128 (check 1), we can omit the `& !xor` term
-    let xor_quote = w ^ 0x2222222222222222;
-    if (xor_quote.wrapping_sub(MASK_01)) & MASK_80 != 0 {
-        return false;
-    }
-
-    // 4. No backslash (0x5C)
-    let xor_bslash = w ^ 0x5C5C5C5C5C5C5C5C;
-    if (xor_bslash.wrapping_sub(MASK_01)) & MASK_80 != 0 {
-        return false;
-    }
-
-    true
+    non_plain_mask(w) == 0
 }
 
 /// Find the byte offset of the first non-plain byte within a u64 word.
 /// Assumes at least one non-plain byte exists.
 #[inline(always)]
 fn first_non_plain_offset(w: u64) -> usize {
-    // Build a mask with bit 7 set for each byte that is NOT plain.
-    // A byte is non-plain if: >= 128, < 32, == 0x22, or == 0x5C.
-
-    // Non-ASCII: byte >= 128
-    let non_ascii = w & MASK_80;
-
-    // Control chars: byte < 32 (given byte < 128)
-    // (w + 0x60) & 0x80 == 0 means byte < 0x20
-    let control = (w.wrapping_add(0x6060606060606060) ^ MASK_80) & MASK_80;
-
-    // Quote: Mycroft detection
-    let xor_quote = w ^ 0x2222222222222222;
-    let quote = xor_quote.wrapping_sub(MASK_01) & !xor_quote & MASK_80;
-
-    // Backslash: Mycroft detection
-    let xor_bslash = w ^ 0x5C5C5C5C5C5C5C5C;
-    let bslash = xor_bslash.wrapping_sub(MASK_01) & !xor_bslash & MASK_80;
-
-    let fail = non_ascii | control | quote | bslash;
+    let fail = non_plain_mask(w);
 
     // Find the first set bit. On little-endian, trailing_zeros gives the
     // lowest-address byte. On big-endian, leading_zeros does.
