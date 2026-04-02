@@ -6,7 +6,7 @@ nojson
 [![Actions Status](https://github.com/sile/nojson/workflows/CI/badge.svg)](https://github.com/sile/nojson/actions)
 ![License](https://img.shields.io/crates/l/nojson)
 
-A flexible Rust JSON library with no dependencies, no macros and optional `no_std` support.
+A flexible Rust JSON library with no dependencies, no macros, no unsafe and optional `no_std` support.
 
 `nojson` is a flexible and ergonomic JSON library for Rust that offers a balance between the type-safety of Rust and the dynamic nature of JSON.
 Unlike [`serde`](https://crates.io/crates/serde), which typically requires one-to-one mapping between Rust types and JSON structures (or other serialization formats),
