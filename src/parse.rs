@@ -1,4 +1,5 @@
-use std::ops::Range;
+use alloc::vec::Vec;
+use core::ops::Range;
 
 use crate::{
     JsonValueKind,
@@ -35,7 +36,7 @@ pub struct JsonParser<'a, X> {
     kind: Option<JsonValueKind>,
     values: Vec<JsonValueIndexEntry>,
     comments: Vec<Range<usize>>,
-    _extensions: std::marker::PhantomData<X>,
+    _extensions: core::marker::PhantomData<X>,
 }
 
 impl<'a, E: Extensions> JsonParser<'a, E> {
@@ -46,7 +47,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
             kind: None,
             values: Vec::new(),
             comments: Vec::new(),
-            _extensions: std::marker::PhantomData,
+            _extensions: core::marker::PhantomData,
         }
     }
 

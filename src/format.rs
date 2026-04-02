@@ -1,10 +1,10 @@
-use std::fmt::{Display, Write};
+use core::fmt::{Display, Write};
 
 use crate::DisplayJson;
 
 /// A formatter for JSON values that controls the layout and formatting of the output.
 ///
-/// [`JsonFormatter`] wraps the [`std::fmt::Formatter`] and provides methods specifically designed
+/// [`JsonFormatter`] wraps the [`core::fmt::Formatter`] and provides methods specifically designed
 /// for generating well-formed JSON with customizable formatting options like indentation and spacing.
 ///
 /// This formatter is primarily used when implementing the [`DisplayJson`] trait or when using the
@@ -36,14 +36,14 @@ use crate::DisplayJson;
 /// );
 /// ```
 pub struct JsonFormatter<'a, 'b> {
-    inner: &'a mut std::fmt::Formatter<'b>,
+    inner: &'a mut core::fmt::Formatter<'b>,
     level: usize,
     indent_size: usize,
     spacing: bool,
 }
 
 impl<'a, 'b> JsonFormatter<'a, 'b> {
-    pub(crate) fn new(inner: &'a mut std::fmt::Formatter<'b>) -> Self {
+    pub(crate) fn new(inner: &'a mut core::fmt::Formatter<'b>) -> Self {
         Self {
             inner,
             level: 0,
@@ -62,7 +62,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// let output = nojson::json(|f| f.value([1, 2, 3]));
     /// assert_eq!(output.to_string(), "[1,2,3]");
     /// ```
-    pub fn value<T: DisplayJson>(&mut self, value: T) -> std::fmt::Result {
+    pub fn value<T: DisplayJson>(&mut self, value: T) -> core::fmt::Result {
         value.fmt(self)
     }
 
@@ -77,7 +77,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// let output = nojson::json(|f| f.string("Hello\nWorld"));
     /// assert_eq!(output.to_string(), r#""Hello\nWorld""#);
     /// ```
-    pub fn string<T: Display>(&mut self, content: T) -> std::fmt::Result {
+    pub fn string<T: Display>(&mut self, content: T) -> core::fmt::Result {
         write!(self.inner, "\"")?;
         {
             let mut fmt = JsonStringContentFormatter { inner: self.inner };
@@ -116,9 +116,9 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     ///     })
     /// });
     /// ```
-    pub fn array<F>(&mut self, f: F) -> std::fmt::Result
+    pub fn array<F>(&mut self, f: F) -> core::fmt::Result
     where
-        F: FnOnce(&mut JsonArrayFormatter<'a, 'b, '_>) -> std::fmt::Result,
+        F: FnOnce(&mut JsonArrayFormatter<'a, 'b, '_>) -> core::fmt::Result,
     {
         write!(self.inner, "[")?;
 
@@ -170,9 +170,9 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     ///     })
     /// });
     /// ```
-    pub fn object<F>(&mut self, f: F) -> std::fmt::Result
+    pub fn object<F>(&mut self, f: F) -> core::fmt::Result
     where
-        F: FnOnce(&mut JsonObjectFormatter<'a, 'b, '_>) -> std::fmt::Result,
+        F: FnOnce(&mut JsonObjectFormatter<'a, 'b, '_>) -> core::fmt::Result,
     {
         write!(self.inner, "{{")?;
 
@@ -201,7 +201,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         Ok(())
     }
 
-    /// Returns a mutable reference to the inner [`std::fmt::Formatter`].
+    /// Returns a mutable reference to the inner [`core::fmt::Formatter`].
     ///
     /// This method provides direct access to the wrapped formatter, which can be useful
     /// for implementing custom formatting logic for primitive types.
@@ -209,7 +209,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// # Note
     ///
     /// It is the responsibility of the user to ensure that the content written to the inner formatter is valid JSON.
-    pub fn inner_mut(&mut self) -> &mut std::fmt::Formatter<'b> {
+    pub fn inner_mut(&mut self) -> &mut core::fmt::Formatter<'b> {
         self.inner
     }
 
@@ -245,7 +245,7 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
         self.spacing = enable;
     }
 
-    fn indent(&mut self) -> std::fmt::Result {
+    fn indent(&mut self) -> core::fmt::Result {
         if self.indent_size > 0 {
             let total = self.indent_size * self.level;
             write!(self.inner, "\n{:total$}", "", total = total)?;
@@ -254,8 +254,8 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     }
 }
 
-impl std::fmt::Debug for JsonFormatter<'_, '_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for JsonFormatter<'_, '_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("JsonFormatter")
             .field("level", &self.level)
             .field("indent_size", &self.indent_size)
@@ -265,11 +265,11 @@ impl std::fmt::Debug for JsonFormatter<'_, '_> {
 }
 
 struct JsonStringContentFormatter<'a, 'b> {
-    inner: &'a mut std::fmt::Formatter<'b>,
+    inner: &'a mut core::fmt::Formatter<'b>,
 }
 
-impl std::fmt::Write for JsonStringContentFormatter<'_, '_> {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+impl core::fmt::Write for JsonStringContentFormatter<'_, '_> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.chars() {
             match c {
                 '"' => write!(self.inner, r#"\""#)?,
@@ -336,7 +336,7 @@ impl JsonArrayFormatter<'_, '_, '_> {
     ///     })
     /// });
     /// ```
-    pub fn element<T: DisplayJson>(&mut self, element: T) -> std::fmt::Result {
+    pub fn element<T: DisplayJson>(&mut self, element: T) -> core::fmt::Result {
         if !self.empty {
             write!(self.fmt.inner, ",")?;
             if self.fmt.spacing && self.fmt.indent_size == 0 {
@@ -368,7 +368,7 @@ impl JsonArrayFormatter<'_, '_, '_> {
     ///     f.array(|f| f.elements([true, false, true]))
     /// });
     /// ```
-    pub fn elements<I>(&mut self, elements: I) -> std::fmt::Result
+    pub fn elements<I>(&mut self, elements: I) -> core::fmt::Result
     where
         I: IntoIterator,
         I::Item: DisplayJson,
@@ -429,7 +429,7 @@ impl JsonObjectFormatter<'_, '_, '_> {
     ///     })
     /// });
     /// ```
-    pub fn member<N, V>(&mut self, name: N, value: V) -> std::fmt::Result
+    pub fn member<N, V>(&mut self, name: N, value: V) -> core::fmt::Result
     where
         N: Display,
         V: DisplayJson,
@@ -472,7 +472,7 @@ impl JsonObjectFormatter<'_, '_, '_> {
     ///     f.object(|f| f.members(&map))
     /// });
     /// ```
-    pub fn members<I, N, V>(&mut self, members: I) -> std::fmt::Result
+    pub fn members<I, N, V>(&mut self, members: I) -> core::fmt::Result
     where
         I: IntoIterator<Item = (N, V)>,
         N: Display,

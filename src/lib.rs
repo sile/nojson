@@ -194,7 +194,10 @@
 //!     }
 //! }
 //! ```
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
+
+extern crate alloc;
 
 mod display_json;
 mod format;
@@ -204,7 +207,7 @@ mod parse_error;
 mod raw;
 mod try_from_impls;
 
-use std::{fmt::Display, str::FromStr};
+use core::{fmt::Display, str::FromStr};
 
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
@@ -246,7 +249,7 @@ pub use raw::{JsonParseError, RawJson, RawJsonOwned, RawJsonValue};
 pub struct Json<T>(#[allow(missing_docs)] pub T);
 
 impl<T: DisplayJson> Display for Json<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut fmt = JsonFormatter::new(f);
         self.0.fmt(&mut fmt)?;
         Ok(())
@@ -327,7 +330,7 @@ where
 /// ```
 pub fn json<F>(f: F) -> impl DisplayJson + Display
 where
-    F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
+    F: Fn(&mut JsonFormatter<'_, '_>) -> core::fmt::Result,
 {
     InplaceJson(f)
 }
@@ -336,18 +339,18 @@ struct InplaceJson<F>(F);
 
 impl<F> Display for InplaceJson<F>
 where
-    F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
+    F: Fn(&mut JsonFormatter<'_, '_>) -> core::fmt::Result,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", Json(self))
     }
 }
 
 impl<F> DisplayJson for InplaceJson<F>
 where
-    F: Fn(&mut JsonFormatter<'_, '_>) -> std::fmt::Result,
+    F: Fn(&mut JsonFormatter<'_, '_>) -> core::fmt::Result,
 {
-    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> core::fmt::Result {
         self.0(f)
     }
 }
@@ -368,7 +371,7 @@ where
 /// ```
 pub fn object<F>(fmt: F) -> impl DisplayJson + Display
 where
-    F: Fn(&mut JsonObjectFormatter<'_, '_, '_>) -> std::fmt::Result,
+    F: Fn(&mut JsonObjectFormatter<'_, '_, '_>) -> core::fmt::Result,
 {
     json(move |f| f.object(|f| fmt(f)))
 }
@@ -390,7 +393,7 @@ where
 /// ```
 pub fn array<F>(fmt: F) -> impl DisplayJson + Display
 where
-    F: Fn(&mut JsonArrayFormatter<'_, '_, '_>) -> std::fmt::Result,
+    F: Fn(&mut JsonArrayFormatter<'_, '_, '_>) -> core::fmt::Result,
 {
     json(move |f| f.array(|f| fmt(f)))
 }
