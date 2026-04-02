@@ -108,7 +108,7 @@ fn first_non_plain_offset(w: u64) -> usize {
 
 #[inline(always)]
 fn is_plain_ascii_byte(b: u8) -> bool {
-    b >= 0x20 && b < 0x80 && b != b'"' && b != b'\\'
+    (0x20..0x80).contains(&b) && b != b'"' && b != b'\\'
 }
 
 #[cfg(test)]
@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn quote_at_various_positions() {
         for pos in 0..16 {
-            let mut buf = vec![b'a'; 16];
+            let mut buf = [b'a'; 16];
             buf[pos] = b'"';
             assert_eq!(
                 skip_plain_ascii_bytes(&buf),
@@ -152,7 +152,7 @@ mod tests {
     #[test]
     fn backslash_at_various_positions() {
         for pos in 0..16 {
-            let mut buf = vec![b'a'; 16];
+            let mut buf = [b'a'; 16];
             buf[pos] = b'\\';
             assert_eq!(
                 skip_plain_ascii_bytes(&buf),
@@ -167,12 +167,7 @@ mod tests {
     fn control_chars() {
         for b in 0..0x20u8 {
             let buf = [b'a', b'b', b'c', b];
-            assert_eq!(
-                skip_plain_ascii_bytes(&buf),
-                3,
-                "control char 0x{:02x}",
-                b
-            );
+            assert_eq!(skip_plain_ascii_bytes(&buf), 3, "control char 0x{:02x}", b);
         }
     }
 
@@ -230,8 +225,12 @@ mod tests {
 
     #[test]
     fn long_plain_then_special() {
-        let mut buf = vec![b'x'; 1024];
-        buf[1000] = b'"';
-        assert_eq!(skip_plain_ascii_bytes(&buf), 1000);
+        let buf = [b'x'; 1024];
+        // All 1024 bytes are plain 'x'
+        assert_eq!(skip_plain_ascii_bytes(&buf), 1024);
+
+        let mut buf2 = [b'x'; 64];
+        buf2[50] = b'"';
+        assert_eq!(skip_plain_ascii_bytes(&buf2), 50);
     }
 }

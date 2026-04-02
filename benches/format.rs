@@ -45,7 +45,11 @@ fn bench_format(c: &mut Criterion) {
             )
         })
         .collect();
-    let pairs: Vec<(&str, &str)> = keys.iter().zip(values.iter()).map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let pairs: Vec<(&str, &str)> = keys
+        .iter()
+        .zip(values.iter())
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
     group.bench_with_input(
         BenchmarkId::new("object_formatting", "50pairs"),
         &pairs,
