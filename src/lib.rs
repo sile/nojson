@@ -12,6 +12,7 @@
 //! - **Flexible formatting options** including pretty-printing with customizable indentation
 //! - **Low-level access** to the JSON structure when needed
 //! - **High-level conveniences** for common JSON operations
+//! - **JSONC support** - Parse JSON with comments (`//`, `/* */`) and trailing commas
 //!
 //! ## Core Design Principles
 //!
@@ -193,6 +194,25 @@
 //!         println!("Line content: {}", line_text);
 //!     }
 //! }
+//! ```
+//!
+//! ### JSONC Support
+//!
+//! Use [`RawJson::parse_jsonc()`] to parse JSON with comments and trailing commas:
+//!
+//! ```
+//! # fn main() -> Result<(), nojson::JsonParseError> {
+//! let text = r#"{
+//!     "name": "Alice", // line comment
+//!     "tags": ["a", "b",], /* trailing comma */
+//! }"#;
+//!
+//! let (json, comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
+//! let name: String = json.value().to_member("name")?.required()?.try_into()?;
+//! assert_eq!(name, "Alice");
+//! assert_eq!(comment_ranges.len(), 2);
+//! # Ok(())
+//! # }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]

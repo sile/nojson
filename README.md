@@ -20,6 +20,7 @@ Unlike [`serde`](https://crates.io/crates/serde), which typically requires one-t
 - **Flexible formatting options** including pretty-printing with customizable indentation
 - **Low-level access** to the JSON structure when needed
 - **High-level conveniences** for common JSON operations
+- **JSONC support** - Parse JSON with comments (`//`, `/* */`) and trailing commas
 
 ## Core Design Principles
 
@@ -200,5 +201,24 @@ if let Err(error) = result {
     if let Some(line_text) = error.get_line(text) {
         println!("Line content: {}", line_text);
     }
+}
+```
+
+### JSONC Support
+
+Use `parse_jsonc()` to parse JSON with comments and trailing commas:
+
+```rust
+fn main() -> Result<(), nojson::JsonParseError> {
+    let text = r#"{
+        "name": "Alice", // line comment
+        "tags": ["a", "b",], /* trailing comma */
+    }"#;
+
+    let (json, comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
+    let name: String = json.value().to_member("name")?.required()?.try_into()?;
+    assert_eq!(name, "Alice");
+    assert_eq!(comment_ranges.len(), 2);
+    Ok(())
 }
 ```
