@@ -288,28 +288,40 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
         loop {
             let skip = crate::swar::skip_plain_ascii_bytes(s.as_bytes());
             s = &s[skip..];
-            // Skip non-ASCII chars (SWAR stops at bytes >= 0x80, but they are valid in JSON strings)
-            s = s.trim_start_matches(|c: char| !c.is_ascii());
-            if let Some(s) = s.strip_prefix('"') {
-                self.push_entry(self.offset(s));
-                self.values.last_mut().expect("infallible").escaped = escaped;
-                return Ok(());
-            }
-
-            escaped = true;
-            s = self.strip_char(s, '\\')?;
-            if let Some(suffix) = s.strip_prefix(['"', '\\', '/', 'n', 't', 'r', 'b', 'f']) {
-                s = suffix;
-            } else {
-                s = self.strip_char(s, 'u')?;
-                if s.len() < 4 {
+            match s.chars().next() {
+                Some('"') => {
+                    let s = &s['"'.len_utf8()..];
+                    self.push_entry(self.offset(s));
+                    self.values.last_mut().expect("infallible").escaped = escaped;
+                    return Ok(());
+                }
+                Some('\\') => {
+                    escaped = true;
+                    s = &s['\\'.len_utf8()..];
+                    if let Some(suffix) = s.strip_prefix(['"', '\\', '/', 'n', 't', 'r', 'b', 'f'])
+                    {
+                        s = suffix;
+                    } else {
+                        s = self.strip_char(s, 'u')?;
+                        if s.len() < 4 {
+                            return Err(self.unexpected_eos());
+                        }
+                        s.get(0..4)
+                            .and_then(|code| u32::from_str_radix(code, 16).ok())
+                            .and_then(char::from_u32)
+                            .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
+                        s = &s[4..];
+                    }
+                }
+                Some(ch) if !ch.is_ascii() => {
+                    s = &s[ch.len_utf8()..];
+                }
+                Some(_) => {
+                    return Err(self.unexpected_value_char(self.offset(s)));
+                }
+                None => {
                     return Err(self.unexpected_eos());
                 }
-                s.get(0..4)
-                    .and_then(|code| u32::from_str_radix(code, 16).ok())
-                    .and_then(char::from_u32)
-                    .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
-                s = &s[4..];
             }
         }
     }

@@ -180,7 +180,12 @@ fn parse_numbers() -> Result<(), JsonParseError> {
 #[test]
 fn parse_strings() -> Result<(), JsonParseError> {
     // Non-escaped strings.
-    for text in [r#" "" "#, r#" "abc" "#] {
+    for (text, unescaped) in [
+        (r#" "" "#, ""),
+        (r#" "abc" "#, "abc"),
+        (r#" "あa" "#, "あa"),
+        (r#" "日本語x" "#, "日本語x"),
+    ] {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::String);
@@ -190,6 +195,7 @@ fn parse_strings() -> Result<(), JsonParseError> {
             value.to_unquoted_string_str(),
             Ok(Cow::Borrowed(_))
         ));
+        assert_eq!(value.to_unquoted_string_str()?, unescaped);
     }
 
     // Escaped strings.
