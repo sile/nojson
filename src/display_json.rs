@@ -1,6 +1,4 @@
-use alloc::{
-    borrow::Cow, borrow::ToOwned, boxed::Box, rc::Rc, string::String, sync::Arc, vec::Vec,
-};
+use alloc::{borrow::Cow, borrow::ToOwned, boxed::Box, rc::Rc, string::String, vec::Vec};
 use core::fmt::Display;
 
 use crate::JsonFormatter;
@@ -117,7 +115,11 @@ impl<T: DisplayJson + ?Sized> DisplayJson for Rc<T> {
     }
 }
 
-impl<T: DisplayJson + ?Sized> DisplayJson for Arc<T> {
+// `alloc::sync::Arc` only exists when the target supports pointer-sized
+// atomics, so keep this impl out of builds for targets without that support
+// (for example `thumbv6m-none-eabi`).
+#[cfg(target_has_atomic = "ptr")]
+impl<T: DisplayJson + ?Sized> DisplayJson for alloc::sync::Arc<T> {
     fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> core::fmt::Result {
         (**self).fmt(f)
     }

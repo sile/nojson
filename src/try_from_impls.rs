@@ -1,4 +1,4 @@
-use alloc::{borrow::Cow, boxed::Box, format, rc::Rc, string::String, sync::Arc, vec::Vec};
+use alloc::{borrow::Cow, boxed::Box, format, rc::Rc, string::String, vec::Vec};
 use core::str::FromStr;
 
 use crate::{JsonParseError, RawJsonValue};
@@ -378,14 +378,18 @@ where
     }
 }
 
-impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for Arc<T>
+// `alloc::sync::Arc` only exists when the target supports pointer-sized
+// atomics, so keep this conversion out of builds for targets without that
+// support (for example `thumbv6m-none-eabi`).
+#[cfg(target_has_atomic = "ptr")]
+impl<'text, 'raw, T> TryFrom<RawJsonValue<'text, 'raw>> for alloc::sync::Arc<T>
 where
     T: TryFrom<RawJsonValue<'text, 'raw>, Error = JsonParseError>,
 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        T::try_from(value).map(Arc::new)
+        T::try_from(value).map(alloc::sync::Arc::new)
     }
 }
 
