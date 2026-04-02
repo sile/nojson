@@ -288,16 +288,21 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
         loop {
             let skip = crate::swar::skip_plain_ascii_bytes(s.as_bytes());
             s = &s[skip..];
-            match s.chars().next() {
-                Some('"') => {
-                    let s = &s['"'.len_utf8()..];
+            let skip = crate::swar::skip_non_ascii_bytes(s.as_bytes());
+            if skip > 0 {
+                s = &s[skip..];
+                continue;
+            }
+            match s.as_bytes().first().copied() {
+                Some(b'"') => {
+                    let s = &s[1..];
                     self.push_entry(self.offset(s));
                     self.values.last_mut().expect("infallible").escaped = escaped;
                     return Ok(());
                 }
-                Some('\\') => {
+                Some(b'\\') => {
                     escaped = true;
-                    s = &s['\\'.len_utf8()..];
+                    s = &s[1..];
                     if let Some(suffix) = s.strip_prefix(['"', '\\', '/', 'n', 't', 'r', 'b', 'f'])
                     {
                         s = suffix;
@@ -306,15 +311,10 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
                         if s.len() < 4 {
                             return Err(self.unexpected_eos());
                         }
-                        s.get(0..4)
-                            .and_then(|code| u32::from_str_radix(code, 16).ok())
-                            .and_then(char::from_u32)
+                        decode_hex_char(s)
                             .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
                         s = &s[4..];
                     }
-                }
-                Some(ch) if !ch.is_ascii() => {
-                    s = &s[ch.len_utf8()..];
                 }
                 Some(_) => {
                     return Err(self.unexpected_value_char(self.offset(s)));
@@ -359,5 +359,25 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
             kind: self.kind,
             position: self.original_text.len(),
         }
+    }
+}
+
+#[inline(always)]
+fn decode_hex_char(s: &str) -> Option<char> {
+    let bytes = s.as_bytes().get(..4)?;
+    let mut code = 0u32;
+    for &byte in bytes {
+        code = (code << 4) | decode_hex_nibble(byte)?;
+    }
+    char::from_u32(code)
+}
+
+#[inline(always)]
+fn decode_hex_nibble(byte: u8) -> Option<u32> {
+    match byte {
+        b'0'..=b'9' => Some((byte - b'0') as u32),
+        b'a'..=b'f' => Some((byte - b'a' + 10) as u32),
+        b'A'..=b'F' => Some((byte - b'A' + 10) as u32),
+        _ => None,
     }
 }

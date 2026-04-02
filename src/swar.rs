@@ -40,6 +40,19 @@ pub(crate) fn skip_plain_ascii_bytes(s: &[u8]) -> usize {
     i
 }
 
+/// Returns the number of leading bytes in `s` that belong to a non-ASCII UTF-8 run.
+///
+/// This assumes `s` starts at a UTF-8 character boundary. It stops at the first ASCII byte,
+/// which is also a character boundary in valid UTF-8.
+#[inline(always)]
+pub(crate) fn skip_non_ascii_bytes(s: &[u8]) -> usize {
+    let mut i = 0;
+    while i < s.len() && s[i] & 0x80 != 0 {
+        i += 1;
+    }
+    i
+}
+
 /// Check if all 8 bytes in `w` are plain ASCII for JSON strings.
 #[inline(always)]
 fn is_all_plain_ascii(w: u64) -> bool {
@@ -182,6 +195,13 @@ mod tests {
     fn non_ascii_stops() {
         assert_eq!(skip_plain_ascii_bytes("abc日本語".as_bytes()), 3);
         assert_eq!(skip_plain_ascii_bytes("あ".as_bytes()), 0);
+    }
+
+    #[test]
+    fn non_ascii_run() {
+        assert_eq!(skip_non_ascii_bytes("日本語x".as_bytes()), "日本語".len());
+        assert_eq!(skip_non_ascii_bytes("あa".as_bytes()), "あ".len());
+        assert_eq!(skip_non_ascii_bytes("abc".as_bytes()), 0);
     }
 
     #[test]

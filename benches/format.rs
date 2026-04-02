@@ -10,6 +10,11 @@ fn gen_mixed_escapes(len: usize) -> String {
     base.chars().cycle().take(len).collect()
 }
 
+fn gen_unicode_heavy(len: usize) -> String {
+    let chars = "あいうえおかきくけこ日本語テスト🎉🚀✨";
+    chars.chars().cycle().take(len).collect()
+}
+
 fn bench_format(c: &mut Criterion) {
     let mut group = c.benchmark_group("format");
 
@@ -29,6 +34,16 @@ fn bench_format(c: &mut Criterion) {
     let input = gen_mixed_escapes(256);
     group.bench_with_input(
         BenchmarkId::new("mixed_escapes", "256B"),
+        &input,
+        |b, input| {
+            b.iter(|| nojson::json(|f| f.value(input.as_str())).to_string());
+        },
+    );
+
+    // Unicode heavy
+    let input = gen_unicode_heavy(200);
+    group.bench_with_input(
+        BenchmarkId::new("unicode_heavy", "200ch"),
         &input,
         |b, input| {
             b.iter(|| nojson::json(|f| f.value(input.as_str())).to_string());

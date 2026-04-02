@@ -38,6 +38,23 @@ fn gen_unicode_heavy(len: usize) -> String {
     format!(r#""{}""#, body)
 }
 
+fn gen_unicode_escapes(count: usize) -> String {
+    let mut s = String::with_capacity(2 + count * 6);
+    s.push('"');
+    for i in 0..count {
+        let code = match i % 4 {
+            0 => "3042", // あ
+            1 => "65e5", // 日
+            2 => "672c", // 本
+            _ => "8a9e", // 語
+        };
+        s.push_str(r#"\u"#);
+        s.push_str(code);
+    }
+    s.push('"');
+    s
+}
+
 fn gen_full_json_document() -> String {
     let mut s = String::from(r#"{"users":["#);
     for i in 0..50 {
@@ -98,6 +115,16 @@ fn bench_parse(c: &mut Criterion) {
     let input = gen_unicode_heavy(200);
     group.bench_with_input(
         BenchmarkId::new("unicode_heavy", "200ch"),
+        &input,
+        |b, input| {
+            b.iter(|| nojson::RawJson::parse(input).unwrap());
+        },
+    );
+
+    // Unicode escapes
+    let input = gen_unicode_escapes(128);
+    group.bench_with_input(
+        BenchmarkId::new("unicode_escapes", "128"),
         &input,
         |b, input| {
             b.iter(|| nojson::RawJson::parse(input).unwrap());
