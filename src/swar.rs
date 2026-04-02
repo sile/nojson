@@ -1,0 +1,237 @@
+//! SWAR (SIMD Within A Register) optimization for JSON string scanning.
+//!
+//! Checks 8 bytes at a time using bitwise operations on a `u64` to find
+//! bytes that require special handling in JSON strings: control characters
+//! (< 0x20), double quote (0x22), and backslash (0x5C).
+
+const MASK_80: u64 = 0x8080808080808080;
+const MASK_01: u64 = 0x0101010101010101;
+
+/// Returns the number of leading bytes in `s` that are "plain" ASCII for JSON strings:
+/// - Not a control character (byte >= 0x20)
+/// - Not a double quote `"` (0x22)
+/// - Not a backslash `\` (0x5C)
+/// - ASCII (byte < 0x80), so byte/char boundaries are guaranteed to align
+pub(crate) fn skip_plain_ascii_bytes(s: &[u8]) -> usize {
+    let mut i = 0;
+
+    // Process 8 bytes at a time
+    while i + 8 <= s.len() {
+        let chunk: [u8; 8] = s[i..i + 8].try_into().unwrap();
+        let w = u64::from_ne_bytes(chunk);
+
+        if is_all_plain_ascii(w) {
+            i += 8;
+        } else {
+            // Find the first non-plain byte within this chunk
+            return i + first_non_plain_offset(w);
+        }
+    }
+
+    // Handle remaining bytes (< 8)
+    while i < s.len() {
+        if is_plain_ascii_byte(s[i]) {
+            i += 1;
+        } else {
+            break;
+        }
+    }
+
+    i
+}
+
+/// Check if all 8 bytes in `w` are plain ASCII for JSON strings.
+#[inline(always)]
+fn is_all_plain_ascii(w: u64) -> bool {
+    // 1. All bytes < 128 (ASCII)
+    if w & MASK_80 != 0 {
+        return false;
+    }
+
+    // 2. All bytes >= 32 (no control chars)
+    //    For b in [0x00, 0x7F]: b + 0x60 sets bit 7 iff b >= 0x20
+    if (w.wrapping_add(0x6060606060606060)) & MASK_80 != MASK_80 {
+        return false;
+    }
+
+    // 3. No double quote (0x22) — Mycroft's zero-byte detection
+    //    Since all bytes < 128 (check 1), we can omit the `& !xor` term
+    let xor_quote = w ^ 0x2222222222222222;
+    if (xor_quote.wrapping_sub(MASK_01)) & MASK_80 != 0 {
+        return false;
+    }
+
+    // 4. No backslash (0x5C)
+    let xor_bslash = w ^ 0x5C5C5C5C5C5C5C5C;
+    if (xor_bslash.wrapping_sub(MASK_01)) & MASK_80 != 0 {
+        return false;
+    }
+
+    true
+}
+
+/// Find the byte offset of the first non-plain byte within a u64 word.
+/// Assumes at least one non-plain byte exists.
+#[inline(always)]
+fn first_non_plain_offset(w: u64) -> usize {
+    // Build a mask with bit 7 set for each byte that is NOT plain.
+    // A byte is non-plain if: >= 128, < 32, == 0x22, or == 0x5C.
+
+    // Non-ASCII: byte >= 128
+    let non_ascii = w & MASK_80;
+
+    // Control chars: byte < 32 (given byte < 128)
+    // (w + 0x60) & 0x80 == 0 means byte < 0x20
+    let control = (w.wrapping_add(0x6060606060606060) ^ MASK_80) & MASK_80;
+
+    // Quote: Mycroft detection
+    let xor_quote = w ^ 0x2222222222222222;
+    let quote = xor_quote.wrapping_sub(MASK_01) & !xor_quote & MASK_80;
+
+    // Backslash: Mycroft detection
+    let xor_bslash = w ^ 0x5C5C5C5C5C5C5C5C;
+    let bslash = xor_bslash.wrapping_sub(MASK_01) & !xor_bslash & MASK_80;
+
+    let fail = non_ascii | control | quote | bslash;
+
+    // Find the first set bit. On little-endian, trailing_zeros gives the
+    // lowest-address byte. On big-endian, leading_zeros does.
+    #[cfg(target_endian = "little")]
+    {
+        (fail.trailing_zeros() / 8) as usize
+    }
+    #[cfg(target_endian = "big")]
+    {
+        (fail.leading_zeros() / 8) as usize
+    }
+}
+
+#[inline(always)]
+fn is_plain_ascii_byte(b: u8) -> bool {
+    b >= 0x20 && b < 0x80 && b != b'"' && b != b'\\'
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty() {
+        assert_eq!(skip_plain_ascii_bytes(b""), 0);
+    }
+
+    #[test]
+    fn all_plain_short() {
+        assert_eq!(skip_plain_ascii_bytes(b"hello"), 5);
+    }
+
+    #[test]
+    fn all_plain_8_bytes() {
+        assert_eq!(skip_plain_ascii_bytes(b"abcdefgh"), 8);
+    }
+
+    #[test]
+    fn all_plain_16_bytes() {
+        assert_eq!(skip_plain_ascii_bytes(b"abcdefghijklmnop"), 16);
+    }
+
+    #[test]
+    fn quote_at_various_positions() {
+        for pos in 0..16 {
+            let mut buf = vec![b'a'; 16];
+            buf[pos] = b'"';
+            assert_eq!(
+                skip_plain_ascii_bytes(&buf),
+                pos,
+                "quote at position {}",
+                pos
+            );
+        }
+    }
+
+    #[test]
+    fn backslash_at_various_positions() {
+        for pos in 0..16 {
+            let mut buf = vec![b'a'; 16];
+            buf[pos] = b'\\';
+            assert_eq!(
+                skip_plain_ascii_bytes(&buf),
+                pos,
+                "backslash at position {}",
+                pos
+            );
+        }
+    }
+
+    #[test]
+    fn control_chars() {
+        for b in 0..0x20u8 {
+            let buf = [b'a', b'b', b'c', b];
+            assert_eq!(
+                skip_plain_ascii_bytes(&buf),
+                3,
+                "control char 0x{:02x}",
+                b
+            );
+        }
+    }
+
+    #[test]
+    fn control_char_at_start() {
+        assert_eq!(skip_plain_ascii_bytes(b"\x00abc"), 0);
+        assert_eq!(skip_plain_ascii_bytes(b"\nabc"), 0);
+        assert_eq!(skip_plain_ascii_bytes(b"\tabc"), 0);
+    }
+
+    #[test]
+    fn non_ascii_stops() {
+        assert_eq!(skip_plain_ascii_bytes("abc日本語".as_bytes()), 3);
+        assert_eq!(skip_plain_ascii_bytes("あ".as_bytes()), 0);
+    }
+
+    #[test]
+    fn high_ascii_boundary() {
+        // 0x7F (DEL) is a control char in JSON context? No, JSON spec says < 0x20 are control.
+        // DEL (0x7F) is technically a control char but JSON spec only requires escaping < 0x20.
+        // Our function treats 0x7F as plain ASCII (>= 0x20 and < 0x80).
+        assert_eq!(skip_plain_ascii_bytes(&[0x7F]), 1);
+        // 0x80 is non-ASCII
+        assert_eq!(skip_plain_ascii_bytes(&[0x80]), 0);
+        // 0x20 (space) is the first plain byte
+        assert_eq!(skip_plain_ascii_bytes(&[0x20]), 1);
+        // 0x1F is last control char
+        assert_eq!(skip_plain_ascii_bytes(&[0x1F]), 0);
+    }
+
+    #[test]
+    fn mixed_content() {
+        let input = b"Hello, World!\"rest";
+        assert_eq!(skip_plain_ascii_bytes(input), 13); // stops at "
+    }
+
+    #[test]
+    fn all_printable_ascii() {
+        // All printable ASCII except " and \ should be plain
+        let mut count = 0;
+        for b in 0x20..0x80u8 {
+            if b != b'"' && b != b'\\' {
+                assert_eq!(
+                    skip_plain_ascii_bytes(&[b]),
+                    1,
+                    "byte 0x{:02x} ('{}') should be plain",
+                    b,
+                    b as char,
+                );
+                count += 1;
+            }
+        }
+        assert_eq!(count, 94); // 96 printable minus " and \
+    }
+
+    #[test]
+    fn long_plain_then_special() {
+        let mut buf = vec![b'x'; 1024];
+        buf[1000] = b'"';
+        assert_eq!(skip_plain_ascii_bytes(&buf), 1000);
+    }
+}

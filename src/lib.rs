@@ -205,6 +205,7 @@ mod kind;
 mod parse;
 mod parse_error;
 mod raw;
+mod swar;
 mod try_from_impls;
 
 use core::{fmt::Display, str::FromStr};

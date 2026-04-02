@@ -286,7 +286,10 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
         self.kind = Some(JsonValueKind::String);
 
         loop {
-            s = s.trim_start_matches(|c| !(matches!(c, '"' | '\\') || c.is_ascii_control()));
+            let skip = crate::swar::skip_plain_ascii_bytes(s.as_bytes());
+            s = &s[skip..];
+            // Skip non-ASCII chars (SWAR stops at bytes >= 0x80, but they are valid in JSON strings)
+            s = s.trim_start_matches(|c: char| !c.is_ascii());
             if let Some(s) = s.strip_prefix('"') {
                 self.push_entry(self.offset(s));
                 self.values.last_mut().expect("infallible").escaped = escaped;
