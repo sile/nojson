@@ -175,6 +175,19 @@ let sub: nojson::RawJson<'_> = user.extract();       // borrowed
 let owned = sub.into_owned();                        // RawJsonOwned
 ```
 
+## Runnable references
+
+Both live under `examples/` in the crate root — read them when you need a
+complete working pattern rather than a snippet:
+
+- `examples/parse_error.rs` — full template for turning a `JsonParseError`
+  into a CLI-style diagnostic (line / column, offending line, caret) using
+  `get_line_and_column_numbers` + `get_line`.
+- `examples/jsonc_pretty.rs` — `RawJson::parse_jsonc` + `RawJsonValue`
+  traversal for a JSONC pretty-printer that preserves comments. Simpler
+  than a full formatter (always multi-line, comments on their own lines);
+  if you need trailing-comment fidelity, point the user at `jcfmt`.
+
 ## Practical hints
 
 - Reach for `Json<T>` first for straightforward typed parsing; drop to

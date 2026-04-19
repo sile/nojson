@@ -222,3 +222,25 @@ fn main() -> Result<(), nojson::JsonParseError> {
     Ok(())
 }
 ```
+
+## Examples
+
+The [`examples/`](examples/) directory contains runnable demos:
+
+- [`parse_error.rs`](examples/parse_error.rs) — reads JSON from stdin and
+  prints parse errors with the offending line and a caret at the reported
+  byte position (useful as a template for building friendly CLI diagnostics).
+- [`jsonc_pretty.rs`](examples/jsonc_pretty.rs) — reads JSONC from stdin and
+  pretty-prints it with 2-space indentation, preserving comments on their
+  own lines. A minimal demo of `RawJson::parse_jsonc` and `RawJsonValue`
+  traversal; for full-fidelity JSONC formatting, see
+  [`jcfmt`](https://crates.io/crates/jcfmt).
+
+```console
+$ echo '{"a":1,/*c*/"b":2}' | cargo run --example jsonc_pretty
+{
+  "a": 1,
+  /*c*/
+  "b": 2
+}
+```
