@@ -1,4 +1,4 @@
-//! A flexible Rust JSON library with no dependencies, no macros and optional `no_std` support.
+//! A flexible Rust JSON library with no dependencies, no macros, no unsafe and optional `no_std` support.
 //!
 //! `nojson` is a flexible and ergonomic JSON library for Rust that offers a balance between the type-safety of Rust and the dynamic nature of JSON.
 //! Unlike [`serde`](https://crates.io/crates/serde), which typically requires one-to-one mapping between Rust types and JSON structures (or other serialization formats),
@@ -216,6 +216,7 @@
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
+#![forbid(unsafe_code)]
 
 extern crate alloc;
 
