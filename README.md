@@ -235,6 +235,9 @@ The [`examples/`](examples/) directory contains runnable demos:
   own lines. A minimal demo of `RawJson::parse_jsonc` and `RawJsonValue`
   traversal; for full-fidelity JSONC formatting, see
   [`jcfmt`](https://crates.io/crates/jcfmt).
+- [`benchmark.rs`](examples/benchmark.rs) — internal microbenchmark for
+  parse and format paths. Not part of the public API; run with
+  `cargo run --release --example benchmark`.
 
 ```console
 $ echo '{"a":1,/*c*/"b":2}' | cargo run --example jsonc_pretty
