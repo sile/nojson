@@ -12,9 +12,6 @@ description: >
   no-macro/no-dependency JSON API, or no_std JSON work with this crate.
 license: MIT
 compatibility: Requires Rust 1.88+ and cargo.
-metadata:
-  author: sile
-  version: "0.3.10"
 ---
 
 # nojson

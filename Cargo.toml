@@ -3,7 +3,6 @@ name = "nojson"
 version = "0.3.10"
 edition = "2024"
 rust-version = "1.88"
-authors = ["Takeru Ohta <phjgt308@gmail.com>"]
 license = "MIT"
 description = "A flexible Rust JSON library with no dependencies, no macros, no unsafe and optional no_std support"
 homepage = "https://github.com/sile/nojson"
