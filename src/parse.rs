@@ -6,8 +6,6 @@ use crate::{
     raw::{JsonParseError, JsonValueIndexEntry},
 };
 
-const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
-
 pub trait Extensions {
     const ALLOW_COMMENTS: bool;
     const ALLOW_TRAILING_COMMAS: bool;
@@ -71,7 +69,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn skip_whitespaces_and_comments(&mut self, s: &'a str) -> Result<&'a str, JsonParseError> {
-        let mut s = s.trim_start_matches(WHITESPACE_PATTERN);
+        let mut s = &s[crate::swar::skip_json_whitespace(s.as_bytes())..];
         if !E::ALLOW_COMMENTS {
             return Ok(s);
         }
@@ -92,7 +90,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
             let end = self.original_text.len() - s.len();
             self.comments.push(Range { start, end });
-            s = s.trim_start_matches(WHITESPACE_PATTERN);
+            s = &s[crate::swar::skip_json_whitespace(s.as_bytes())..];
         }
         Ok(s)
     }

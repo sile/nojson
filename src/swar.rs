@@ -65,6 +65,22 @@ pub(crate) fn skip_non_ascii_bytes(s: &[u8]) -> usize {
     i
 }
 
+/// Returns the number of leading bytes in `s` that are JSON whitespace
+/// (` `, `\t`, `\r`, or `\n`).
+///
+/// Most calls in compact JSON pass strings whose first byte is non-whitespace,
+/// so a byte-by-byte loop is faster than an 8-byte SWAR setup cost. The
+/// compiler turns the match into a fast dispatch and unrolls the loop for
+/// any longer run.
+#[inline]
+pub(crate) fn skip_json_whitespace(s: &[u8]) -> usize {
+    let mut i = 0;
+    while i < s.len() && matches!(s[i], b' ' | b'\t' | b'\r' | b'\n') {
+        i += 1;
+    }
+    i
+}
+
 /// Returns the number of leading bytes in `s` that are ASCII digits (`'0'..='9'`).
 pub(crate) fn skip_ascii_digits(s: &[u8]) -> usize {
     let mut i = 0;
@@ -363,5 +379,59 @@ mod tests {
                 "non-digit '.' at position {pos}"
             );
         }
+    }
+
+    #[test]
+    fn ws_empty_and_short() {
+        assert_eq!(skip_json_whitespace(b""), 0);
+        assert_eq!(skip_json_whitespace(b" "), 1);
+        assert_eq!(skip_json_whitespace(b"\t"), 1);
+        assert_eq!(skip_json_whitespace(b"\r"), 1);
+        assert_eq!(skip_json_whitespace(b"\n"), 1);
+        assert_eq!(skip_json_whitespace(b"  \t \n "), 6);
+        assert_eq!(skip_json_whitespace(b"a"), 0);
+    }
+
+    #[test]
+    fn ws_full_chunk() {
+        assert_eq!(skip_json_whitespace(b"        "), 8);
+        assert_eq!(skip_json_whitespace(b"\t\n\r \t\n\r "), 8);
+        assert_eq!(skip_json_whitespace(b"        \t       "), 16);
+    }
+
+    #[test]
+    fn ws_stop_at_non_ws() {
+        assert_eq!(skip_json_whitespace(b"   abc"), 3);
+        assert_eq!(skip_json_whitespace(b"\n\n{"), 2);
+        // Non-whitespace at every chunk boundary position.
+        for pos in 0..16 {
+            let mut buf = [b' '; 16];
+            buf[pos] = b'a';
+            assert_eq!(
+                skip_json_whitespace(&buf),
+                pos,
+                "non-ws 'a' at position {pos}"
+            );
+        }
+    }
+
+    #[test]
+    fn ws_excludes_non_json_whitespace() {
+        // Vertical tab (0x0B), form feed (0x0C), and other low ASCII are NOT
+        // JSON whitespace.
+        assert_eq!(skip_json_whitespace(b"\x0B"), 0);
+        assert_eq!(skip_json_whitespace(b"\x0C"), 0);
+        assert_eq!(skip_json_whitespace(b"\x00"), 0);
+        // Non-breaking space (Unicode U+00A0, UTF-8 0xC2 0xA0) is not JSON ws.
+        assert_eq!(skip_json_whitespace(b"\xC2\xA0"), 0);
+    }
+
+    #[test]
+    fn ws_long_run() {
+        let buf = [b' '; 1024];
+        assert_eq!(skip_json_whitespace(&buf), 1024);
+        let mut buf2 = [b' '; 256];
+        buf2[200] = b'{';
+        assert_eq!(skip_json_whitespace(&buf2), 200);
     }
 }
