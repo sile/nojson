@@ -279,20 +279,30 @@ impl core::fmt::Write for JsonStringContentFormatter<'_, '_> {
                 i += skip;
                 continue;
             }
-            // Current byte needs escaping or is non-ASCII
-            let c = s[i..].chars().next().unwrap();
-            match c {
-                '"' => self.inner.write_str("\\\"")?,
-                '\\' => self.inner.write_str("\\\\")?,
-                '\n' => self.inner.write_str("\\n")?,
-                '\r' => self.inner.write_str("\\r")?,
-                '\t' => self.inner.write_str("\\t")?,
-                '\u{0008}' => self.inner.write_str("\\b")?,
-                '\u{000C}' => self.inner.write_str("\\f")?,
-                _ if c.is_ascii_control() => write!(self.inner, "\\u{:04x}", c as u32)?,
-                _ => self.inner.write_str(&s[i..i + c.len_utf8()])?,
+            // Non-ASCII bytes don't need escaping in JSON; emit the entire
+            // contiguous non-ASCII run in one write_str rather than
+            // re-decoding char-by-char. Safe because `s` is valid UTF-8 and
+            // `skip_non_ascii_bytes` stops at the next ASCII byte, which is
+            // also a UTF-8 boundary.
+            if bytes[i] >= 0x80 {
+                let run = crate::swar::skip_non_ascii_bytes(&bytes[i..]);
+                self.inner.write_str(&s[i..i + run])?;
+                i += run;
+                continue;
             }
-            i += c.len_utf8();
+            // ASCII byte that needs escaping: ", \, or a control character.
+            let b = bytes[i];
+            match b {
+                b'"' => self.inner.write_str("\\\"")?,
+                b'\\' => self.inner.write_str("\\\\")?,
+                b'\n' => self.inner.write_str("\\n")?,
+                b'\r' => self.inner.write_str("\\r")?,
+                b'\t' => self.inner.write_str("\\t")?,
+                0x08 => self.inner.write_str("\\b")?,
+                0x0C => self.inner.write_str("\\f")?,
+                _ => write!(self.inner, "\\u{:04x}", b as u32)?,
+            }
+            i += 1;
         }
         Ok(())
     }
