@@ -54,9 +54,30 @@ jobs:
           fi
 
       - name: Run benchmark
+        # ubuntu-latest runners use a mix of CPU generations (Skylake /
+        # Cascade Lake / Ice Lake / Sapphire Rapids — different Azure VM
+        # SKUs). Performance can vary up to ~10-15% between generations,
+        # which can swamp small optimizations and look like uniform
+        # regressions/wins across unrelated cases. When aggregating
+        # multiple runs (e.g., A/B comparing two branches), grep the
+        # `cpu:` line from each artifact's bench.txt and group runs by
+        # CPU model before computing best-of-N. macos-latest runners are
+        # M1, so they're consistent and don't need this treatment.
         env:
           BENCH_REPEATS: ${{ inputs.repeats }}
-        run: cargo run --release --example benchmark | tee bench.txt
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            cpu=$(lscpu | awk -F': +' '/^Model name/ {print $2; exit}')
+          else
+            cpu=$(sysctl -n machdep.cpu.brand_string)
+          fi
+          {
+            echo "cpu: $cpu"
+            echo "os: $RUNNER_OS $RUNNER_ARCH"
+            echo "rustc: $(rustc --version)"
+            echo
+            cargo run --release --example benchmark
+          } | tee bench.txt
 
       - name: Upload results
         uses: actions/upload-artifact@v4
