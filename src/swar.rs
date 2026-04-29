@@ -65,6 +65,67 @@ pub(crate) fn skip_non_ascii_bytes(s: &[u8]) -> usize {
     i
 }
 
+/// Returns the number of leading bytes in `s` that are ASCII digits (`'0'..='9'`).
+pub(crate) fn skip_ascii_digits(s: &[u8]) -> usize {
+    let mut i = 0;
+
+    // Process 8 bytes at a time.
+    while i + 8 <= s.len() {
+        let chunk: [u8; 8] = s[i..i + 8].try_into().unwrap();
+        let w = u64::from_ne_bytes(chunk);
+
+        if is_all_ascii_digits(w) {
+            i += 8;
+        } else {
+            return i + first_non_digit_offset(w);
+        }
+    }
+
+    while i < s.len() && s[i].is_ascii_digit() {
+        i += 1;
+    }
+
+    i
+}
+
+/// Build a mask with bit 7 set for each byte in `w` that is NOT an ASCII digit.
+/// A byte is non-digit if: byte < 0x30, byte > 0x39, or byte >= 0x80.
+#[inline(always)]
+fn non_digit_mask(w: u64) -> u64 {
+    // Non-ASCII: byte >= 0x80
+    let non_ascii = w & MASK_80;
+
+    // byte < 0x30: b + 0x50 has bit 7 set iff b >= 0x30 (within ASCII).
+    // XOR with MASK_80 inverts so bit 7 set iff b < 0x30.
+    let lt_30 = (w.wrapping_add(0x5050505050505050) ^ MASK_80) & MASK_80;
+
+    // byte > 0x39 (within ASCII): b + 0x46 has bit 7 set iff b >= 0x3A.
+    // For non-ASCII (b >= 0x80), addition can wrap; that case is covered by
+    // `non_ascii`, and any spurious carry into a later byte is harmless
+    // because we only report the first non-digit position.
+    let gt_39 = w.wrapping_add(0x4646464646464646) & MASK_80;
+
+    non_ascii | lt_30 | gt_39
+}
+
+#[inline(always)]
+fn is_all_ascii_digits(w: u64) -> bool {
+    non_digit_mask(w) == 0
+}
+
+#[inline(always)]
+fn first_non_digit_offset(w: u64) -> usize {
+    let fail = non_digit_mask(w);
+    #[cfg(target_endian = "little")]
+    {
+        (fail.trailing_zeros() / 8) as usize
+    }
+    #[cfg(target_endian = "big")]
+    {
+        (fail.leading_zeros() / 8) as usize
+    }
+}
+
 /// Build a mask with bit 7 set for each byte in `w` that is NOT plain ASCII for JSON strings.
 /// A byte is non-plain if: >= 128, < 32, == 0x22 (`"`), or == 0x5C (`\`).
 #[inline(always)]
@@ -244,5 +305,63 @@ mod tests {
         let mut buf2 = [b'x'; 64];
         buf2[50] = b'"';
         assert_eq!(skip_plain_ascii_bytes(&buf2), 50);
+    }
+
+    #[test]
+    fn digits_empty_and_short() {
+        assert_eq!(skip_ascii_digits(b""), 0);
+        assert_eq!(skip_ascii_digits(b"0"), 1);
+        assert_eq!(skip_ascii_digits(b"9"), 1);
+        assert_eq!(skip_ascii_digits(b"a"), 0);
+        assert_eq!(skip_ascii_digits(b"123"), 3);
+    }
+
+    #[test]
+    fn digits_full_chunk() {
+        assert_eq!(skip_ascii_digits(b"01234567"), 8);
+        assert_eq!(skip_ascii_digits(b"0123456789012345"), 16);
+    }
+
+    #[test]
+    fn digits_stop_at_non_digit() {
+        assert_eq!(skip_ascii_digits(b"12345abc"), 5);
+        assert_eq!(skip_ascii_digits(b"1234567a"), 7);
+        assert_eq!(skip_ascii_digits(b"12345678a"), 8);
+        assert_eq!(skip_ascii_digits(b"123456789a"), 9);
+    }
+
+    #[test]
+    fn digits_boundary_chars() {
+        // '/' = 0x2F, just below '0' = 0x30
+        assert_eq!(skip_ascii_digits(b"/"), 0);
+        // ':' = 0x3A, just above '9' = 0x39
+        assert_eq!(skip_ascii_digits(b":"), 0);
+        // '0' boundary
+        assert_eq!(skip_ascii_digits(b"0/"), 1);
+        // '9' boundary
+        assert_eq!(skip_ascii_digits(b"9:"), 1);
+    }
+
+    #[test]
+    fn digits_non_ascii() {
+        // Non-ASCII byte stops the run.
+        let mut buf = b"12345\xC2\xA00".to_vec();
+        assert_eq!(skip_ascii_digits(&buf), 5);
+        // Non-ASCII at start.
+        buf = b"\xFF1234".to_vec();
+        assert_eq!(skip_ascii_digits(&buf), 0);
+    }
+
+    #[test]
+    fn digits_each_non_digit_position() {
+        for pos in 0..16 {
+            let mut buf = [b'5'; 16];
+            buf[pos] = b'.';
+            assert_eq!(
+                skip_ascii_digits(&buf),
+                pos,
+                "non-digit '.' at position {pos}"
+            );
+        }
     }
 }

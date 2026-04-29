@@ -195,10 +195,12 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn strip_one_or_more_digits(&self, s: &'a str) -> Result<&'a str, JsonParseError> {
-        let digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-        s.strip_prefix(digits)
-            .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
-            .map(|s| s.trim_start_matches(digits))
+        let n = crate::swar::skip_ascii_digits(s.as_bytes());
+        if n == 0 {
+            Err(self.unexpected_value_char(self.offset(s)))
+        } else {
+            Ok(&s[n..])
+        }
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
