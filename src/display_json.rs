@@ -61,7 +61,7 @@ use crate::JsonFormatter;
 ///         f.member("name", "Example")?;
 ///         f.member("counts", &[1, 2, 3])?;
 ///         f.member("config", nojson::json(|f| f.object(|f| {
-///             f.member("enabled", true);
+///             f.member("enabled", true)?;
 ///             f.member("visible", false)
 ///         })))
 ///     })

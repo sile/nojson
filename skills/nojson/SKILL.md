@@ -30,8 +30,11 @@ actual API shape and usage patterns, not generic JSON background.
   reading values
 - `RawJsonMember<'text, 'raw, 'a>` — result of `to_member`; resolves with
   `required()` / `optional()` / `TryInto<Option<T>>`
-- `JsonFormatter` / `JsonArrayFormatter` / `JsonObjectFormatter` — passed into
-  `DisplayJson::fmt` and the in-place builder closures
+- `JsonFormatter` — the formatter passed to `DisplayJson::fmt` and to the
+  `nojson::json(|f| …)` closure
+- `JsonArrayFormatter` / `JsonObjectFormatter` — supplied inside
+  `f.array(|f| …)` / `f.object(|f| …)` (and via the `nojson::array` /
+  `nojson::object` shortcuts) for adding elements / members
 - Free functions `json()`, `object()`, `array()` — return values that
   `impl Display + DisplayJson`
 - `JsonValueKind`, `JsonParseError`
@@ -147,7 +150,12 @@ Optional members:
 
 ```rust
 let obj = json.value();
-let city: Option<String> = obj.to_member("city")?.try_into()?; // None if absent
+// `try_into()` on the `RawJsonMember` goes through the blanket
+// `Option<T>: TryFrom<RawJsonMember>` impl — use it when `T` already has a
+// `TryFrom<RawJsonValue>` impl and you just want "parse if present".
+let city: Option<String> = obj.to_member("city")?.try_into()?;
+// `map` runs a custom closure only if the member exists — use it when you
+// need extra parsing logic, validation, or a non-blanket conversion.
 let age: Option<u32> = obj.to_member("age")?.map(|v| v.try_into())?;
 ```
 
