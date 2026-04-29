@@ -6,8 +6,6 @@ use crate::{
     raw::{JsonParseError, JsonValueIndexEntry},
 };
 
-const WHITESPACE_PATTERN: [char; 4] = [' ', '\t', '\r', '\n'];
-
 pub trait Extensions {
     const ALLOW_COMMENTS: bool;
     const ALLOW_TRAILING_COMMAS: bool;
@@ -71,7 +69,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn skip_whitespaces_and_comments(&mut self, s: &'a str) -> Result<&'a str, JsonParseError> {
-        let mut s = s.trim_start_matches(WHITESPACE_PATTERN);
+        let mut s = &s[crate::swar::skip_json_whitespace(s.as_bytes())..];
         if !E::ALLOW_COMMENTS {
             return Ok(s);
         }
@@ -92,7 +90,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
             let end = self.original_text.len() - s.len();
             self.comments.push(Range { start, end });
-            s = s.trim_start_matches(WHITESPACE_PATTERN);
+            s = &s[crate::swar::skip_json_whitespace(s.as_bytes())..];
         }
         Ok(s)
     }
@@ -195,10 +193,12 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn strip_one_or_more_digits(&self, s: &'a str) -> Result<&'a str, JsonParseError> {
-        let digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-        s.strip_prefix(digits)
-            .ok_or_else(|| self.unexpected_value_char(self.offset(s)))
-            .map(|s| s.trim_start_matches(digits))
+        let n = crate::swar::skip_ascii_digits(s.as_bytes());
+        if n == 0 {
+            Err(self.unexpected_value_char(self.offset(s)))
+        } else {
+            Ok(&s[n..])
+        }
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
