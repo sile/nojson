@@ -110,9 +110,28 @@ let p: nojson::Json<Person> = r#"{"name":"a","age":1}"#.parse()?;
 let s = nojson::Json(&p.0).to_string();
 ```
 
-Inline pretty-printed output:
+Inline JSON object (most common shortcut):
 
 ```rust
+// `nojson::object(|f| ...)` is shorthand for `nojson::json(|f| f.object(...))`.
+// Reach for it whenever you want a one-off object without defining a struct.
+let req = nojson::object(|f| {
+    f.member("user", "alice")?;
+    f.member("ids", &[1, 2, 3])?; // arrays go through the blanket impl below
+    f.member("active", true)
+}).to_string();
+```
+
+`nojson::array(|f| ...)` exists for symmetry, but is rarely needed: anything
+that already implements `DisplayJson` (`&[T]`, `Vec<T>`, `[T; N]`, iterators
+collected into these, etc.) can be passed directly to `f.member` / `f.value`,
+so an array literal usually suffices.
+
+Inline pretty-printed output (when you need indent / spacing):
+
+```rust
+// Use `nojson::json` (not `object`) when you have to call `set_indent_size` /
+// `set_spacing` — those live on `JsonFormatter`, not `JsonObjectFormatter`.
 let pretty = nojson::json(|f| {
     f.set_indent_size(2);
     f.set_spacing(true);
