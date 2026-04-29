@@ -1,0 +1,65 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      repeats:
+        description: 'BENCH_REPEATS value passed to the benchmark example (best-of reported)'
+        default: '30'
+        type: string
+
+jobs:
+  bench:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install stable toolchain
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - name: Environment info
+        run: |
+          echo "=== Runner ==="
+          echo "RUNNER_OS=$RUNNER_OS"
+          echo "RUNNER_ARCH=$RUNNER_ARCH"
+          uname -smr
+          echo
+          echo "=== rustc ==="
+          rustc --version
+          echo
+          echo "=== CPU ==="
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            lscpu
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            echo "brand: $(sysctl -n machdep.cpu.brand_string)"
+            echo "physical cores: $(sysctl -n hw.physicalcpu)"
+            echo "logical cores: $(sysctl -n hw.logicalcpu)"
+          fi
+          echo
+          echo "=== Memory ==="
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            free -h
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            mem_bytes=$(sysctl -n hw.memsize)
+            mem_gib=$(awk "BEGIN {printf \"%.1f\", $mem_bytes / 1024 / 1024 / 1024}")
+            echo "hw.memsize: $mem_bytes bytes (~${mem_gib} GiB)"
+          fi
+
+      - name: Run benchmark
+        env:
+          BENCH_REPEATS: ${{ inputs.repeats }}
+        run: cargo run --release --example benchmark | tee bench.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ matrix.os }}
+          path: bench.txt
