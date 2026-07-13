@@ -6,6 +6,7 @@ use core::{fmt::Display, hash::Hash, ops::Range};
 use crate::{
     DisplayJson, JsonArrayFormatter, JsonFormatter, JsonObjectFormatter, JsonValueKind,
     parse::{JsonParser, Jsonc, Plain},
+    values::JsonValues,
 };
 
 pub use crate::parse_error::JsonParseError;
@@ -14,7 +15,7 @@ pub use crate::parse_error::JsonParseError;
 #[derive(Debug, Clone)]
 pub struct RawJsonOwned {
     text: String,
-    values: Vec<JsonValueIndexEntry>,
+    values: JsonValues,
 }
 
 impl RawJsonOwned {
@@ -38,7 +39,7 @@ impl RawJsonOwned {
         T: Into<String>,
     {
         let text = text.into();
-        let (values, _) = JsonParser::<Plain>::new(&text).parse()?;
+        let (values, _) = JsonParser::<Plain>::new(&text)?.parse()?;
         Ok(Self { text, values })
     }
 
@@ -87,7 +88,7 @@ impl RawJsonOwned {
         T: Into<String>,
     {
         let text = text.into();
-        let (values, comments) = JsonParser::<Jsonc>::new(&text).parse()?;
+        let (values, comments) = JsonParser::<Jsonc>::new(&text)?.parse()?;
         Ok((Self { text, values }, comments))
     }
 
@@ -336,7 +337,7 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for RawJsonOwned {
 #[derive(Debug, Clone)]
 pub struct RawJson<'text> {
     text: &'text str,
-    values: Vec<JsonValueIndexEntry>,
+    values: JsonValues,
 }
 
 impl<'text> RawJson<'text> {
@@ -354,7 +355,7 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn parse(text: &'text str) -> Result<Self, JsonParseError> {
-        let (values, _) = JsonParser::<Plain>::new(text).parse()?;
+        let (values, _) = JsonParser::<Plain>::new(text)?.parse()?;
         Ok(Self { text, values })
     }
 
@@ -393,7 +394,7 @@ impl<'text> RawJson<'text> {
     /// # }
     /// ```
     pub fn parse_jsonc(text: &'text str) -> Result<(Self, Vec<Range<usize>>), JsonParseError> {
-        let (values, comments) = JsonParser::<Jsonc>::new(text).parse()?;
+        let (values, comments) = JsonParser::<Jsonc>::new(text)?.parse()?;
         Ok((Self { text, values }, comments))
     }
 
@@ -569,27 +570,19 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for RawJson<'text> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct JsonValueIndexEntry {
-    pub kind: JsonValueKind,
-    pub escaped: bool,
-    pub text: Range<usize>,
-    pub end_index: usize,
-}
-
 #[derive(Debug, Clone, Copy)]
 struct RawJsonRef<'text, 'raw> {
     text: &'text str,
-    values: &'raw [JsonValueIndexEntry],
+    values: &'raw JsonValues,
 }
 
 impl<'text, 'raw> RawJsonRef<'text, 'raw> {
     fn get_value_by_position(self, position: usize) -> Option<RawJsonValue<'text, 'raw>> {
         let mut value = self.value();
-        if !value.entry().text.contains(&position) {
+        if !value.text_range().contains(&position) {
             return None;
         }
-        while let Some(child) = Children::new(value).find(|c| c.entry().text.contains(&position)) {
+        while let Some(child) = Children::new(value).find(|c| c.text_range().contains(&position)) {
             value = child;
         }
         Some(value)
@@ -681,12 +674,12 @@ pub struct RawJsonValue<'text, 'raw> {
 impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// Returns the kind of this JSON value.
     pub fn kind(self) -> JsonValueKind {
-        self.json.values[self.index].kind
+        self.json.values.get(self.index).kind()
     }
 
     /// Returns the byte position where this value begins in the JSON text (`self.json().text()`).
     pub fn position(self) -> usize {
-        self.json.values[self.index].text.start
+        self.json.values.get(self.index).text_start()
     }
 
     /// Returns the internal index of this value in the JSON structure.
@@ -769,8 +762,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
 
     /// Returns the raw JSON text of this value as-is.
     pub fn as_raw_str(self) -> &'text str {
-        let text = &self.json.values[self.index].text;
-        &self.json.text[text.start..text.end]
+        let range = self.json.values.get(self.index).text_range();
+        &self.json.text[range]
     }
 
     /// Converts this value to a borrowed [`RawJson`] containing just this value and its children.
@@ -805,26 +798,22 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// ```
     pub fn extract(self) -> RawJson<'text> {
         let start_index = self.index;
-        let end_index = self.entry().end_index;
+        let root = self.json.values.get(start_index);
+        let end_index = root.end_index();
 
-        // Extract the text range that covers this value and all its children
-        let start_pos = self.entry().text.start;
-        let end_pos = self.entry().text.end;
+        let start_pos = root.text_start();
+        let end_pos = root.text_end();
         let value_text = &self.json.text[start_pos..end_pos];
 
-        // Extract all relevant value entries (this value and its children)
-        let relevant_entries = &self.json.values[start_index..end_index];
-
-        // Create new values vector with adjusted positions
-        let new_values = relevant_entries
-            .iter()
-            .map(|entry| JsonValueIndexEntry {
-                kind: entry.kind,
-                escaped: entry.escaped,
-                text: (entry.text.start - start_pos)..(entry.text.end - start_pos),
-                end_index: entry.end_index - start_index,
-            })
-            .collect();
+        let text_offset = start_pos as u32;
+        let index_offset = start_index as u32;
+        let new_values = JsonValues::from_iter(
+            self.json
+                .values
+                .slice(start_index..end_index)
+                .iter()
+                .map(|e| e.shifted(text_offset, index_offset)),
+        );
 
         RawJson {
             text: value_text,
@@ -952,7 +941,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
     /// ```
     pub fn as_string_str(self) -> Result<&'text str, JsonParseError> {
         self.expect([JsonValueKind::String]).and_then(|v| {
-            if v.entry().escaped {
+            if v.json.values.get(v.index).escaped() {
                 Err(v.invalid("string requires unescaping"))
             } else {
                 // Safe to unwrap: we know it's a valid JSON string with quotes
@@ -1195,7 +1184,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
         debug_assert!(self.kind().is_string());
 
         let content = &self.as_raw_str()[1..self.as_raw_str().len() - 1];
-        if !self.entry().escaped {
+        if !self.json.values.get(self.index).escaped() {
             return Cow::Borrowed(content);
         }
 
@@ -1256,8 +1245,8 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
             .find_map(|(k, v)| (k.unquote() == name).then_some(v)))
     }
 
-    fn entry(&self) -> &JsonValueIndexEntry {
-        &self.json.values[self.index]
+    fn text_range(&self) -> Range<usize> {
+        self.json.values.get(self.index).text_range()
     }
 }
 
@@ -1295,7 +1284,7 @@ struct Children<'text, 'raw> {
 
 impl<'text, 'raw> Children<'text, 'raw> {
     fn new(mut value: RawJsonValue<'text, 'raw>) -> Self {
-        let end_index = value.entry().end_index;
+        let end_index = value.json.values.get(value.index).end_index();
         value.index += 1;
         Self { value, end_index }
     }
@@ -1309,7 +1298,7 @@ impl<'text, 'raw> Iterator for Children<'text, 'raw> {
             return None;
         }
         let value = self.value;
-        self.value.index = value.entry().end_index;
+        self.value.index = value.json.values.get(value.index).end_index();
         Some(value)
     }
 }

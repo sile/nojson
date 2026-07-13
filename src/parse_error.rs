@@ -73,6 +73,15 @@ pub enum JsonParseError {
         /// Error reason that describes why the value is invalid.
         error: Box<dyn Send + Sync + core::error::Error>,
     },
+
+    /// The input document exceeds the size limit supported by this parser.
+    ///
+    /// Internal indices are stored as `u32`, so the parser rejects inputs
+    /// larger than `u32::MAX` bytes (~4 GiB) before attempting to parse them.
+    InputTooLarge {
+        /// Byte length of the rejected input.
+        size: usize,
+    },
 }
 
 impl JsonParseError {
@@ -95,6 +104,7 @@ impl JsonParseError {
             JsonParseError::UnexpectedTrailingChar { kind, .. } => Some(*kind),
             JsonParseError::UnexpectedValueChar { kind, .. } => *kind,
             JsonParseError::InvalidValue { kind, .. } => Some(*kind),
+            JsonParseError::InputTooLarge { .. } => None,
         }
     }
 
@@ -105,6 +115,7 @@ impl JsonParseError {
             | JsonParseError::UnexpectedTrailingChar { position, .. }
             | JsonParseError::UnexpectedValueChar { position, .. }
             | JsonParseError::InvalidValue { position, .. } => *position,
+            JsonParseError::InputTooLarge { .. } => 0,
         }
     }
 
@@ -235,6 +246,13 @@ impl core::fmt::Display for JsonParseError {
                 write!(
                     f,
                     "JSON {kind:?} at byte position {position} is invalid: {error}"
+                )
+            }
+            JsonParseError::InputTooLarge { size } => {
+                write!(
+                    f,
+                    "input of {size} bytes exceeds the parser's maximum size ({} bytes)",
+                    u32::MAX
                 )
             }
         }

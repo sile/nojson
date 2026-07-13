@@ -3,7 +3,8 @@ use core::ops::Range;
 
 use crate::{
     JsonValueKind,
-    raw::{JsonParseError, JsonValueIndexEntry},
+    raw::JsonParseError,
+    values::{JsonValueIndexEntry, JsonValues},
 };
 
 pub trait Extensions {
@@ -32,26 +33,27 @@ pub struct JsonParser<'a, X> {
     original_text: &'a str,
     text: &'a str,
     kind: Option<JsonValueKind>,
-    values: Vec<JsonValueIndexEntry>,
+    values: JsonValues,
     comments: Vec<Range<usize>>,
     _extensions: core::marker::PhantomData<X>,
 }
 
 impl<'a, E: Extensions> JsonParser<'a, E> {
-    pub fn new(text: &'a str) -> Self {
-        Self {
+    pub fn new(text: &'a str) -> Result<Self, JsonParseError> {
+        if text.len() > u32::MAX as usize {
+            return Err(JsonParseError::InputTooLarge { size: text.len() });
+        }
+        Ok(Self {
             original_text: text,
             text,
             kind: None,
-            values: Vec::new(),
+            values: JsonValues::with_capacity(0),
             comments: Vec::new(),
             _extensions: core::marker::PhantomData,
-        }
+        })
     }
 
-    pub fn parse(
-        mut self,
-    ) -> Result<(Vec<JsonValueIndexEntry>, Vec<Range<usize>>), JsonParseError> {
+    pub fn parse(mut self) -> Result<(JsonValues, Vec<Range<usize>>), JsonParseError> {
         self.parse_value()?;
         self.check_trailing_char()?;
         Ok((self.values, self.comments))
@@ -297,7 +299,8 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
                 Some(b'"') => {
                     let s = &s[1..];
                     self.push_entry(self.offset(s));
-                    self.values.last_mut().expect("infallible").escaped = escaped;
+                    let last = self.values.len() - 1;
+                    self.values.get_mut(last).set_escaped(escaped);
                     return Ok(());
                 }
                 Some(b'\\') => {
@@ -328,22 +331,26 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
     fn push_entry(&mut self, len: usize) {
         let position = self.position();
-        let entry = JsonValueIndexEntry {
-            kind: self.kind.expect("infallible"),
-            escaped: false,
-            text: Range {
-                start: position,
-                end: position + len,
-            },
-            end_index: self.values.len() + 1,
-        };
-        self.values.push(entry);
+        // `JsonParser::new` rejects inputs larger than `u32::MAX`, so every
+        // position we compute here fits in a `u32`.
+        let start = position as u32;
+        let end = (position + len) as u32;
+        let end_index = (self.values.len() + 1) as u32;
+        self.values.push(JsonValueIndexEntry::new(
+            self.kind.expect("infallible"),
+            start,
+            end,
+            end_index,
+        ));
         self.text = &self.text[len..];
     }
 
     fn finalize_entry(&mut self, index: usize) {
-        self.values[index].text.end = self.position();
-        self.values[index].end_index = self.values.len();
+        let end = self.position() as u32;
+        let end_index = self.values.len() as u32;
+        let entry = self.values.get_mut(index);
+        entry.set_text_end(end);
+        entry.set_end_index(end_index);
     }
 
     fn position(&self) -> usize {
