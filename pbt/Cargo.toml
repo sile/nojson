@@ -6,4 +6,4 @@ publish = false
 
 [dev-dependencies]
 nojson = { path = "../" }
-proptest = "1.9.0"
+noprop = "0.0.1"
