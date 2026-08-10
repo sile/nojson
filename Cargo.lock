@@ -84,9 +84,9 @@ version = "0.3.12"
 
 [[package]]
 name = "noprop"
-version = "0.0.1"
+version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b8f6a0a411d6bd7f8478c71f0454c305c7f0826ba9f20bc2b03bb1f46579710"
+checksum = "be6723ca12cb9e83cd4cfc44e7ecf4f894dbc2111cfbe535d1d4979e92c2528d"
 
 [[package]]
 name = "pbt"
