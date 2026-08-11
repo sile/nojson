@@ -752,11 +752,7 @@ fn parse_nesting_over_limit_errors() {
     assert_nesting_too_deep(&e, JsonValueKind::Object, nojson::MAX_NESTING_DEPTH * 5);
 }
 
-fn assert_all_entry_points_reject(
-    text: &str,
-    expected_kind: JsonValueKind,
-    expected_pos: usize,
-) {
+fn assert_all_entry_points_reject(text: &str, expected_kind: JsonValueKind, expected_pos: usize) {
     let e = RawJson::parse(text).expect_err("RawJson::parse should reject");
     assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
