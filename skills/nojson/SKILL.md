@@ -85,7 +85,7 @@ actual API shape and usage patterns, not generic JSON background.
 - `RawJsonValue::index()` is stable within one `RawJson`. Cache it and re-fetch
   with `get_value_by_index` for O(1) access after validation.
 - The parser rejects inputs whose nesting steps past `MAX_NESTING_DEPTH` (128)
-  with `JsonParseError::InvalidValue`, carrying a message that starts with
+  with `JsonParseError::InvalidValue`, carrying a message that contains
   `"nesting depth exceeded"`. This applies to every entry point that reaches
   the parser: `RawJson::parse`, `RawJson::parse_jsonc`, `RawJsonOwned::parse`,
   `RawJsonOwned::parse_jsonc`, `RawJsonOwned::from_str`, and
