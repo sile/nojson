@@ -73,6 +73,22 @@ pub enum JsonParseError {
         /// Error reason that describes why the value is invalid.
         error: Box<dyn Send + Sync + core::error::Error>,
     },
+
+    /// Nesting depth exceeded [`crate::MAX_NESTING_DEPTH`] while parsing an array or object.
+    ///
+    /// The parser is recursive, so unbounded nesting would exhaust the process stack
+    /// and abort. Inputs whose nesting would step past the limit are rejected with
+    /// this error before any recursion happens. Applications that accept JSON from
+    /// untrusted sources should treat this variant as a size-limit response, not a
+    /// validation error to surface as-is.
+    NestingTooDeep {
+        /// Container kind (`Array` or `Object`) whose opening bracket would have
+        /// pushed the depth past the limit.
+        kind: JsonValueKind,
+
+        /// Byte position of the `[` or `{` that triggered the limit.
+        position: usize,
+    },
 }
 
 impl JsonParseError {
@@ -95,6 +111,7 @@ impl JsonParseError {
             JsonParseError::UnexpectedTrailingChar { kind, .. } => Some(*kind),
             JsonParseError::UnexpectedValueChar { kind, .. } => *kind,
             JsonParseError::InvalidValue { kind, .. } => Some(*kind),
+            JsonParseError::NestingTooDeep { kind, .. } => Some(*kind),
         }
     }
 
@@ -104,7 +121,8 @@ impl JsonParseError {
             JsonParseError::UnexpectedEos { position, .. }
             | JsonParseError::UnexpectedTrailingChar { position, .. }
             | JsonParseError::UnexpectedValueChar { position, .. }
-            | JsonParseError::InvalidValue { position, .. } => *position,
+            | JsonParseError::InvalidValue { position, .. }
+            | JsonParseError::NestingTooDeep { position, .. } => *position,
         }
     }
 
@@ -235,6 +253,13 @@ impl core::fmt::Display for JsonParseError {
                 write!(
                     f,
                     "JSON {kind:?} at byte position {position} is invalid: {error}"
+                )
+            }
+            JsonParseError::NestingTooDeep { kind, position } => {
+                write!(
+                    f,
+                    "nesting depth exceeded {limit} while opening {kind:?} at byte position {position}",
+                    limit = crate::MAX_NESTING_DEPTH,
                 )
             }
         }

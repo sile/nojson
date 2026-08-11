@@ -214,6 +214,18 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! ### Parsing Depth Limit
+//!
+//! The parser is recursive and rejects inputs whose nesting would step past
+//! [`MAX_NESTING_DEPTH`] (128, matching the default `serde_json`
+//! `recursion_limit`). Every entry point — [`RawJson::parse`],
+//! [`RawJsonOwned::parse`], [`RawJson::parse_jsonc`],
+//! [`RawJsonOwned::parse_jsonc`], and `Json::<T>::from_str` — returns
+//! [`JsonParseError::NestingTooDeep`] for such input before recursing, which
+//! keeps deeply nested untrusted JSON from blowing the process stack. If you
+//! need to accept deeper input, check the input size / structure yourself
+//! before parsing.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
 #![forbid(unsafe_code)]
@@ -234,6 +246,7 @@ use core::{fmt::Display, str::FromStr};
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
 pub use kind::JsonValueKind;
+pub use parse::MAX_NESTING_DEPTH;
 pub use raw::RawJsonMember;
 pub use raw::{JsonParseError, RawJson, RawJsonOwned, RawJsonValue};
 

@@ -6,6 +6,13 @@ use crate::{
     raw::{JsonParseError, JsonValueIndexEntry},
 };
 
+/// Maximum nesting depth of arrays and objects the parser accepts.
+///
+/// Inputs whose nesting would step past this limit are rejected with
+/// [`JsonParseError::NestingTooDeep`] instead of recursing further. The value
+/// matches the default `serde_json` `recursion_limit`.
+pub const MAX_NESTING_DEPTH: usize = 128;
+
 pub trait Extensions {
     const ALLOW_COMMENTS: bool;
     const ALLOW_TRAILING_COMMAS: bool;
@@ -34,6 +41,7 @@ pub struct JsonParser<'a, X> {
     kind: Option<JsonValueKind>,
     values: Vec<JsonValueIndexEntry>,
     comments: Vec<Range<usize>>,
+    depth: usize,
     _extensions: core::marker::PhantomData<X>,
 }
 
@@ -45,6 +53,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
             kind: None,
             values: Vec::new(),
             comments: Vec::new(),
+            depth: 0,
             _extensions: core::marker::PhantomData,
         }
     }
@@ -202,6 +211,19 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
+        if self.depth >= MAX_NESTING_DEPTH {
+            return Err(JsonParseError::NestingTooDeep {
+                kind: JsonValueKind::Object,
+                position: self.position(),
+            });
+        }
+        self.depth += 1;
+        let result = self.parse_object_inner(s);
+        self.depth -= 1;
+        result
+    }
+
+    fn parse_object_inner(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         self.kind = Some(JsonValueKind::Object);
 
         let s = self.skip_whitespaces_and_comments(s)?;
@@ -246,6 +268,19 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonParseError> {
+        if self.depth >= MAX_NESTING_DEPTH {
+            return Err(JsonParseError::NestingTooDeep {
+                kind: JsonValueKind::Array,
+                position: self.position(),
+            });
+        }
+        self.depth += 1;
+        let result = self.parse_array_inner(s);
+        self.depth -= 1;
+        result
+    }
+
+    fn parse_array_inner(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         self.kind = Some(JsonValueKind::Array);
 
         let s = self.skip_whitespaces_and_comments(s)?;
