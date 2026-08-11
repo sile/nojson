@@ -776,6 +776,24 @@ fn parse_nesting_over_limit_jsonc_with_comments_errors() {
     assert_nesting_too_deep(&e, JsonValueKind::Array, nojson::MAX_NESTING_DEPTH * 6 + 5);
 }
 
+#[test]
+fn parse_nesting_over_limit_jsonc_object_with_comments_errors() {
+    // Object variant: each level is `{"k":/*x*/` (10 bytes). `parse_object_inner`
+    // invokes `skip_whitespaces_and_comments` at four points per level (before
+    // the key, after `:`, after `,`, before the closing `}`), so an
+    // Array-only JSONC test does not cover the object comment-skip path.
+    let mut text = String::new();
+    for _ in 0..(nojson::MAX_NESTING_DEPTH + 1) {
+        text.push_str("{\"k\":/*x*/");
+    }
+    text.push_str("null");
+    for _ in 0..(nojson::MAX_NESTING_DEPTH + 1) {
+        text.push('}');
+    }
+    let e = RawJson::parse_jsonc(&text).expect_err("over-limit JSONC object must fail");
+    assert_nesting_too_deep(&e, JsonValueKind::Object, nojson::MAX_NESTING_DEPTH * 10);
+}
+
 fn assert_all_entry_points_reject(text: &str, expected_kind: JsonValueKind, expected_pos: usize) {
     let e = RawJson::parse(text).expect_err("RawJson::parse should reject");
     assert_nesting_too_deep(&e, expected_kind, expected_pos);
@@ -890,6 +908,34 @@ fn raw_json_owned_array_panics_over_depth() {
 fn raw_json_owned_object_panics_over_depth() {
     // Outer object (depth 1) + a 128-deep inner array value totals depth 129.
     let inner = nested_arrays(nojson::MAX_NESTING_DEPTH);
+    let _ = nojson::RawJsonOwned::object(|f| {
+        f.member("k", nojson::json(|f| write!(f.inner_mut(), "{inner}")))
+    });
+}
+
+// Counterpart to the `should_panic` tests: MAX-deep formatter output must
+// not panic when re-parsed. Guards against off-by-one refactors that would
+// flip the depth check to `>` and break the builder's boundary behaviour.
+
+#[test]
+fn raw_json_owned_json_succeeds_at_max() {
+    let deep = nested_arrays(nojson::MAX_NESTING_DEPTH);
+    let _ = nojson::RawJsonOwned::json(|f| write!(f.inner_mut(), "{deep}"));
+}
+
+#[test]
+fn raw_json_owned_array_succeeds_at_max() {
+    // Outer array (depth 1) + a (MAX - 1)-deep inner totals exactly MAX.
+    let inner = nested_arrays(nojson::MAX_NESTING_DEPTH - 1);
+    let _ = nojson::RawJsonOwned::array(|f| {
+        f.element(nojson::json(|f| write!(f.inner_mut(), "{inner}")))
+    });
+}
+
+#[test]
+fn raw_json_owned_object_succeeds_at_max() {
+    // Outer object (depth 1) + a (MAX - 1)-deep inner totals exactly MAX.
+    let inner = nested_arrays(nojson::MAX_NESTING_DEPTH - 1);
     let _ = nojson::RawJsonOwned::object(|f| {
         f.member("k", nojson::json(|f| write!(f.inner_mut(), "{inner}")))
     });
