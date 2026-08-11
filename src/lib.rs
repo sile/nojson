@@ -234,6 +234,7 @@ use core::{fmt::Display, str::FromStr};
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
 pub use kind::JsonValueKind;
+pub use parse::MAX_NESTING_DEPTH;
 pub use raw::RawJsonMember;
 pub use raw::{JsonParseError, RawJson, RawJsonOwned, RawJsonValue};
 

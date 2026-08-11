@@ -99,6 +99,13 @@ impl RawJsonOwned {
     /// `RawJsonOwned::parse(nojson::object(|f| ...).to_string())`,
     /// provided for this common pattern.
     ///
+    /// # Panics
+    ///
+    /// Panics if the closure produces JSON that cannot be re-parsed. In
+    /// practice this happens when the formatter output nests deeper than
+    /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
+    /// formatted string instead when the depth may exceed the limit.
+    ///
     /// # Example
     ///
     /// ```
@@ -125,6 +132,13 @@ impl RawJsonOwned {
     /// `RawJsonOwned::parse(nojson::json(|f| ...).to_string())`,
     /// provided for this common pattern.
     ///
+    /// # Panics
+    ///
+    /// Panics if the closure produces JSON that cannot be re-parsed. In
+    /// practice this happens when the formatter output nests deeper than
+    /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
+    /// formatted string instead when the depth may exceed the limit.
+    ///
     /// # Example
     ///
     /// ```
@@ -146,6 +160,13 @@ impl RawJsonOwned {
     /// It is a shorthand for
     /// `RawJsonOwned::parse(nojson::array(|f| ...).to_string())`,
     /// provided for this common pattern.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the closure produces JSON that cannot be re-parsed. In
+    /// practice this happens when the formatter output nests deeper than
+    /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
+    /// formatted string instead when the depth may exceed the limit.
     ///
     /// # Example
     ///

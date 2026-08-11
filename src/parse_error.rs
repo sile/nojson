@@ -58,7 +58,7 @@ pub enum JsonParseError {
         position: usize,
     },
 
-    /// A JSON value was syntactically correct, but invalid according to application-specific format rules.
+    /// A JSON value was syntactically correct, but did not pass a validation rule.
     ///
     /// This happens when the JSON syntax is valid, but the value doesn't conform to
     /// additional constraints. For example, an integer that exceeds the maximum

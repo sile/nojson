@@ -6,6 +6,24 @@ use crate::{
     raw::{JsonParseError, JsonValueIndexEntry},
 };
 
+/// Maximum nesting depth of arrays and objects the parser accepts.
+///
+/// Inputs whose nesting would step past this limit are rejected with a
+/// [`JsonParseError::InvalidValue`] whose message contains
+/// `"nesting depth exceeded"` (the exact variant used to report the
+/// rejection may be refined in future versions).
+///
+/// The numeric value may change in future versions; do not depend on its
+/// exact value in `const` contexts.
+pub const MAX_NESTING_DEPTH: usize = 128;
+
+// If `MAX_NESTING_DEPTH` is changed, update the hard-coded `(128)` in
+// `JsonParser::nesting_too_deep`'s `MSG` string in the same commit.
+const _: () = assert!(
+    MAX_NESTING_DEPTH == 128,
+    "MAX_NESTING_DEPTH changed; update `nesting_too_deep`'s MSG to match",
+);
+
 pub trait Extensions {
     const ALLOW_COMMENTS: bool;
     const ALLOW_TRAILING_COMMAS: bool;
@@ -34,6 +52,7 @@ pub struct JsonParser<'a, X> {
     kind: Option<JsonValueKind>,
     values: Vec<JsonValueIndexEntry>,
     comments: Vec<Range<usize>>,
+    depth: usize,
     _extensions: core::marker::PhantomData<X>,
 }
 
@@ -45,6 +64,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
             kind: None,
             values: Vec::new(),
             comments: Vec::new(),
+            depth: 0,
             _extensions: core::marker::PhantomData,
         }
     }
@@ -202,6 +222,16 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
+        if self.depth >= MAX_NESTING_DEPTH {
+            return Err(self.nesting_too_deep(JsonValueKind::Object));
+        }
+        self.depth += 1;
+        let result = self.parse_object_inner(s);
+        self.depth -= 1;
+        result
+    }
+
+    fn parse_object_inner(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         self.kind = Some(JsonValueKind::Object);
 
         let s = self.skip_whitespaces_and_comments(s)?;
@@ -246,6 +276,30 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonParseError> {
+        if self.depth >= MAX_NESTING_DEPTH {
+            return Err(self.nesting_too_deep(JsonValueKind::Array));
+        }
+        self.depth += 1;
+        let result = self.parse_array_inner(s);
+        self.depth -= 1;
+        result
+    }
+
+    fn nesting_too_deep(&self, kind: JsonValueKind) -> JsonParseError {
+        // The message is a `&'static str`, so no `format!` runs at error time.
+        // `Box::<dyn Error>::from(&str)` internally still allocates twice
+        // (`String::from` + boxed wrapper); avoiding that would require a
+        // dedicated error type. The numeric value is locked to
+        // `MAX_NESTING_DEPTH` by a compile-time assert below the const.
+        const MSG: &str = "nesting depth exceeded MAX_NESTING_DEPTH (128)";
+        JsonParseError::InvalidValue {
+            kind,
+            position: self.position(),
+            error: MSG.into(),
+        }
+    }
+
+    fn parse_array_inner(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         self.kind = Some(JsonValueKind::Array);
 
         let s = self.skip_whitespaces_and_comments(s)?;
