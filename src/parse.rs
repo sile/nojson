@@ -9,8 +9,7 @@ use crate::{
 /// Maximum nesting depth of arrays and objects the parser accepts.
 ///
 /// Inputs whose nesting would step past this limit are rejected with
-/// [`JsonParseError::NestingTooDeep`] instead of recursing further. The value
-/// matches the default `serde_json` `recursion_limit`.
+/// [`JsonParseError::NestingTooDeep`] instead of recursing further.
 pub const MAX_NESTING_DEPTH: usize = 128;
 
 pub trait Extensions {

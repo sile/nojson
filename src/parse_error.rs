@@ -75,12 +75,6 @@ pub enum JsonParseError {
     },
 
     /// Nesting depth exceeded [`crate::MAX_NESTING_DEPTH`] while parsing an array or object.
-    ///
-    /// The parser is recursive, so unbounded nesting would exhaust the process stack
-    /// and abort. Inputs whose nesting would step past the limit are rejected with
-    /// this error before any recursion happens. Applications that accept JSON from
-    /// untrusted sources should treat this variant as a size-limit response, not a
-    /// validation error to surface as-is.
     NestingTooDeep {
         /// Container kind (`Array` or `Object`) whose opening bracket would have
         /// pushed the depth past the limit.
