@@ -736,6 +736,13 @@ fn assert_nesting_too_deep(e: &JsonParseError, expected_kind: JsonValueKind, exp
         msg.contains("nesting depth exceeded"),
         "message does not mention nesting depth: {msg}"
     );
+    // Locks the message value in sync with `MAX_NESTING_DEPTH` — catches a
+    // future refactor that hardcodes a different number in the message.
+    let expected_value = format!("({})", nojson::MAX_NESTING_DEPTH);
+    assert!(
+        msg.contains(&expected_value),
+        "message does not mention MAX_NESTING_DEPTH value {expected_value}: {msg}"
+    );
 }
 
 #[test]
