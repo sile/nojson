@@ -17,6 +17,13 @@ use crate::{
 /// exact value in `const` contexts.
 pub const MAX_NESTING_DEPTH: usize = 128;
 
+// If `MAX_NESTING_DEPTH` is changed, update the hard-coded `(128)` in
+// `JsonParser::nesting_too_deep`'s `MSG` string in the same commit.
+const _: () = assert!(
+    MAX_NESTING_DEPTH == 128,
+    "MAX_NESTING_DEPTH changed; update `nesting_too_deep`'s MSG to match",
+);
+
 pub trait Extensions {
     const ALLOW_COMMENTS: bool;
     const ALLOW_TRAILING_COMMAS: bool;
@@ -282,8 +289,8 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
         // The message is a `&'static str`, so no `format!` runs at error time.
         // `Box::<dyn Error>::from(&str)` internally still allocates twice
         // (`String::from` + boxed wrapper); avoiding that would require a
-        // dedicated error type. Keep the numeric value in sync with
-        // `MAX_NESTING_DEPTH`; the tests assert the value is present.
+        // dedicated error type. The numeric value is locked to
+        // `MAX_NESTING_DEPTH` by a compile-time assert below the const.
         const MSG: &str = "nesting depth exceeded MAX_NESTING_DEPTH (128)";
         JsonParseError::InvalidValue {
             kind,
