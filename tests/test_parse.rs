@@ -723,9 +723,8 @@ fn parse_nesting_at_limit_succeeds() -> Result<(), JsonParseError> {
 }
 
 fn assert_nesting_too_deep(e: &JsonParseError, expected_kind: JsonValueKind, expected_pos: usize) {
-    // Interim signalling: the depth-limit rejection uses `InvalidValue` with a
-    // string error carrying "nesting depth exceeded". A dedicated variant is
-    // planned as part of the enum expansion tracked separately.
+    // The depth-limit rejection uses `InvalidValue` with a string error
+    // carrying "nesting depth exceeded".
     assert!(
         matches!(e, JsonParseError::InvalidValue { .. }),
         "expected InvalidValue, got {e:?}"
@@ -756,7 +755,7 @@ fn parse_nesting_over_limit_errors() {
 #[test]
 fn parse_nesting_over_limit_all_entry_points() {
     // Every public entry point that reaches the parser must report the same
-    // `NestingTooDeep` error for over-limit input.
+    // depth-limit rejection for over-limit input.
     let text = nested_arrays(nojson::MAX_NESTING_DEPTH + 1);
     let position = nojson::MAX_NESTING_DEPTH;
 
@@ -773,7 +772,7 @@ fn parse_nesting_over_limit_all_entry_points() {
         .expect_err("RawJsonOwned::parse_jsonc should reject");
     assert_nesting_too_deep(&e, JsonValueKind::Array, position);
 
-    let e: JsonParseError = text
+    let e = text
         .parse::<nojson::RawJsonOwned>()
         .expect_err("RawJsonOwned::from_str should reject");
     assert_nesting_too_deep(&e, JsonValueKind::Array, position);
@@ -789,7 +788,7 @@ fn parse_nesting_siblings_at_limit_succeed() -> Result<(), JsonParseError> {
     // Depth is a shared counter: closing a container must free a slot so
     // sibling containers can each reach the limit independently. If
     // `parse_array` / `parse_object` forgot to decrement after finishing,
-    // the second sibling here would trip `NestingTooDeep` even though the
+    // the second sibling here would trip the depth check even though the
     // total depth at any point is only `MAX_NESTING_DEPTH`.
     let inner = nested_arrays(nojson::MAX_NESTING_DEPTH - 1);
     let text = format!("[{inner},{inner}]");
