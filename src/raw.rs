@@ -101,7 +101,8 @@ impl RawJsonOwned {
     ///
     /// # Panics
     ///
-    /// Panics if the formatter output nests deeper than
+    /// Panics if the closure produces JSON that cannot be re-parsed. In
+    /// practice this happens when the formatter output nests deeper than
     /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
     /// formatted string instead when the depth may exceed the limit.
     ///
@@ -120,7 +121,7 @@ impl RawJsonOwned {
         F: Fn(&mut JsonObjectFormatter<'_, '_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::object(fmt).to_string())
-            .expect("object formatter output exceeded MAX_NESTING_DEPTH")
+            .expect("bug: object formatter must produce valid JSON within MAX_NESTING_DEPTH")
     }
 
     /// Creates owned JSON using the in-place formatter.
@@ -133,7 +134,8 @@ impl RawJsonOwned {
     ///
     /// # Panics
     ///
-    /// Panics if the formatter output nests deeper than
+    /// Panics if the closure produces JSON that cannot be re-parsed. In
+    /// practice this happens when the formatter output nests deeper than
     /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
     /// formatted string instead when the depth may exceed the limit.
     ///
@@ -148,7 +150,7 @@ impl RawJsonOwned {
         F: Fn(&mut JsonFormatter<'_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::json(fmt).to_string())
-            .expect("json formatter output exceeded MAX_NESTING_DEPTH")
+            .expect("bug: json formatter must produce valid JSON within MAX_NESTING_DEPTH")
     }
 
     /// Creates an owned JSON array using the in-place array formatter.
@@ -161,7 +163,8 @@ impl RawJsonOwned {
     ///
     /// # Panics
     ///
-    /// Panics if the formatter output nests deeper than
+    /// Panics if the closure produces JSON that cannot be re-parsed. In
+    /// practice this happens when the formatter output nests deeper than
     /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
     /// formatted string instead when the depth may exceed the limit.
     ///
@@ -181,7 +184,7 @@ impl RawJsonOwned {
         F: Fn(&mut JsonArrayFormatter<'_, '_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::array(fmt).to_string())
-            .expect("array formatter output exceeded MAX_NESTING_DEPTH")
+            .expect("bug: array formatter must produce valid JSON within MAX_NESTING_DEPTH")
     }
 
     /// Returns the original JSON text.
