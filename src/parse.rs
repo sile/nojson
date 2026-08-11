@@ -1,4 +1,4 @@
-use alloc::{format, vec::Vec};
+use alloc::vec::Vec;
 use core::ops::Range;
 
 use crate::{
@@ -216,12 +216,7 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         if self.depth >= MAX_NESTING_DEPTH {
-            return Err(JsonParseError::InvalidValue {
-                kind: JsonValueKind::Object,
-                position: self.position(),
-                error: format!("nesting depth exceeded MAX_NESTING_DEPTH ({MAX_NESTING_DEPTH})")
-                    .into(),
-            });
+            return Err(self.nesting_too_deep(JsonValueKind::Object));
         }
         self.depth += 1;
         let result = self.parse_object_inner(s);
@@ -275,17 +270,24 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         if self.depth >= MAX_NESTING_DEPTH {
-            return Err(JsonParseError::InvalidValue {
-                kind: JsonValueKind::Array,
-                position: self.position(),
-                error: format!("nesting depth exceeded MAX_NESTING_DEPTH ({MAX_NESTING_DEPTH})")
-                    .into(),
-            });
+            return Err(self.nesting_too_deep(JsonValueKind::Array));
         }
         self.depth += 1;
         let result = self.parse_array_inner(s);
         self.depth -= 1;
         result
+    }
+
+    fn nesting_too_deep(&self, kind: JsonValueKind) -> JsonParseError {
+        // The message is fully static (`MAX_NESTING_DEPTH` is a `const`), so
+        // there is no per-error allocation. Keep the numeric value in sync
+        // with `MAX_NESTING_DEPTH`; the tests assert the value is present.
+        const MSG: &str = "nesting depth exceeded MAX_NESTING_DEPTH (128)";
+        JsonParseError::InvalidValue {
+            kind,
+            position: self.position(),
+            error: MSG.into(),
+        }
     }
 
     fn parse_array_inner(&mut self, s: &'a str) -> Result<(), JsonParseError> {
