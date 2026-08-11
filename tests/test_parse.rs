@@ -808,6 +808,23 @@ fn parse_nesting_siblings_at_limit_succeed() -> Result<(), JsonParseError> {
 }
 
 #[test]
+fn parse_nesting_at_limit_jsonc_with_comments_succeed() -> Result<(), JsonParseError> {
+    // JSONC's `skip_whitespaces_and_comments` runs at each container open, so
+    // interleaving comments with 128-deep nesting exercises depth counting
+    // through the comment-skip path (a plain-JSON at-limit test does not).
+    let mut text = String::new();
+    for _ in 0..nojson::MAX_NESTING_DEPTH {
+        text.push_str("[/*x*/");
+    }
+    for _ in 0..nojson::MAX_NESTING_DEPTH {
+        text.push(']');
+    }
+    let (_, comments) = RawJson::parse_jsonc(&text)?;
+    assert_eq!(comments.len(), nojson::MAX_NESTING_DEPTH);
+    Ok(())
+}
+
+#[test]
 fn parse_nesting_object_siblings_at_limit_succeed() -> Result<(), JsonParseError> {
     // Object version of the sibling test. `parse_array` and `parse_object`
     // are independent wrappers, so a decrement bug can slip into just one of
