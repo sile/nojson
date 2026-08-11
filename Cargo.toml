@@ -14,5 +14,8 @@ categories = ["encoding", "no-std", "parser-implementations"]
 default = ["std"]
 std = []
 
+[dev-dependencies]
+noprop = "0.1"
+
 [workspace]
-members = ["fuzz", "pbt"]
+members = ["fuzz"]

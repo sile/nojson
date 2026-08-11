@@ -81,20 +81,15 @@ dependencies = [
 [[package]]
 name = "nojson"
 version = "0.3.12"
+dependencies = [
+ "noprop",
+]
 
 [[package]]
 name = "noprop"
-version = "0.0.4"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be6723ca12cb9e83cd4cfc44e7ecf4f894dbc2111cfbe535d1d4979e92c2528d"
-
-[[package]]
-name = "pbt"
-version = "0.0.0"
-dependencies = [
- "nojson",
- "noprop",
-]
+checksum = "827bc70adb92a00321d7cd4fd1db0c7cae5c50ca2ab93d0c32178331cad45a05"
 
 [[package]]
 name = "r-efi"

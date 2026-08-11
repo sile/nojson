@@ -1,19 +1,28 @@
 //! Roundtrip property tests for nojson, driven by noprop.
 //!
-//! Every test picks a value with `noprop::sample_*`, serialises it
+//! Every test samples a value with `noprop::sample_*`, serialises it
 //! with `nojson::Json(v).to_string()`, parses the result back, and
 //! asserts the parsed value equals the original.
 //!
-//! All values are qualified with the full crate path (no
+//! All noprop primitives are qualified with the full crate path (no
 //! `use noprop::*` shortcuts) so it is immediately obvious which
 //! primitive each call reaches for.
+//!
+//! Set `NOJSON_PBT_SEED` to a value from a failure report (hex and
+//! `_` separators are accepted) to reproduce that run; otherwise a
+//! fresh time-derived seed is used.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::cell::Cell;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+#[cfg(feature = "std")]
+use std::collections::{HashMap, HashSet};
+#[cfg(feature = "std")]
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::num::{
     NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize, NonZeroU8,
     NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize,
 };
+#[cfg(feature = "std")]
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -23,26 +32,45 @@ use noprop::TestCaseContext;
 
 // --- Runner config ---------------------------------------------------
 
-const SEED: u64 = 0xDEAD_BEEF_1234_5678;
+/// Per-test case budget.
 const CASES: usize = 256;
 
 /// Upper bound (inclusive) on generated collection / string lengths.
-/// Kept small so nested collections don't blow up.
+/// Kept small so nested collections don't blow up. Must be at least 2
+/// (see `sample_len`).
 const MAX_LEN: usize = 8;
 
-/// Run `f` under a fixed seed and case budget. Every test in this
-/// file uses the same runner shape.
+/// Run `f` under the case budget, with the seed taken from
+/// `NOJSON_PBT_SEED` when set (reproducing a failure report) and a
+/// fresh time-derived seed otherwise. Every test in this file uses
+/// the same runner shape.
 fn run<F>(f: F) -> noprop::TestResult
 where
     F: Fn(&mut TestCaseContext) -> noprop::TestResult,
 {
-    noprop::Runner::new(SEED).run(CASES, f)?;
+    let seed = noprop::seed_from_env_or_time("NOJSON_PBT_SEED")?;
+    noprop::Runner::new(seed).run(CASES, f)?;
     Ok(())
 }
 
 // --- Composite generators --------------------------------------------
 
-fn sample_option<T>(ctx: &mut TestCaseContext, f: impl FnOnce(&mut TestCaseContext) -> T) -> Option<T> {
+/// Sample a length that hits the boundary values `0` and `max` with
+/// probability 1/10 each (the boundary set is entered at 1/5) and is
+/// uniform in `1..max` otherwise. Empty and maximum-size collections
+/// are the two ends of the interesting domain, so they get more than
+/// their uniform share. Requires `max >= 2`.
+fn sample_len(ctx: &mut TestCaseContext, max: usize) -> usize {
+    debug_assert!(max >= 2, "sample_len requires max >= 2");
+    noprop::sample_with_boundaries(ctx, &[0, max], noprop::Ratio::one_nth(5), |ctx| {
+        noprop::sample_usize_in(ctx, 1..max)
+    })
+}
+
+fn sample_option<T>(
+    ctx: &mut TestCaseContext,
+    f: impl FnOnce(&mut TestCaseContext) -> T,
+) -> Option<T> {
     if noprop::sample_bool(ctx) {
         Some(f(ctx))
     } else {
@@ -52,16 +80,44 @@ fn sample_option<T>(ctx: &mut TestCaseContext, f: impl FnOnce(&mut TestCaseConte
 
 fn sample_vec<T>(
     ctx: &mut TestCaseContext,
-    max_len: usize,
     mut f: impl FnMut(&mut TestCaseContext) -> T,
 ) -> Vec<T> {
-    let n = noprop::sample_usize_in(ctx, 0..=max_len);
+    let n = sample_len(ctx, MAX_LEN);
     (0..n).map(|_| f(ctx)).collect()
 }
 
-fn sample_string_arbitrary(ctx: &mut TestCaseContext, max_len: usize) -> String {
-    let n = noprop::sample_usize_in(ctx, 0..=max_len);
-    (0..n).map(|_| noprop::sample_char(ctx)).collect()
+/// `true` for the characters the JSON formatter must escape: `"`, `\`,
+/// and the ASCII control characters (`0x00..=0x1F`).
+fn needs_escape(c: char) -> bool {
+    matches!(c, '"' | '\\') || (c as u32) < 0x20
+}
+
+/// Sample a character that forces JSON escaping, covering every
+/// escape form the formatter emits: `\"`, `\\`, `\n`, `\r`, `\t`,
+/// `\b`, `\f`, and the `\uXXXX` path.
+fn sample_escape_char(ctx: &mut TestCaseContext) -> char {
+    noprop::sample_choice(
+        ctx,
+        &['"', '\\', '\n', '\r', '\t', '\u{8}', '\u{c}', '\u{0}'],
+    )
+}
+
+/// Sample a character from the full Unicode domain, or an
+/// escape-forcing character with equal probability — the escape path
+/// is exercised routinely instead of with negligible probability.
+fn sample_char_any(ctx: &mut TestCaseContext) -> char {
+    if noprop::sample_ratio(ctx, noprop::Ratio::one_nth(2)) {
+        noprop::sample_char(ctx)
+    } else {
+        sample_escape_char(ctx)
+    }
+}
+
+/// Sample a string whose length comes from `sample_len` and whose
+/// characters come from `sample_char_any`.
+fn sample_string_arbitrary(ctx: &mut TestCaseContext) -> String {
+    let n = sample_len(ctx, MAX_LEN);
+    (0..n).map(|_| sample_char_any(ctx)).collect()
 }
 
 /// ASCII printable, excluding `"` and `\` — mirrors the ASCII
@@ -82,23 +138,23 @@ fn sample_string_ascii_plain(ctx: &mut TestCaseContext, min: usize, max: usize) 
 /// Analogue of proptest's `mixed_unicode_ascii_string`: any prefix, a
 /// guaranteed non-ASCII char, an ASCII run, then any suffix.
 fn sample_string_mixed(ctx: &mut TestCaseContext) -> String {
-    let mut s = sample_string_arbitrary(ctx, MAX_LEN);
+    let mut s = sample_string_arbitrary(ctx);
     let non_ascii = noprop::sample_with_rejection(ctx, 64, |ctx| {
         let c = noprop::sample_char(ctx);
         (!c.is_ascii()).then_some(c)
     });
     s.push(non_ascii);
     s.push_str(&sample_string_ascii_plain(ctx, 1, MAX_LEN));
-    s.push_str(&sample_string_arbitrary(ctx, MAX_LEN));
+    s.push_str(&sample_string_arbitrary(ctx));
     s
 }
 
 // --- NonZero helpers (uniform via bounded rejection) -----------------
 //
-// noprop v0.0.4 deliberately does not ship `sample_non_zero_*`
-// primitives (see the "Sampling non-zero integers" section of the
-// generator module docstring). These helpers apply the uniform recipe
-// from that section, which requires the enclosing Runner.
+// noprop deliberately does not ship `sample_non_zero_*` primitives
+// (see the "Sampling non-zero integers" section of its generator
+// module docs). These helpers apply the uniform bounded-rejection
+// recipe from that section.
 
 #[track_caller]
 fn sample_non_zero_i8(ctx: &mut TestCaseContext) -> NonZeroI8 {
@@ -315,12 +371,21 @@ fn roundtrip_f64_finite() -> noprop::TestResult {
 
 #[test]
 fn roundtrip_string() -> noprop::TestResult {
+    let escape_cases = Cell::new(0usize);
     run(|ctx| {
-        let s = sample_string_arbitrary(ctx, MAX_LEN);
+        let s = sample_string_arbitrary(ctx);
         let parsed: Json<String> = Json(&s).to_string().parse()?;
         assert_eq!(parsed.0, s);
+        if s.chars().any(needs_escape) {
+            escape_cases.set(escape_cases.get() + 1);
+        }
         Ok(())
-    })
+    })?;
+    assert!(
+        escape_cases.get() > 0,
+        "no case exercised a string that requires JSON escaping"
+    );
+    Ok(())
 }
 
 #[test]
@@ -336,7 +401,7 @@ fn roundtrip_string_with_non_ascii_followed_by_ascii() -> noprop::TestResult {
 #[test]
 fn roundtrip_char() -> noprop::TestResult {
     run(|ctx| {
-        let c = noprop::sample_char(ctx);
+        let c = sample_char_any(ctx);
         let parsed: Json<char> = Json(c).to_string().parse()?;
         assert_eq!(parsed.0, c);
         Ok(())
@@ -356,7 +421,7 @@ fn roundtrip_option_i32() -> noprop::TestResult {
 #[test]
 fn roundtrip_option_string() -> noprop::TestResult {
     run(|ctx| {
-        let opt = sample_option(ctx, |ctx| sample_string_arbitrary(ctx, MAX_LEN));
+        let opt = sample_option(ctx, sample_string_arbitrary);
         let parsed: Json<Option<String>> = Json(opt.as_ref()).to_string().parse()?;
         assert_eq!(parsed.0, opt);
         Ok(())
@@ -366,7 +431,7 @@ fn roundtrip_option_string() -> noprop::TestResult {
 #[test]
 fn roundtrip_vec_i32() -> noprop::TestResult {
     run(|ctx| {
-        let v = sample_vec(ctx, MAX_LEN, noprop::sample_i32);
+        let v = sample_vec(ctx, noprop::sample_i32);
         let parsed: Json<Vec<i32>> = Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
@@ -376,7 +441,7 @@ fn roundtrip_vec_i32() -> noprop::TestResult {
 #[test]
 fn roundtrip_vec_string() -> noprop::TestResult {
     run(|ctx| {
-        let v = sample_vec(ctx, MAX_LEN, |ctx| sample_string_arbitrary(ctx, MAX_LEN));
+        let v = sample_vec(ctx, sample_string_arbitrary);
         let parsed: Json<Vec<String>> = Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
@@ -386,7 +451,7 @@ fn roundtrip_vec_string() -> noprop::TestResult {
 #[test]
 fn roundtrip_vec_option_i32() -> noprop::TestResult {
     run(|ctx| {
-        let v = sample_vec(ctx, MAX_LEN, |ctx| sample_option(ctx, noprop::sample_i32));
+        let v = sample_vec(ctx, |ctx| sample_option(ctx, noprop::sample_i32));
         let parsed: Json<Vec<Option<i32>>> = Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
@@ -396,7 +461,7 @@ fn roundtrip_vec_option_i32() -> noprop::TestResult {
 #[test]
 fn roundtrip_nested_vec() -> noprop::TestResult {
     run(|ctx| {
-        let v = sample_vec(ctx, MAX_LEN, |ctx| sample_vec(ctx, MAX_LEN, noprop::sample_i32));
+        let v = sample_vec(ctx, |ctx| sample_vec(ctx, noprop::sample_i32));
         let parsed: Json<Vec<Vec<i32>>> = Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
@@ -406,10 +471,10 @@ fn roundtrip_nested_vec() -> noprop::TestResult {
 #[test]
 fn roundtrip_btreemap_string_i32() -> noprop::TestResult {
     run(|ctx| {
-        let n = noprop::sample_usize_in(ctx, 0..=MAX_LEN);
+        let n = sample_len(ctx, MAX_LEN);
         let mut m = BTreeMap::new();
         for _ in 0..n {
-            m.insert(sample_string_arbitrary(ctx, MAX_LEN), noprop::sample_i32(ctx));
+            m.insert(sample_string_arbitrary(ctx), noprop::sample_i32(ctx));
         }
         let parsed: Json<BTreeMap<String, i32>> = Json(&m).to_string().parse()?;
         assert_eq!(parsed.0, m);
@@ -420,11 +485,11 @@ fn roundtrip_btreemap_string_i32() -> noprop::TestResult {
 #[test]
 fn roundtrip_btreemap_string_option_string() -> noprop::TestResult {
     run(|ctx| {
-        let n = noprop::sample_usize_in(ctx, 0..=MAX_LEN);
+        let n = sample_len(ctx, MAX_LEN);
         let mut m = BTreeMap::new();
         for _ in 0..n {
-            let k = sample_string_arbitrary(ctx, MAX_LEN);
-            let v = sample_option(ctx, |ctx| sample_string_arbitrary(ctx, MAX_LEN));
+            let k = sample_string_arbitrary(ctx);
+            let v = sample_option(ctx, sample_string_arbitrary);
             m.insert(k, v);
         }
         let parsed: Json<BTreeMap<String, Option<String>>> = Json(&m).to_string().parse()?;
@@ -587,7 +652,7 @@ fn roundtrip_box_i32() -> noprop::TestResult {
 #[test]
 fn roundtrip_rc_string() -> noprop::TestResult {
     run(|ctx| {
-        let s = sample_string_arbitrary(ctx, MAX_LEN);
+        let s = sample_string_arbitrary(ctx);
         let r = Rc::new(s.clone());
         let parsed: Json<Rc<String>> = Json(&r).to_string().parse()?;
         assert_eq!(parsed.0.as_ref(), &s);
@@ -598,7 +663,7 @@ fn roundtrip_rc_string() -> noprop::TestResult {
 #[test]
 fn roundtrip_arc_string() -> noprop::TestResult {
     run(|ctx| {
-        let s = sample_string_arbitrary(ctx, MAX_LEN);
+        let s = sample_string_arbitrary(ctx);
         let a = Arc::new(s.clone());
         let parsed: Json<Arc<String>> = Json(&a).to_string().parse()?;
         assert_eq!(parsed.0.as_ref(), &s);
@@ -609,23 +674,9 @@ fn roundtrip_arc_string() -> noprop::TestResult {
 // --- Additional collections ------------------------------------------
 
 #[test]
-fn roundtrip_hashmap_string_i32() -> noprop::TestResult {
-    run(|ctx| {
-        let n = noprop::sample_usize_in(ctx, 0..=MAX_LEN);
-        let mut m = HashMap::new();
-        for _ in 0..n {
-            m.insert(sample_string_arbitrary(ctx, MAX_LEN), noprop::sample_i32(ctx));
-        }
-        let parsed: Json<HashMap<String, i32>> = Json(&m).to_string().parse()?;
-        assert_eq!(parsed.0, m);
-        Ok(())
-    })
-}
-
-#[test]
 fn roundtrip_vecdeque_i32() -> noprop::TestResult {
     run(|ctx| {
-        let v: VecDeque<i32> = sample_vec(ctx, MAX_LEN, noprop::sample_i32).into();
+        let v: VecDeque<i32> = sample_vec(ctx, noprop::sample_i32).into();
         let parsed: Json<VecDeque<i32>> = Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
@@ -635,7 +686,7 @@ fn roundtrip_vecdeque_i32() -> noprop::TestResult {
 #[test]
 fn roundtrip_btreeset_i32() -> noprop::TestResult {
     run(|ctx| {
-        let n = noprop::sample_usize_in(ctx, 0..=MAX_LEN);
+        let n = sample_len(ctx, MAX_LEN);
         let mut s = BTreeSet::new();
         for _ in 0..n {
             s.insert(noprop::sample_i32(ctx));
@@ -646,10 +697,28 @@ fn roundtrip_btreeset_i32() -> noprop::TestResult {
     })
 }
 
+// --- std-feature types -----------------------------------------------
+
+#[cfg(feature = "std")]
+#[test]
+fn roundtrip_hashmap_string_i32() -> noprop::TestResult {
+    run(|ctx| {
+        let n = sample_len(ctx, MAX_LEN);
+        let mut m = HashMap::new();
+        for _ in 0..n {
+            m.insert(sample_string_arbitrary(ctx), noprop::sample_i32(ctx));
+        }
+        let parsed: Json<HashMap<String, i32>> = Json(&m).to_string().parse()?;
+        assert_eq!(parsed.0, m);
+        Ok(())
+    })
+}
+
+#[cfg(feature = "std")]
 #[test]
 fn roundtrip_hashset_i32() -> noprop::TestResult {
     run(|ctx| {
-        let n = noprop::sample_usize_in(ctx, 0..=MAX_LEN);
+        let n = sample_len(ctx, MAX_LEN);
         let mut s = HashSet::new();
         for _ in 0..n {
             s.insert(noprop::sample_i32(ctx));
@@ -660,12 +729,11 @@ fn roundtrip_hashset_i32() -> noprop::TestResult {
     })
 }
 
-// --- PathBuf ---------------------------------------------------------
-
+#[cfg(feature = "std")]
 #[test]
 fn roundtrip_pathbuf() -> noprop::TestResult {
     run(|ctx| {
-        let s = sample_string_arbitrary(ctx, MAX_LEN);
+        let s = sample_string_arbitrary(ctx);
         let p = PathBuf::from(&s);
         let parsed: Json<PathBuf> = Json(&p).to_string().parse()?;
         assert_eq!(parsed.0, p);
@@ -675,6 +743,7 @@ fn roundtrip_pathbuf() -> noprop::TestResult {
 
 // --- Network types ---------------------------------------------------
 
+#[cfg(feature = "std")]
 #[test]
 fn roundtrip_ipv4addr() -> noprop::TestResult {
     run(|ctx| {
@@ -690,6 +759,7 @@ fn roundtrip_ipv4addr() -> noprop::TestResult {
     })
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn roundtrip_ipv6addr() -> noprop::TestResult {
     run(|ctx| {
@@ -709,6 +779,7 @@ fn roundtrip_ipv6addr() -> noprop::TestResult {
     })
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn roundtrip_ipaddr_v4() -> noprop::TestResult {
     run(|ctx| {
@@ -724,6 +795,7 @@ fn roundtrip_ipaddr_v4() -> noprop::TestResult {
     })
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn roundtrip_socketaddr_v4() -> noprop::TestResult {
     run(|ctx| {
@@ -742,6 +814,7 @@ fn roundtrip_socketaddr_v4() -> noprop::TestResult {
     })
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn roundtrip_socketaddr_v6() -> noprop::TestResult {
     run(|ctx| {
@@ -766,6 +839,7 @@ fn roundtrip_socketaddr_v6() -> noprop::TestResult {
     })
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn roundtrip_socketaddr() -> noprop::TestResult {
     run(|ctx| {
@@ -800,11 +874,11 @@ fn roundtrip_unit() -> noprop::TestResult {
 #[test]
 fn roundtrip_vec_btreemap() -> noprop::TestResult {
     run(|ctx| {
-        let v = sample_vec(ctx, MAX_LEN, |ctx| {
-            let n = noprop::sample_usize_in(ctx, 0..=MAX_LEN);
+        let v = sample_vec(ctx, |ctx| {
+            let n = sample_len(ctx, MAX_LEN);
             let mut m = BTreeMap::new();
             for _ in 0..n {
-                m.insert(sample_string_arbitrary(ctx, MAX_LEN), noprop::sample_i32(ctx));
+                m.insert(sample_string_arbitrary(ctx), noprop::sample_i32(ctx));
             }
             m
         });
@@ -817,11 +891,11 @@ fn roundtrip_vec_btreemap() -> noprop::TestResult {
 #[test]
 fn roundtrip_btreemap_vec() -> noprop::TestResult {
     run(|ctx| {
-        let n = noprop::sample_usize_in(ctx, 0..=MAX_LEN);
+        let n = sample_len(ctx, MAX_LEN);
         let mut m = BTreeMap::new();
         for _ in 0..n {
-            let k = sample_string_arbitrary(ctx, MAX_LEN);
-            let v = sample_vec(ctx, MAX_LEN, noprop::sample_i32);
+            let k = sample_string_arbitrary(ctx);
+            let v = sample_vec(ctx, noprop::sample_i32);
             m.insert(k, v);
         }
         let parsed: Json<BTreeMap<String, Vec<i32>>> = Json(&m).to_string().parse()?;
