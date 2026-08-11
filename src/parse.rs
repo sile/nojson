@@ -8,8 +8,13 @@ use crate::{
 
 /// Maximum nesting depth of arrays and objects the parser accepts.
 ///
-/// Inputs whose nesting would step past this limit are rejected with
-/// [`JsonParseError::NestingTooDeep`] instead of recursing further.
+/// Inputs whose nesting would step past this limit are rejected with a
+/// [`JsonParseError::InvalidValue`] whose message begins with
+/// `"nesting depth exceeded"` (the exact variant used to report the
+/// rejection may be refined in future versions).
+///
+/// The numeric value may change in future versions; do not depend on its
+/// exact value in `const` contexts.
 pub const MAX_NESTING_DEPTH: usize = 128;
 
 pub trait Extensions {
