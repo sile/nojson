@@ -752,35 +752,50 @@ fn parse_nesting_over_limit_errors() {
     assert_nesting_too_deep(&e, JsonValueKind::Object, nojson::MAX_NESTING_DEPTH * 5);
 }
 
-#[test]
-fn parse_nesting_over_limit_all_entry_points() {
-    // Every public entry point that reaches the parser must report the same
-    // depth-limit rejection for over-limit input.
-    let text = nested_arrays(nojson::MAX_NESTING_DEPTH + 1);
-    let position = nojson::MAX_NESTING_DEPTH;
+fn assert_all_entry_points_reject(
+    text: &str,
+    expected_kind: JsonValueKind,
+    expected_pos: usize,
+) {
+    let e = RawJson::parse(text).expect_err("RawJson::parse should reject");
+    assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
-    let e = RawJson::parse(&text).expect_err("RawJson::parse should reject");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, position);
+    let e = RawJson::parse_jsonc(text).expect_err("RawJson::parse_jsonc should reject");
+    assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
-    let e = RawJson::parse_jsonc(&text).expect_err("RawJson::parse_jsonc should reject");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, position);
+    let e = nojson::RawJsonOwned::parse(text).expect_err("RawJsonOwned::parse should reject");
+    assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
-    let e = nojson::RawJsonOwned::parse(&text).expect_err("RawJsonOwned::parse should reject");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, position);
-
-    let e = nojson::RawJsonOwned::parse_jsonc(&text)
+    let e = nojson::RawJsonOwned::parse_jsonc(text)
         .expect_err("RawJsonOwned::parse_jsonc should reject");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, position);
+    assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
     let e = text
         .parse::<nojson::RawJsonOwned>()
         .expect_err("RawJsonOwned::from_str should reject");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, position);
+    assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
+    // `Json::<T>::from_str` rejects at parse time before `TryFrom` runs, so
+    // the placeholder `T` never matters here.
     let e = text
         .parse::<Json<Vec<()>>>()
-        .expect_err("Json::<Vec<()>>::from_str should reject");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, position);
+        .expect_err("Json::<T>::from_str should reject");
+    assert_nesting_too_deep(&e, expected_kind, expected_pos);
+}
+
+#[test]
+fn parse_nesting_over_limit_all_entry_points() {
+    // Every public entry point that reaches the parser must report the same
+    // depth-limit rejection for over-limit input, for both Array and Object
+    // roots (kind symmetry — one wrapper's decrement bug would be masked if
+    // only Array were checked).
+    let arr = nested_arrays(nojson::MAX_NESTING_DEPTH + 1);
+    assert_all_entry_points_reject(&arr, JsonValueKind::Array, nojson::MAX_NESTING_DEPTH);
+
+    // Each object level in `nested_objects` is `{"k":` (5 bytes), so the
+    // outermost over-limit '{' sits at MAX_NESTING_DEPTH * 5.
+    let obj = nested_objects(nojson::MAX_NESTING_DEPTH + 1);
+    assert_all_entry_points_reject(&obj, JsonValueKind::Object, nojson::MAX_NESTING_DEPTH * 5);
 }
 
 #[test]
@@ -792,6 +807,17 @@ fn parse_nesting_siblings_at_limit_succeed() -> Result<(), JsonParseError> {
     // total depth at any point is only `MAX_NESTING_DEPTH`.
     let inner = nested_arrays(nojson::MAX_NESTING_DEPTH - 1);
     let text = format!("[{inner},{inner}]");
+    RawJson::parse(&text)?;
+    Ok(())
+}
+
+#[test]
+fn parse_nesting_object_siblings_at_limit_succeed() -> Result<(), JsonParseError> {
+    // Object version of the sibling test. `parse_array` and `parse_object`
+    // are independent wrappers, so a decrement bug can slip into just one of
+    // them without the Array-only sibling test noticing.
+    let inner = nested_objects(nojson::MAX_NESTING_DEPTH - 1);
+    let text = format!(r#"{{"a":{inner},"b":{inner}}}"#);
     RawJson::parse(&text)?;
     Ok(())
 }
