@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use alloc::{format, vec::Vec};
 use core::ops::Range;
 
 use crate::{
@@ -211,9 +211,11 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
     fn parse_object(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         if self.depth >= MAX_NESTING_DEPTH {
-            return Err(JsonParseError::NestingTooDeep {
+            return Err(JsonParseError::InvalidValue {
                 kind: JsonValueKind::Object,
                 position: self.position(),
+                error: format!("nesting depth exceeded MAX_NESTING_DEPTH ({MAX_NESTING_DEPTH})")
+                    .into(),
             });
         }
         self.depth += 1;
@@ -268,9 +270,11 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
     fn parse_array(&mut self, s: &'a str) -> Result<(), JsonParseError> {
         if self.depth >= MAX_NESTING_DEPTH {
-            return Err(JsonParseError::NestingTooDeep {
+            return Err(JsonParseError::InvalidValue {
                 kind: JsonValueKind::Array,
                 position: self.position(),
+                error: format!("nesting depth exceeded MAX_NESTING_DEPTH ({MAX_NESTING_DEPTH})")
+                    .into(),
             });
         }
         self.depth += 1;

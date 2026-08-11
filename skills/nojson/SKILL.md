@@ -37,8 +37,9 @@ actual API shape and usage patterns, not generic JSON background.
   `nojson::object` shortcuts) for adding elements / members
 - Free functions `json()`, `object()`, `array()` — return values that
   `impl Display + DisplayJson`
-- `JsonValueKind`, `JsonParseError` (the parser rejects over-deep input with
-  the `JsonParseError::NestingTooDeep` variant — see the Usage gotchas)
+- `JsonValueKind`, `JsonParseError` (over-deep input is rejected via the
+  `InvalidValue` variant carrying a "nesting depth exceeded" message — see
+  the Usage gotchas)
 - `MAX_NESTING_DEPTH` — parser's nesting depth limit (128)
 
 ## Choosing the right API
@@ -85,14 +86,16 @@ actual API shape and usage patterns, not generic JSON background.
 - `RawJsonValue::index()` is stable within one `RawJson`. Cache it and re-fetch
   with `get_value_by_index` for O(1) access after validation.
 - The parser rejects inputs whose nesting steps past `MAX_NESTING_DEPTH` (128)
-  with `JsonParseError::NestingTooDeep { kind, position }`. This applies to
-  every entry point that reaches the parser: `RawJson::parse`,
-  `RawJson::parse_jsonc`, `RawJsonOwned::parse`, `RawJsonOwned::parse_jsonc`,
-  `RawJsonOwned::from_str`, and `Json::<T>::from_str`. The check fires at the
-  129th container's opening bracket, so 128-deep input still parses. Since the
-  parser is recursive, this cap is what keeps deeply nested untrusted input
-  from blowing the process stack. If you need to accept deeper JSON, check
-  the input size / structure yourself before parsing.
+  with `JsonParseError::InvalidValue`, carrying a message that starts with
+  `"nesting depth exceeded"` (a dedicated variant is deferred to a batched
+  `JsonParseError` expansion). This applies to every entry point that reaches
+  the parser: `RawJson::parse`, `RawJson::parse_jsonc`, `RawJsonOwned::parse`,
+  `RawJsonOwned::parse_jsonc`, `RawJsonOwned::from_str`, and
+  `Json::<T>::from_str`. The check fires at the 129th container's opening
+  bracket, so 128-deep input still parses. Since the parser is recursive,
+  this cap is what keeps deeply nested untrusted input from blowing the
+  process stack. If you need to accept deeper JSON, check the input size /
+  structure yourself before parsing.
 - `RawJsonOwned::object` / `json` / `array` re-parse their own formatter output
   via [`RawJsonOwned::parse`] and therefore **panic** if the formatter emits
   more than `MAX_NESTING_DEPTH` nesting. Feed pre-formatted text through
