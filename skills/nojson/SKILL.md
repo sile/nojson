@@ -37,7 +37,9 @@ actual API shape and usage patterns, not generic JSON background.
   `nojson::object` shortcuts) for adding elements / members
 - Free functions `json()`, `object()`, `array()` — return values that
   `impl Display + DisplayJson`
-- `JsonValueKind`, `JsonParseError`
+- `JsonValueKind`, `JsonParseError` (the parser rejects over-deep input with
+  the `JsonParseError::NestingTooDeep` variant — see the Usage gotchas)
+- `MAX_NESTING_DEPTH` — parser's nesting depth limit (128)
 
 ## Choosing the right API
 
@@ -82,6 +84,13 @@ actual API shape and usage patterns, not generic JSON background.
   purpose — pass it around freely.
 - `RawJsonValue::index()` is stable within one `RawJson`. Cache it and re-fetch
   with `get_value_by_index` for O(1) access after validation.
+- Every entry point that reaches the parser (`RawJson::parse`,
+  `RawJsonOwned::parse`, `parse_jsonc`, `Json::<T>::from_str`) rejects inputs
+  whose nesting steps past `MAX_NESTING_DEPTH` (128) with
+  `JsonParseError::NestingTooDeep { kind, position }` before recursing — the
+  parser is recursive, so this is what keeps deeply nested untrusted input
+  from blowing the process stack. If you need to accept deeper JSON, check
+  the input size / structure yourself before parsing.
 
 ## API patterns to preserve
 

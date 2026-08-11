@@ -223,6 +223,17 @@ fn main() -> Result<(), nojson::JsonParseError> {
 }
 ```
 
+### Parsing Depth Limit
+
+The parser is recursive and rejects inputs whose nesting would step past
+`MAX_NESTING_DEPTH` (128, matching the default `serde_json` `recursion_limit`).
+Every entry point — `RawJson::parse`, `RawJsonOwned::parse`,
+`RawJson::parse_jsonc`, `RawJsonOwned::parse_jsonc`, and `Json::<T>::from_str` —
+returns `JsonParseError::NestingTooDeep { kind, position }` for such input
+before recursing, which is what keeps deeply nested untrusted JSON from
+blowing the process stack. If you need to accept deeper input, check the
+input size / structure yourself before parsing.
+
 ## Examples
 
 The [`examples/`](examples/) directory contains runnable demos:
