@@ -16,16 +16,10 @@
 //! `use noprop::*` shortcuts) so it is immediately obvious which
 //! primitive each call reaches for.
 
-// Each test crate compiles this module independently; helpers that
-// only one suite uses would otherwise warn as dead code.
-#![allow(dead_code)]
-
 use std::num::{
     NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize, NonZeroU8,
     NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize,
 };
-
-use noprop::TestCaseContext;
 
 // --- Runner config ---------------------------------------------------
 
@@ -43,7 +37,7 @@ pub const MAX_LEN: usize = 8;
 /// uses the same runner shape.
 pub fn run<F>(f: F) -> noprop::TestResult
 where
-    F: Fn(&mut TestCaseContext) -> noprop::TestResult,
+    F: Fn(&mut noprop::TestCaseContext) -> noprop::TestResult,
 {
     let seed = noprop::seed_from_env_or_time("NOJSON_PBT_SEED")?;
     noprop::Runner::new(seed).run(CASES, f)?;
@@ -57,7 +51,7 @@ where
 /// uniform in `1..max` otherwise. Empty and maximum-size collections
 /// are the two ends of the interesting domain, so they get more than
 /// their uniform share. Requires `max >= 2`.
-pub fn sample_len(ctx: &mut TestCaseContext, max: usize) -> usize {
+pub fn sample_len(ctx: &mut noprop::TestCaseContext, max: usize) -> usize {
     debug_assert!(max >= 2, "sample_len requires max >= 2");
     noprop::sample_with_boundaries(ctx, &[0, max], noprop::Ratio::one_nth(5), |ctx| {
         noprop::sample_usize_in(ctx, 1..max)
@@ -65,8 +59,8 @@ pub fn sample_len(ctx: &mut TestCaseContext, max: usize) -> usize {
 }
 
 pub fn sample_option<T>(
-    ctx: &mut TestCaseContext,
-    f: impl FnOnce(&mut TestCaseContext) -> T,
+    ctx: &mut noprop::TestCaseContext,
+    f: impl FnOnce(&mut noprop::TestCaseContext) -> T,
 ) -> Option<T> {
     if noprop::sample_bool(ctx) {
         Some(f(ctx))
@@ -76,8 +70,8 @@ pub fn sample_option<T>(
 }
 
 pub fn sample_vec<T>(
-    ctx: &mut TestCaseContext,
-    mut f: impl FnMut(&mut TestCaseContext) -> T,
+    ctx: &mut noprop::TestCaseContext,
+    mut f: impl FnMut(&mut noprop::TestCaseContext) -> T,
 ) -> Vec<T> {
     let n = sample_len(ctx, MAX_LEN);
     (0..n).map(|_| f(ctx)).collect()
@@ -92,7 +86,7 @@ pub fn needs_escape(c: char) -> bool {
 /// Sample a character that forces JSON escaping, covering every
 /// escape form the formatter emits: `\"`, `\\`, `\n`, `\r`, `\t`,
 /// `\b`, `\f`, and the `\uXXXX` path.
-pub fn sample_escape_char(ctx: &mut TestCaseContext) -> char {
+pub fn sample_escape_char(ctx: &mut noprop::TestCaseContext) -> char {
     noprop::sample_choice(
         ctx,
         &['"', '\\', '\n', '\r', '\t', '\u{8}', '\u{c}', '\u{0}'],
@@ -102,7 +96,7 @@ pub fn sample_escape_char(ctx: &mut TestCaseContext) -> char {
 /// Sample a character from the full Unicode domain, or an
 /// escape-forcing character with equal probability — the escape path
 /// is exercised routinely instead of with negligible probability.
-pub fn sample_char_any(ctx: &mut TestCaseContext) -> char {
+pub fn sample_char_any(ctx: &mut noprop::TestCaseContext) -> char {
     if noprop::sample_ratio(ctx, noprop::Ratio::one_nth(2)) {
         noprop::sample_char(ctx)
     } else {
@@ -112,7 +106,7 @@ pub fn sample_char_any(ctx: &mut TestCaseContext) -> char {
 
 /// Sample a string whose length comes from `sample_len` and whose
 /// characters come from `sample_char_any`.
-pub fn sample_string_arbitrary(ctx: &mut TestCaseContext) -> String {
+pub fn sample_string_arbitrary(ctx: &mut noprop::TestCaseContext) -> String {
     let n = sample_len(ctx, MAX_LEN);
     (0..n).map(|_| sample_char_any(ctx)).collect()
 }
@@ -120,7 +114,11 @@ pub fn sample_string_arbitrary(ctx: &mut TestCaseContext) -> String {
 /// ASCII printable, excluding `"` and `\` — mirrors the ASCII
 /// character set used by the original proptest `plain_ascii_string`
 /// helper.
-pub fn sample_string_ascii_plain(ctx: &mut TestCaseContext, min: usize, max: usize) -> String {
+pub fn sample_string_ascii_plain(
+    ctx: &mut noprop::TestCaseContext,
+    min: usize,
+    max: usize,
+) -> String {
     let n = noprop::sample_usize_in(ctx, min..=max);
     (0..n)
         .map(|_| {
@@ -134,7 +132,7 @@ pub fn sample_string_ascii_plain(ctx: &mut TestCaseContext, min: usize, max: usi
 
 /// Analogue of proptest's `mixed_unicode_ascii_string`: any prefix, a
 /// guaranteed non-ASCII char, an ASCII run, then any suffix.
-pub fn sample_string_mixed(ctx: &mut TestCaseContext) -> String {
+pub fn sample_string_mixed(ctx: &mut noprop::TestCaseContext) -> String {
     let mut s = sample_string_arbitrary(ctx);
     let non_ascii = noprop::sample_with_rejection(ctx, 64, |ctx| {
         let c = noprop::sample_char(ctx);
@@ -154,61 +152,61 @@ pub fn sample_string_mixed(ctx: &mut TestCaseContext) -> String {
 // recipe from that section.
 
 #[track_caller]
-pub fn sample_non_zero_i8(ctx: &mut TestCaseContext) -> NonZeroI8 {
+pub fn sample_non_zero_i8(ctx: &mut noprop::TestCaseContext) -> NonZeroI8 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroI8::new(noprop::sample_i8(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_u8(ctx: &mut TestCaseContext) -> NonZeroU8 {
+pub fn sample_non_zero_u8(ctx: &mut noprop::TestCaseContext) -> NonZeroU8 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroU8::new(noprop::sample_u8(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_i16(ctx: &mut TestCaseContext) -> NonZeroI16 {
+pub fn sample_non_zero_i16(ctx: &mut noprop::TestCaseContext) -> NonZeroI16 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroI16::new(noprop::sample_i16(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_u16(ctx: &mut TestCaseContext) -> NonZeroU16 {
+pub fn sample_non_zero_u16(ctx: &mut noprop::TestCaseContext) -> NonZeroU16 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroU16::new(noprop::sample_u16(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_i32(ctx: &mut TestCaseContext) -> NonZeroI32 {
+pub fn sample_non_zero_i32(ctx: &mut noprop::TestCaseContext) -> NonZeroI32 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroI32::new(noprop::sample_i32(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_u32(ctx: &mut TestCaseContext) -> NonZeroU32 {
+pub fn sample_non_zero_u32(ctx: &mut noprop::TestCaseContext) -> NonZeroU32 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroU32::new(noprop::sample_u32(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_i64(ctx: &mut TestCaseContext) -> NonZeroI64 {
+pub fn sample_non_zero_i64(ctx: &mut noprop::TestCaseContext) -> NonZeroI64 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroI64::new(noprop::sample_i64(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_u64(ctx: &mut TestCaseContext) -> NonZeroU64 {
+pub fn sample_non_zero_u64(ctx: &mut noprop::TestCaseContext) -> NonZeroU64 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroU64::new(noprop::sample_u64(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_i128(ctx: &mut TestCaseContext) -> NonZeroI128 {
+pub fn sample_non_zero_i128(ctx: &mut noprop::TestCaseContext) -> NonZeroI128 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroI128::new(noprop::sample_i128(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_u128(ctx: &mut TestCaseContext) -> NonZeroU128 {
+pub fn sample_non_zero_u128(ctx: &mut noprop::TestCaseContext) -> NonZeroU128 {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroU128::new(noprop::sample_u128(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_isize(ctx: &mut TestCaseContext) -> NonZeroIsize {
+pub fn sample_non_zero_isize(ctx: &mut noprop::TestCaseContext) -> NonZeroIsize {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroIsize::new(noprop::sample_isize(ctx)))
 }
 
 #[track_caller]
-pub fn sample_non_zero_usize(ctx: &mut TestCaseContext) -> NonZeroUsize {
+pub fn sample_non_zero_usize(ctx: &mut noprop::TestCaseContext) -> NonZeroUsize {
     noprop::sample_with_rejection(ctx, 64, |ctx| NonZeroUsize::new(noprop::sample_usize(ctx)))
 }

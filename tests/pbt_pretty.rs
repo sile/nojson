@@ -6,6 +6,10 @@
 //! test picks a value, pretty-prints it under random settings, parses
 //! the result back, and asserts the parsed value equals the original.
 
+// The pretty suite only draws a subset of the shared harness; the
+// roundtrip-only helpers (NonZero, mixed strings, ...) are dead code
+// in this crate.
+#[expect(dead_code, reason = "roundtrip-only helpers are unused here")]
 mod pbt_harness;
 
 use std::cell::Cell;
