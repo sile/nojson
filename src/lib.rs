@@ -13,7 +13,6 @@
 //! - **Low-level access** to the JSON structure when needed
 //! - **High-level conveniences** for common JSON operations
 //! - **JSONC support** - Parse JSON with comments (`//`, `/* */`) and trailing commas
-//! - **Recursion-safe parsing** with a fixed nesting depth cap ([`MAX_NESTING_DEPTH`]); deeply nested inputs are rejected instead of blowing the process stack
 //!
 //! ## Core Design Principles
 //!
