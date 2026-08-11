@@ -121,7 +121,7 @@ impl RawJsonOwned {
         F: Fn(&mut JsonObjectFormatter<'_, '_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::object(fmt).to_string())
-            .expect("bug: object formatter must produce valid JSON within MAX_NESTING_DEPTH")
+            .expect("bug: object formatter must produce valid JSON")
     }
 
     /// Creates owned JSON using the in-place formatter.
@@ -150,7 +150,7 @@ impl RawJsonOwned {
         F: Fn(&mut JsonFormatter<'_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::json(fmt).to_string())
-            .expect("bug: json formatter must produce valid JSON within MAX_NESTING_DEPTH")
+            .expect("bug: json formatter must produce valid JSON")
     }
 
     /// Creates an owned JSON array using the in-place array formatter.
@@ -184,7 +184,7 @@ impl RawJsonOwned {
         F: Fn(&mut JsonArrayFormatter<'_, '_, '_>) -> core::fmt::Result,
     {
         Self::parse(crate::array(fmt).to_string())
-            .expect("bug: array formatter must produce valid JSON within MAX_NESTING_DEPTH")
+            .expect("bug: array formatter must produce valid JSON")
     }
 
     /// Returns the original JSON text.
