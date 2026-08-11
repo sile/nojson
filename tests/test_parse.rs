@@ -759,6 +759,23 @@ fn parse_nesting_over_limit_errors() {
     assert_nesting_too_deep(&e, JsonValueKind::Object, nojson::MAX_NESTING_DEPTH * 5);
 }
 
+#[test]
+fn parse_nesting_over_limit_jsonc_with_comments_errors() {
+    // JSONC-mode over-limit: each level is `/*x*/[` (6 bytes) so the offending
+    // 129th `[` sits after 128 full levels and one more comment prefix,
+    // i.e. at MAX_NESTING_DEPTH * 6 + 5. Pins that comment-skip does not
+    // desync the position reported by the depth check.
+    let mut text = String::new();
+    for _ in 0..(nojson::MAX_NESTING_DEPTH + 1) {
+        text.push_str("/*x*/[");
+    }
+    for _ in 0..(nojson::MAX_NESTING_DEPTH + 1) {
+        text.push(']');
+    }
+    let e = RawJson::parse_jsonc(&text).expect_err("over-limit JSONC must fail");
+    assert_nesting_too_deep(&e, JsonValueKind::Array, nojson::MAX_NESTING_DEPTH * 6 + 5);
+}
+
 fn assert_all_entry_points_reject(text: &str, expected_kind: JsonValueKind, expected_pos: usize) {
     let e = RawJson::parse(text).expect_err("RawJson::parse should reject");
     assert_nesting_too_deep(&e, expected_kind, expected_pos);
