@@ -63,8 +63,6 @@ pub enum JsonParseError {
     /// This happens when the JSON syntax is valid, but the value doesn't conform to
     /// additional constraints. For example, an integer that exceeds the maximum
     /// allowed value, or a string that doesn't match an expected pattern or format.
-    /// The library itself also uses this variant to report that the parser's
-    /// nesting depth cap ([`crate::MAX_NESTING_DEPTH`]) was exceeded.
     InvalidValue {
         /// Kind of JSON value that failed validation.
         kind: JsonValueKind,
