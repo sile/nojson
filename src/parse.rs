@@ -9,7 +9,7 @@ use crate::{
 /// Maximum nesting depth of arrays and objects the parser accepts.
 ///
 /// Inputs whose nesting would step past this limit are rejected with a
-/// [`JsonParseError::InvalidValue`] whose message begins with
+/// [`JsonParseError::InvalidValue`] whose message contains
 /// `"nesting depth exceeded"` (the exact variant used to report the
 /// rejection may be refined in future versions).
 ///
@@ -279,9 +279,11 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
     }
 
     fn nesting_too_deep(&self, kind: JsonValueKind) -> JsonParseError {
-        // The message is fully static (`MAX_NESTING_DEPTH` is a `const`), so
-        // there is no per-error allocation. Keep the numeric value in sync
-        // with `MAX_NESTING_DEPTH`; the tests assert the value is present.
+        // The message is a `&'static str`, so no `format!` runs at error time.
+        // `Box::<dyn Error>::from(&str)` internally still allocates twice
+        // (`String::from` + boxed wrapper); avoiding that would require a
+        // dedicated error type. Keep the numeric value in sync with
+        // `MAX_NESTING_DEPTH`; the tests assert the value is present.
         const MSG: &str = "nesting depth exceeded MAX_NESTING_DEPTH (128)";
         JsonParseError::InvalidValue {
             kind,
