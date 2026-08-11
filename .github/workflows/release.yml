@@ -33,9 +33,7 @@ jobs:
       # The `validate` job re-runs the CI suite so a broken commit
       # that somehow received a `v*` tag never publishes, even if the
       # push-time CI on that commit failed or was skipped.
-      # Plain `cargo test --all` is used (not `--bins` etc.): the fuzz
-      # workspace member's binary would otherwise run libFuzzer forever.
-      - run: cargo test --all
+      - run: cargo test --all --lib --bins --tests --examples
       - run: cargo test --doc
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all -- -D warnings

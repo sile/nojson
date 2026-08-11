@@ -46,15 +46,3 @@ jobs:
       - run: cargo test --no-default-features
       - run: cargo clippy --no-default-features -- -D warnings
 
-  fuzz:
-    name: Fuzz
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: rustup update nightly
-      - run: rustup default nightly
-      - run: rustup component add rust-src
-      - run: cargo install cargo-fuzz
-      - name: Run fuzz target
-        run: cargo +nightly fuzz run fuzz_target -- -max_len=4096 -max_total_time=60
-

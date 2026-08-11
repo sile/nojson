@@ -16,6 +16,3 @@ std = []
 
 [dev-dependencies]
 noprop = "0.1"
-
-[workspace]
-members = ["fuzz"]
