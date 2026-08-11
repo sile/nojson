@@ -835,6 +835,44 @@ fn parse_nesting_object_siblings_at_limit_succeed() -> Result<(), JsonParseError
     Ok(())
 }
 
+// The three `RawJsonOwned::{object, json, array}` builders re-parse their own
+// formatter output, so a formatter that emits > MAX_NESTING_DEPTH nesting
+// makes them panic. These `#[should_panic]` tests pin that panic contract so
+// a future refactor cannot silently drop it. Each panic message is expected
+// to contain the substring "MAX_NESTING_DEPTH".
+
+#[test]
+#[should_panic(expected = "MAX_NESTING_DEPTH")]
+fn raw_json_owned_json_panics_over_depth() {
+    use core::fmt::Write;
+    // 129-deep `[...]` re-parsed by RawJsonOwned::parse trips the depth cap.
+    let deep = nested_arrays(nojson::MAX_NESTING_DEPTH + 1);
+    let _ = nojson::RawJsonOwned::json(|f| write!(f.inner_mut(), "{deep}"));
+}
+
+#[test]
+#[should_panic(expected = "MAX_NESTING_DEPTH")]
+fn raw_json_owned_array_panics_over_depth() {
+    use core::fmt::Write;
+    // Outer array (depth 1) + a 128-deep inner array raw-written via
+    // `f.inner_mut()` totals depth 129, past the cap.
+    let inner = nested_arrays(nojson::MAX_NESTING_DEPTH);
+    let _ = nojson::RawJsonOwned::array(|f| {
+        f.element(nojson::json(|f| write!(f.inner_mut(), "{inner}")))
+    });
+}
+
+#[test]
+#[should_panic(expected = "MAX_NESTING_DEPTH")]
+fn raw_json_owned_object_panics_over_depth() {
+    use core::fmt::Write;
+    // Outer object (depth 1) + a 128-deep inner array value totals depth 129.
+    let inner = nested_arrays(nojson::MAX_NESTING_DEPTH);
+    let _ = nojson::RawJsonOwned::object(|f| {
+        f.member("k", nojson::json(|f| write!(f.inner_mut(), "{inner}")))
+    });
+}
+
 #[test]
 fn parse_nesting_mixed_over_limit_errors() {
     // 128 objects opened, then a 129th container (an array) — a shared depth
