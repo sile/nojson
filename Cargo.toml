@@ -15,4 +15,4 @@ default = ["std"]
 std = []
 
 [dev-dependencies]
-noprop = "0.1"
+noprop = "0.2"
