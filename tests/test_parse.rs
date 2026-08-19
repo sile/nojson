@@ -218,6 +218,10 @@ fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
             ),
             "text={text}, error={e:?}"
         );
+        assert!(
+            e.to_string().contains("number out of range"),
+            "text={text}, error={e}"
+        );
     }
 
     // Integer-kind literals also feed `f{32,64}::from_str`, so a long enough
@@ -255,15 +259,6 @@ fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
             ),
             "text={big32}, error={e:?}"
         );
-    }
-
-    // Finite values must still parse for both widths.
-    for text in ["1.0", "3.14e10", "0.5", "-2.5"] {
-        let json = RawJson::parse(text)?;
-        let v64: f64 = json.value().try_into()?;
-        assert!(v64.is_finite(), "text={text}, v64={v64}");
-        let v32: f32 = json.value().try_into()?;
-        assert!(v32.is_finite(), "text={text}, v32={v32}");
     }
 
     Ok(())

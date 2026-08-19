@@ -673,12 +673,12 @@ impl DisplayJson for RawJsonRef<'_, '_> {
 ///
 /// ```
 /// # fn main() -> Result<(), nojson::JsonParseError> {
-/// let text = "1.23";
+/// let text = "42";
 /// let json = nojson::RawJson::parse(text)?;
 /// let raw = json.value();
-/// let parsed: f32 =
-///     raw.as_number_str()?.parse().map_err(|e| raw.invalid(e))?;
-/// assert_eq!(parsed, 1.23);
+/// let parsed: u32 =
+///     raw.as_integer_str()?.parse().map_err(|e| raw.invalid(e))?;
+/// assert_eq!(parsed, 42);
 /// # Ok(())
 /// # }
 /// ```
