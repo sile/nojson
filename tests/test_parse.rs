@@ -220,6 +220,43 @@ fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
         );
     }
 
+    // Integer-kind literals also feed `f{32,64}::from_str`, so a long enough
+    // integer overflows to `Infinity` and must be rejected too. The kind on
+    // the error stays `Integer` because the parser classified the source.
+    {
+        let big64 = format!("1{}", "0".repeat(309)); // ~10^309, overflows f64
+        let json = RawJson::parse(&big64)?;
+        let e = <f64 as TryFrom<_>>::try_from(json.value())
+            .expect_err("out-of-range integer literal must be rejected for f64");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::InvalidValue {
+                    kind: JsonValueKind::Integer,
+                    position: 0,
+                    ..
+                }
+            ),
+            "text={big64}, error={e:?}"
+        );
+
+        let big32 = format!("1{}", "0".repeat(39)); // ~10^39, overflows f32
+        let json = RawJson::parse(&big32)?;
+        let e = <f32 as TryFrom<_>>::try_from(json.value())
+            .expect_err("out-of-range integer literal must be rejected for f32");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::InvalidValue {
+                    kind: JsonValueKind::Integer,
+                    position: 0,
+                    ..
+                }
+            ),
+            "text={big32}, error={e:?}"
+        );
+    }
+
     // Finite values must still parse for both widths.
     for text in ["1.0", "3.14e10", "0.5", "-2.5"] {
         let json = RawJson::parse(text)?;
