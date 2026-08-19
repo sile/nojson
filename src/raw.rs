@@ -1220,6 +1220,18 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
             return Cow::Borrowed(content);
         }
 
+        fn read_hex_u16(chars: &mut core::str::Chars<'_>) -> u16 {
+            core::str::from_utf8(&[
+                chars.next().expect("infallible") as u8,
+                chars.next().expect("infallible") as u8,
+                chars.next().expect("infallible") as u8,
+                chars.next().expect("infallible") as u8,
+            ])
+            .ok()
+            .and_then(|code| u16::from_str_radix(code, 16).ok())
+            .expect("infallible")
+        }
+
         let mut unescaped = String::with_capacity(content.len());
         let mut chars = content.chars();
         while let Some(c) = chars.next() {
@@ -1234,16 +1246,25 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
                         'b' => unescaped.push('\u{8}'),
                         'f' => unescaped.push('\u{c}'),
                         'u' => {
-                            let c = core::str::from_utf8(&[
-                                chars.next().expect("infallible") as u8,
-                                chars.next().expect("infallible") as u8,
-                                chars.next().expect("infallible") as u8,
-                                chars.next().expect("infallible") as u8,
-                            ])
-                            .ok()
-                            .and_then(|code| u32::from_str_radix(code, 16).ok())
-                            .and_then(char::from_u32)
-                            .expect("infallible");
+                            let high = read_hex_u16(&mut chars);
+                            let c = if (0xD800..=0xDBFF).contains(&high) {
+                                // `JsonParser::parse_string` guarantees the
+                                // next six chars are `\uXXXX` with a low
+                                // surrogate, so `decode_utf16` sees a valid
+                                // pair.
+                                let backslash = chars.next().expect("infallible");
+                                debug_assert_eq!(backslash, '\\');
+                                let marker = chars.next().expect("infallible");
+                                debug_assert_eq!(marker, 'u');
+                                let low = read_hex_u16(&mut chars);
+                                debug_assert!((0xDC00..=0xDFFF).contains(&low));
+                                char::decode_utf16([high, low])
+                                    .next()
+                                    .expect("infallible")
+                                    .expect("infallible")
+                            } else {
+                                char::from_u32(high as u32).expect("infallible")
+                            };
                             unescaped.push(c);
                         }
                         _ => unreachable!(),

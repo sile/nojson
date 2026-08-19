@@ -241,6 +241,91 @@ fn parse_strings() -> Result<(), JsonParseError> {
 }
 
 #[test]
+fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
+    // RFC 8259 §7: BMP-external code points may be written as a UTF-16
+    // surrogate pair `\uXXXX\uXXXX`.
+    for (text, unescaped) in [
+        (r#" "\uD834\uDD1E" "#, "\u{1D11E}"),  // musical G clef
+        (r#" "\uD83D\uDE00" "#, "\u{1F600}"),  // grinning face
+        (r#" "\uD800\uDC00" "#, "\u{10000}"),  // lower boundary
+        (r#" "\uDBFF\uDFFF" "#, "\u{10FFFF}"), // upper boundary
+        (r#" "a\uD834\uDD1Eb" "#, "a\u{1D11E}b"),
+        (r#" "\uD834\uDD1E\uD83D\uDE00" "#, "\u{1D11E}\u{1F600}"),
+        (r#" "\uD83D\ude00" "#, "\u{1F600}"), // mixed case hex
+    ] {
+        let json = RawJson::parse(text)?;
+        let value = json.value();
+        assert_eq!(value.kind(), JsonValueKind::String);
+        assert_eq!(value.as_raw_str(), text.trim());
+        assert!(matches!(value.to_unquoted_string_str(), Ok(Cow::Owned(_))));
+        assert_eq!(value.to_unquoted_string_str()?, unescaped);
+    }
+
+    // Non-regression: single `\uXXXX` for non-surrogate BMP code points,
+    // including the boundaries just outside the surrogate range.
+    for (text, unescaped) in [
+        (r#" "\u00E9" "#, "\u{00E9}"), // e-acute
+        (r#" "\uD7FF" "#, "\u{D7FF}"), // just below the surrogate range
+        (r#" "\uE000" "#, "\u{E000}"), // just above the surrogate range
+        (r#" "\uFFFD" "#, "\u{FFFD}"), // REPLACEMENT CHARACTER
+    ] {
+        let json = RawJson::parse(text)?;
+        let value = json.value();
+        assert_eq!(value.to_unquoted_string_str()?, unescaped);
+    }
+
+    // Malformed surrogate sequences that produce `UnexpectedValueChar`. The
+    // `position` points at whatever character actually broke the pair rule
+    // (missing `\u`, out-of-range low, or a lone low), which is more useful
+    // than always pointing at the first hex digit of the offending escape.
+    for (text, error_position) in [
+        (r#" "\uD834" "#, 8),        // lone high surrogate → closing quote
+        (r#" "\uDD1E" "#, 4),        // lone low surrogate → first hex digit
+        (r#" "\uD834x" "#, 8),       // high followed by a non-\u char → `x`
+        (r#" "\uD834\n" "#, 8),      // high followed by an escape that isn't \u → `\`
+        (r#" "\uD834\u0041" "#, 10), // high followed by non-surrogate BMP → second hex
+        (r#" "\uD834\uD7FF" "#, 10), // low value just below the low-surrogate range
+        (r#" "\uD834\uE000" "#, 10), // low value just above the low-surrogate range
+        (r#" "\uD834\uD800" "#, 10), // "low" value is actually another high
+    ] {
+        let e = assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedValueChar {
+                kind: Some(JsonValueKind::String),
+                ..
+            }
+        );
+        assert_eq!(e.position(), error_position, "text={text}");
+    }
+
+    // Truncated surrogate sequences that produce `UnexpectedEos`.
+    for text in [
+        r#" "\uD834"#,   // truncated right after the high surrogate
+        r#" "\uD834\u"#, // truncated right after the second \u
+        r#" "\uD834\u0"#,
+        r#" "\uD834\u00"#,
+        r#" "\uD834\u000"#,
+    ] {
+        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
+    }
+
+    Ok(())
+}
+
+#[test]
+fn parse_surrogate_pair_in_object_key() -> Result<(), JsonParseError> {
+    // A surrogate pair in an object key must be composed by `unquote`
+    // before it is compared against the caller-supplied name in
+    // `find_member_by_name`.
+    let text = r#"{"\uD834\uDD1E": 1}"#;
+    let json = RawJson::parse(text)?;
+    let value = json.value().to_member("\u{1D11E}")?.required()?;
+    let n: u32 = value.try_into()?;
+    assert_eq!(n, 1);
+    Ok(())
+}
+
+#[test]
 fn parse_arrays() -> Result<(), JsonParseError> {
     // Arrays.
     for text in [

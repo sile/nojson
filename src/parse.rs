@@ -365,9 +365,36 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
                         if s.len() < 4 {
                             return Err(self.unexpected_eos());
                         }
-                        decode_hex_char(s)
+                        let code = decode_hex_u16(s)
                             .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
-                        s = &s[4..];
+                        // RFC 8259 §8.2 leaves unpaired surrogates to the
+                        // implementation. We reject them: Rust `str` is
+                        // well-formed UTF-8 and cannot hold an unpaired
+                        // surrogate, so accepting one would only defer the
+                        // failure to `unquote`.
+                        if (0xD800..=0xDBFF).contains(&code) {
+                            // High surrogate must be followed by `\uXXXX`
+                            // whose value is a low surrogate.
+                            s = &s[4..];
+                            let Some(rest) = s.strip_prefix("\\u") else {
+                                return Err(self.unexpected_value_char(self.offset(s)));
+                            };
+                            s = rest;
+                            if s.len() < 4 {
+                                return Err(self.unexpected_eos());
+                            }
+                            let low = decode_hex_u16(s)
+                                .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
+                            if !(0xDC00..=0xDFFF).contains(&low) {
+                                return Err(self.unexpected_value_char(self.offset(s)));
+                            }
+                            s = &s[4..];
+                        } else if (0xDC00..=0xDFFF).contains(&code) {
+                            // Lone low surrogate is not allowed.
+                            return Err(self.unexpected_value_char(self.offset(s)));
+                        } else {
+                            s = &s[4..];
+                        }
                     }
                 }
                 Some(_) => {
@@ -417,21 +444,21 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 }
 
 #[inline(always)]
-fn decode_hex_char(s: &str) -> Option<char> {
+fn decode_hex_u16(s: &str) -> Option<u16> {
     let bytes = s.as_bytes().get(..4)?;
-    let mut code = 0u32;
+    let mut code = 0u16;
     for &byte in bytes {
         code = (code << 4) | decode_hex_nibble(byte)?;
     }
-    char::from_u32(code)
+    Some(code)
 }
 
 #[inline(always)]
-fn decode_hex_nibble(byte: u8) -> Option<u32> {
+fn decode_hex_nibble(byte: u8) -> Option<u16> {
     match byte {
-        b'0'..=b'9' => Some((byte - b'0') as u32),
-        b'a'..=b'f' => Some((byte - b'a' + 10) as u32),
-        b'A'..=b'F' => Some((byte - b'A' + 10) as u32),
+        b'0'..=b'9' => Some((byte - b'0') as u16),
+        b'a'..=b'f' => Some((byte - b'a' + 10) as u16),
+        b'A'..=b'F' => Some((byte - b'A' + 10) as u16),
         _ => None,
     }
 }
