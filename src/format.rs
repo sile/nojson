@@ -229,6 +229,10 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     /// Sets the number of spaces used for each indentation level.
     ///
     /// Note that this setting only affects the current and higher indentation levels.
+    ///
+    /// A large `size` — up to [`usize::MAX`] — will not cause the formatter
+    /// itself to panic; extremely large values simply emit a correspondingly
+    /// large amount of whitespace. Typical values are 2 or 4.
     pub fn set_indent_size(&mut self, size: usize) {
         self.indent_size = size;
     }
@@ -247,8 +251,21 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
 
     fn indent(&mut self) -> core::fmt::Result {
         if self.indent_size > 0 {
-            let total = self.indent_size * self.level;
-            write!(self.inner, "\n{:total$}", "", total = total)?;
+            self.inner.write_str("\n")?;
+            // Emit the indentation in fixed-size chunks so that no dynamic
+            // width value ever reaches `core::fmt`, and use `saturating_mul`
+            // to close `usize` multiplication overflow. This also sidesteps
+            // the historical `u16::MAX` panic ("Formatting argument out of
+            // range") in `write!("{:N$}", ...)` for large `N`.
+            const SPACES: &str = "                                                                ";
+            let mut remaining = self.indent_size.saturating_mul(self.level);
+            while remaining >= SPACES.len() {
+                self.inner.write_str(SPACES)?;
+                remaining -= SPACES.len();
+            }
+            if remaining > 0 {
+                self.inner.write_str(&SPACES[..remaining])?;
+            }
         }
         Ok(())
     }
