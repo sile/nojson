@@ -178,6 +178,61 @@ fn parse_numbers() -> Result<(), JsonParseError> {
 }
 
 #[test]
+fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
+    // RFC 8259 §6 lets implementations set range limits. `f64::from_str`
+    // silently returns `INFINITY` for out-of-range literals, and `DisplayJson
+    // for f64` then re-serialises that as `null` — a two-step silent data
+    // loss. Reject at conversion time instead.
+    for text in ["1e400", "-1e400"] {
+        let json = RawJson::parse(text)?;
+        let result: Result<f64, _> = json.value().try_into();
+        let e = result.expect_err("out-of-range f64 must be rejected");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::InvalidValue {
+                    kind: JsonValueKind::Float,
+                    position: 0,
+                    ..
+                }
+            ),
+            "text={text}, error={e:?}"
+        );
+        assert!(
+            e.to_string().contains("number out of range"),
+            "text={text}, error={e}"
+        );
+    }
+    for text in ["3.5e40", "-3.5e40"] {
+        let json = RawJson::parse(text)?;
+        let result: Result<f32, _> = json.value().try_into();
+        let e = result.expect_err("out-of-range f32 must be rejected");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::InvalidValue {
+                    kind: JsonValueKind::Float,
+                    position: 0,
+                    ..
+                }
+            ),
+            "text={text}, error={e:?}"
+        );
+    }
+
+    // Finite values must still parse for both widths.
+    for text in ["1.0", "3.14e10", "0.5", "-2.5"] {
+        let json = RawJson::parse(text)?;
+        let v64: f64 = json.value().try_into()?;
+        assert!(v64.is_finite(), "text={text}, v64={v64}");
+        let v32: f32 = json.value().try_into()?;
+        assert!(v32.is_finite(), "text={text}, v32={v32}");
+    }
+
+    Ok(())
+}
+
+#[test]
 fn parse_strings() -> Result<(), JsonParseError> {
     // Non-escaped strings.
     for (text, unescaped) in [

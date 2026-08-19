@@ -229,7 +229,11 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for f32 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        parse_float(value)
+        let parsed: f32 = parse_float(value)?;
+        if !parsed.is_finite() {
+            return Err(value.invalid("number out of range"));
+        }
+        Ok(parsed)
     }
 }
 
@@ -237,7 +241,11 @@ impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for f64 {
     type Error = JsonParseError;
 
     fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
-        parse_float(value)
+        let parsed: f64 = parse_float(value)?;
+        if !parsed.is_finite() {
+            return Err(value.invalid("number out of range"));
+        }
+        Ok(parsed)
     }
 }
 
