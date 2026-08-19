@@ -367,6 +367,11 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
                         }
                         let code = decode_hex_u16(s)
                             .ok_or_else(|| self.unexpected_value_char(self.offset(s)))?;
+                        // RFC 8259 §8.2 leaves unpaired surrogates to the
+                        // implementation. We reject them: Rust `str` is
+                        // well-formed UTF-8 and cannot hold an unpaired
+                        // surrogate, so accepting one would only defer the
+                        // failure to `unquote`.
                         if (0xD800..=0xDBFF).contains(&code) {
                             // High surrogate must be followed by `\uXXXX`
                             // whose value is a low surrogate.
