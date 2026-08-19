@@ -273,28 +273,28 @@ fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
         assert_eq!(value.to_unquoted_string_str()?, unescaped);
     }
 
-    // Malformed surrogate sequences that produce `UnexpectedValueChar`.
-    for text in [
-        r#" "\uD834" "#,       // lone high surrogate
-        r#" "\uDD1E" "#,       // lone low surrogate
-        r#" "\uD834x" "#,      // high followed by a non-\u char
-        r#" "\uD834\n" "#,     // high followed by an escape that isn't \u
-        r#" "\uD834\u0041" "#, // high followed by non-surrogate BMP
-        r#" "\uD834\uD7FF" "#, // low value just below the low-surrogate range
-        r#" "\uD834\uE000" "#, // low value just above the low-surrogate range
-        r#" "\uD834\uD800" "#, // "low" value is actually another high
+    // Malformed surrogate sequences that produce `UnexpectedValueChar`. The
+    // `position` points at whatever character actually broke the pair rule
+    // (missing `\u`, out-of-range low, or a lone low), which is more useful
+    // than always pointing at the first hex digit of the offending escape.
+    for (text, error_position) in [
+        (r#" "\uD834" "#, 8),        // lone high surrogate → closing quote
+        (r#" "\uDD1E" "#, 4),        // lone low surrogate → first hex digit
+        (r#" "\uD834x" "#, 8),       // high followed by a non-\u char → `x`
+        (r#" "\uD834\n" "#, 8),      // high followed by an escape that isn't \u → `\`
+        (r#" "\uD834\u0041" "#, 10), // high followed by non-surrogate BMP → second hex
+        (r#" "\uD834\uD7FF" "#, 10), // low value just below the low-surrogate range
+        (r#" "\uD834\uE000" "#, 10), // low value just above the low-surrogate range
+        (r#" "\uD834\uD800" "#, 10), // "low" value is actually another high
     ] {
-        let e = RawJson::parse(text).expect_err("expected parsing to fail");
-        assert!(
-            matches!(
-                e,
-                JsonParseError::UnexpectedValueChar {
-                    kind: Some(JsonValueKind::String),
-                    ..
-                }
-            ),
-            "text={text}, error={e:?}"
+        let e = assert_parse_error_matches!(
+            text,
+            JsonParseError::UnexpectedValueChar {
+                kind: Some(JsonValueKind::String),
+                ..
+            }
         );
+        assert_eq!(e.position(), error_position, "text={text}");
     }
 
     // Truncated surrogate sequences that produce `UnexpectedEos`.
