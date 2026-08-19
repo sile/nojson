@@ -104,7 +104,7 @@ fn parse_bools() -> Result<(), JsonParseError> {
 #[test]
 fn parse_numbers() -> Result<(), JsonParseError> {
     // Integers.
-    for text in ["0", "-12"] {
+    for text in ["0", "-12", "123"] {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::Integer);
@@ -112,8 +112,11 @@ fn parse_numbers() -> Result<(), JsonParseError> {
         assert_eq!(value.position(), 0);
     }
 
-    // Floats.
-    for text in ["12.3", "12.3e4", "12.3e-4", "-0.3e+4", "12E034"] {
+    // Floats. A leading `0` is fine here because it is followed by
+    // `.` or `e` — the grammar forbids only `0` + digit.
+    for text in [
+        "12.3", "12.3e4", "12.3e-4", "-0.3e+4", "12E034", "0.123", "0e10", "-0.5",
+    ] {
         let json = RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.kind(), JsonValueKind::Float);
@@ -122,8 +125,10 @@ fn parse_numbers() -> Result<(), JsonParseError> {
     }
 
     // Malformed integers.
-    {
-        let (text, position) = ("--1", 1);
+    // Leading-zero forms (`0` immediately followed by another digit) are
+    // grammar violations per RFC 8259 §6 `int = zero / ( digit1-9 *DIGIT )`,
+    // not trailing garbage after a valid `0`.
+    for (text, position) in [("--1", 1), ("0123", 1), ("00", 1), ("-0123", 2)] {
         let e = assert_parse_error_matches!(
             text,
             JsonParseError::UnexpectedValueChar {
@@ -158,7 +163,8 @@ fn parse_numbers() -> Result<(), JsonParseError> {
     }
 
     // Unexpected trailing char.
-    for (text, position) in [("123.4.5", 5), ("0123", 1), ("00", 1)] {
+    {
+        let (text, position) = ("123.4.5", 5);
         let e = assert_parse_error_matches!(
             text,
             JsonParseError::UnexpectedTrailingChar {
