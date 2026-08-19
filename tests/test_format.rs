@@ -199,8 +199,10 @@ fn raw_json_owned_array() -> Result<(), JsonParseError> {
 fn set_indent_size_max_does_not_panic_when_formatting() {
     // With `usize::MAX`, the loop-based `indent()` would emit `usize::MAX`
     // spaces (after `saturating_mul`), so route the output through a writer
-    // that caps total bytes to keep the test fast and avoid OOM. Reaching
-    // the end without a panic is the assertion.
+    // that caps total bytes to keep the test fast and avoid OOM. Asserting
+    // that the write errors out proves the loop actually ran and hit the
+    // cap; if a future refactor silently clipped the indent size, the write
+    // would succeed and this assertion would catch that regression.
     struct CappedWriter {
         written: usize,
         limit: usize,
@@ -223,7 +225,7 @@ fn set_indent_size_max_does_not_panic_when_formatting() {
         written: 0,
         limit: 4096,
     };
-    let _ = write!(w, "{output}");
+    assert!(write!(w, "{output}").is_err());
 }
 
 #[test]

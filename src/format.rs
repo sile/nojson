@@ -258,7 +258,6 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
             // the historical `u16::MAX` panic ("Formatting argument out of
             // range") in `write!("{:N$}", ...)` for large `N`.
             const SPACES: &str = "                                                                ";
-            const _: () = assert!(SPACES.len() == 64);
             let mut remaining = self.indent_size.saturating_mul(self.level);
             while remaining >= SPACES.len() {
                 self.inner.write_str(SPACES)?;
