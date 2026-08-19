@@ -74,7 +74,11 @@ actual API shape and usage patterns, not generic JSON background.
   allocates. For general decoding use `to_unquoted_string_str()` — it returns
   `Cow<'text, str>` (borrowed when no escapes).
 - `f32` / `f64` that are not finite (NaN, ±Infinity) serialize as `null`. JSON
-  has no NaN literal; do not expect round-trips through floats.
+  has no NaN literal; do not expect round-trips through floats. Parsing also
+  rejects non-finite literals: `TryFrom<RawJsonValue>` for `f32` / `f64`
+  returns `JsonParseError::InvalidValue` (`"number out of range"`) when the
+  source literal overflows `from_str` to `±Infinity` (e.g. `1e400`, or a
+  long-enough integer literal).
 - `()` serializes to / deserializes from `null`. `Option<T>::None` also maps to
   `null`.
 - Pretty-printing is controlled on the formatter:

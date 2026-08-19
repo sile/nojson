@@ -178,6 +178,93 @@ fn parse_numbers() -> Result<(), JsonParseError> {
 }
 
 #[test]
+fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
+    // RFC 8259 §6 lets implementations set range limits. `f64::from_str`
+    // silently returns `INFINITY` for out-of-range literals, and `DisplayJson
+    // for f64` then re-serialises that as `null` — a two-step silent data
+    // loss. Reject at conversion time instead.
+    for text in ["1e400", "-1e400"] {
+        let json = RawJson::parse(text)?;
+        let result: Result<f64, _> = json.value().try_into();
+        let e = result.expect_err("out-of-range f64 must be rejected");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::InvalidValue {
+                    kind: JsonValueKind::Float,
+                    position: 0,
+                    ..
+                }
+            ),
+            "text={text}, error={e:?}"
+        );
+        assert!(
+            e.to_string().contains("number out of range"),
+            "text={text}, error={e}"
+        );
+    }
+    for text in ["3.5e40", "-3.5e40"] {
+        let json = RawJson::parse(text)?;
+        let result: Result<f32, _> = json.value().try_into();
+        let e = result.expect_err("out-of-range f32 must be rejected");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::InvalidValue {
+                    kind: JsonValueKind::Float,
+                    position: 0,
+                    ..
+                }
+            ),
+            "text={text}, error={e:?}"
+        );
+        assert!(
+            e.to_string().contains("number out of range"),
+            "text={text}, error={e}"
+        );
+    }
+
+    // Integer-kind literals also feed `f{32,64}::from_str`, so a long enough
+    // integer overflows to `Infinity` and must be rejected too. The kind on
+    // the error stays `Integer` because the parser classified the source.
+    {
+        let big64 = format!("1{}", "0".repeat(309)); // ~10^309, overflows f64
+        let json = RawJson::parse(&big64)?;
+        let e = <f64 as TryFrom<_>>::try_from(json.value())
+            .expect_err("out-of-range integer literal must be rejected for f64");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::InvalidValue {
+                    kind: JsonValueKind::Integer,
+                    position: 0,
+                    ..
+                }
+            ),
+            "text={big64}, error={e:?}"
+        );
+
+        let big32 = format!("1{}", "0".repeat(39)); // ~10^39, overflows f32
+        let json = RawJson::parse(&big32)?;
+        let e = <f32 as TryFrom<_>>::try_from(json.value())
+            .expect_err("out-of-range integer literal must be rejected for f32");
+        assert!(
+            matches!(
+                e,
+                JsonParseError::InvalidValue {
+                    kind: JsonValueKind::Integer,
+                    position: 0,
+                    ..
+                }
+            ),
+            "text={big32}, error={e:?}"
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
 fn parse_strings() -> Result<(), JsonParseError> {
     // Non-escaped strings.
     for (text, unescaped) in [
