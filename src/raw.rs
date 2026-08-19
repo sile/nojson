@@ -1247,21 +1247,25 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
                         'f' => unescaped.push('\u{c}'),
                         'u' => {
                             let high = read_hex_u16(&mut chars);
-                            let cp: u32 = if (0xD800..=0xDBFF).contains(&high) {
-                                // Parser guarantees the next 6 chars are
-                                // `\uXXXX` with a low surrogate.
+                            let c = if (0xD800..=0xDBFF).contains(&high) {
+                                // `JsonParser::parse_string` guarantees the
+                                // next six chars are `\uXXXX` with a low
+                                // surrogate, so `decode_utf16` sees a valid
+                                // pair.
                                 let backslash = chars.next().expect("infallible");
                                 debug_assert_eq!(backslash, '\\');
                                 let marker = chars.next().expect("infallible");
                                 debug_assert_eq!(marker, 'u');
                                 let low = read_hex_u16(&mut chars);
                                 debug_assert!((0xDC00..=0xDFFF).contains(&low));
-                                0x10000u32
-                                    + (((high as u32 - 0xD800) << 10) | (low as u32 - 0xDC00))
+                                char::decode_utf16([high, low])
+                                    .next()
+                                    .expect("infallible")
+                                    .expect("infallible")
                             } else {
-                                high as u32
+                                char::from_u32(high as u32).expect("infallible")
                             };
-                            unescaped.push(char::from_u32(cp).expect("infallible"));
+                            unescaped.push(c);
                         }
                         _ => unreachable!(),
                     }
