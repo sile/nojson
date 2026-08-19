@@ -230,10 +230,9 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     ///
     /// Note that this setting only affects the current and higher indentation levels.
     ///
-    /// Any [`usize`] value is accepted, including [`usize::MAX`]; formatting
-    /// will not panic. Non-sensically large values simply produce a
-    /// correspondingly large amount of whitespace, so the caller is responsible
-    /// for choosing sane values (typical values are 2 or 4).
+    /// A large `size` — up to [`usize::MAX`] — will not cause the formatter
+    /// itself to panic; extremely large values simply emit a correspondingly
+    /// large amount of whitespace. Typical values are 2 or 4.
     pub fn set_indent_size(&mut self, size: usize) {
         self.indent_size = size;
     }
@@ -253,9 +252,11 @@ impl<'a, 'b> JsonFormatter<'a, 'b> {
     fn indent(&mut self) -> core::fmt::Result {
         if self.indent_size > 0 {
             self.inner.write_str("\n")?;
-            // Written by hand to avoid `core::fmt`'s internal `u16` width limit
-            // (values above `u16::MAX` panic with "Formatting argument out of
-            // range"). `saturating_mul` also guards `usize` multiplication overflow.
+            // Emit the indentation in fixed-size chunks so that no dynamic
+            // width value ever reaches `core::fmt`, and use `saturating_mul`
+            // to close `usize` multiplication overflow. This also sidesteps
+            // the historical `u16::MAX` panic ("Formatting argument out of
+            // range") in `write!("{:N$}", ...)` for large `N`.
             const SPACES: &str = "                                                                ";
             const _: () = assert!(SPACES.len() == 64);
             let mut remaining = self.indent_size.saturating_mul(self.level);

@@ -231,7 +231,8 @@ fn deep_nesting_crossing_u16_width_does_not_panic() {
     // Cross the historical `u16::MAX = 65535` width panic threshold by
     // combining a modest `indent_size` with deep nesting:
     // `indent_size * level = 128 * 513 = 65664` at the deepest indent.
-    // Discard the output so we don't pay for the ~17MB it would materialize.
+    // Discard the output so we don't pay for the ~34MB it would materialize
+    // (~17MB for opening indents plus ~17MB for closing indents).
     struct DiscardingWriter;
     impl core::fmt::Write for DiscardingWriter {
         fn write_str(&mut self, _s: &str) -> core::fmt::Result {
