@@ -181,6 +181,14 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
 
         // int
         let s = if let Some(s) = s.strip_prefix('0') {
+            // RFC 8259 §6: `int = zero / ( digit1-9 *DIGIT )`. A digit
+            // immediately after a leading `0` is a grammar violation, not
+            // trailing garbage after a successfully parsed value.
+            if let Some(&b) = s.as_bytes().first()
+                && b.is_ascii_digit()
+            {
+                return Err(self.unexpected_value_char(self.offset(s)));
+            }
             s
         } else {
             self.strip_one_or_more_digits(s)?
