@@ -251,6 +251,7 @@ fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
         (r#" "\uDBFF\uDFFF" "#, "\u{10FFFF}"), // upper boundary
         (r#" "a\uD834\uDD1Eb" "#, "a\u{1D11E}b"),
         (r#" "\uD834\uDD1E\uD83D\uDE00" "#, "\u{1D11E}\u{1F600}"),
+        (r#" "\uD83D\ude00" "#, "\u{1F600}"), // mixed case hex
     ] {
         let json = RawJson::parse(text)?;
         let value = json.value();
@@ -308,6 +309,19 @@ fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
         assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
     }
 
+    Ok(())
+}
+
+#[test]
+fn parse_surrogate_pair_in_object_key() -> Result<(), JsonParseError> {
+    // A surrogate pair in an object key must be composed by `unquote`
+    // before it is compared against the caller-supplied name in
+    // `find_member_by_name`.
+    let text = r#"{"\uD834\uDD1E": 1}"#;
+    let json = RawJson::parse(text)?;
+    let value = json.value().to_member("\u{1D11E}")?.required()?;
+    let n: u32 = value.try_into()?;
+    assert_eq!(n, 1);
     Ok(())
 }
 
