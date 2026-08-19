@@ -376,10 +376,10 @@ impl<'a, E: Extensions> JsonParser<'a, E> {
                             // High surrogate must be followed by `\uXXXX`
                             // whose value is a low surrogate.
                             s = &s[4..];
-                            if !s.starts_with("\\u") {
+                            let Some(rest) = s.strip_prefix("\\u") else {
                                 return Err(self.unexpected_value_char(self.offset(s)));
-                            }
-                            s = &s[2..];
+                            };
+                            s = rest;
                             if s.len() < 4 {
                                 return Err(self.unexpected_eos());
                             }
