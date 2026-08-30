@@ -668,6 +668,19 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    /// Ends the current line (unless already at its start), keeping a single
+    /// blank line when the input had one between `last_content_end` and
+    /// `next_pos`. The caller indents the new line with [`Formatter::indent`],
+    /// usually after adjusting the nesting level.
+    fn newline_and_blank(&mut self, last_content_end: usize, next_pos: usize) {
+        if self.out.column() != 0 {
+            self.out.push('\n');
+        }
+        if self.has_blank_line(last_content_end, next_pos) {
+            self.out.push('\n');
+        }
+    }
+
     /// Emits the items of a gap that follows `prev_end`. Each item is placed
     /// on its own indented line when `force_own_line` is set, or when it
     /// started on a later line than the previous content in the input;
@@ -842,12 +855,7 @@ impl<'a> Formatter<'a> {
         if elems.is_empty() {
             let head = self.scan_gap(open + 1, close);
             let (_, last_content_end) = self.emit_gap_items(open + 1, &head, false, true);
-            if self.out.column() != 0 {
-                self.out.push('\n');
-            }
-            if self.has_blank_line(last_content_end, close) {
-                self.out.push('\n');
-            }
+            self.newline_and_blank(last_content_end, close);
             self.level -= 1;
             self.indent();
             self.out.push(']');
@@ -866,12 +874,7 @@ impl<'a> Formatter<'a> {
                 self.scan_gap(elems[i - 1].span.end, e.span.start)
             };
             let (_, last_content_end) = self.emit_gap_items(prev_end, &gap, false, i == 0);
-            if self.out.column() != 0 {
-                self.out.push('\n');
-            }
-            if self.has_blank_line(last_content_end, e.span.start) {
-                self.out.push('\n');
-            }
+            self.newline_and_blank(last_content_end, e.span.start);
             self.indent();
             self.emit_value(e);
         }
@@ -879,12 +882,7 @@ impl<'a> Formatter<'a> {
         let last_end = elems[elems.len() - 1].span.end;
         let tail = self.apply_trailing_comma(node, true, self.scan_gap(last_end, close));
         let (_, last_content_end) = self.emit_gap_items(last_end, &tail, false, false);
-        if self.out.column() != 0 {
-            self.out.push('\n');
-        }
-        if self.has_blank_line(last_content_end, close) {
-            self.out.push('\n');
-        }
+        self.newline_and_blank(last_content_end, close);
         self.level -= 1;
         self.indent();
         self.out.push(']');
@@ -903,12 +901,7 @@ impl<'a> Formatter<'a> {
         if members.is_empty() {
             let head = self.scan_gap(open + 1, close);
             let (_, last_content_end) = self.emit_gap_items(open + 1, &head, false, true);
-            if self.out.column() != 0 {
-                self.out.push('\n');
-            }
-            if self.has_blank_line(last_content_end, close) {
-                self.out.push('\n');
-            }
+            self.newline_and_blank(last_content_end, close);
             self.level -= 1;
             self.indent();
             self.out.push('}');
@@ -927,12 +920,7 @@ impl<'a> Formatter<'a> {
                 self.scan_gap(members[i - 1].1.span.end, k.span.start)
             };
             let (_, last_content_end) = self.emit_gap_items(prev_end, &gap, false, i == 0);
-            if self.out.column() != 0 {
-                self.out.push('\n');
-            }
-            if self.has_blank_line(last_content_end, k.span.start) {
-                self.out.push('\n');
-            }
+            self.newline_and_blank(last_content_end, k.span.start);
             self.indent();
             self.out.push_str(&self.text[k.span.clone()]);
 
@@ -941,12 +929,7 @@ impl<'a> Formatter<'a> {
                 self.emit_gap_items(k.span.end, &key_colon, false, false);
             let vline = self.line_index(k.span.end, v.span.start);
             if vline > last_line {
-                if self.out.column() != 0 {
-                    self.out.push('\n');
-                }
-                if self.has_blank_line(last_content_end, v.span.start) {
-                    self.out.push('\n');
-                }
+                self.newline_and_blank(last_content_end, v.span.start);
                 self.indent();
             } else if self.out.column() != 0 {
                 self.out.push(' ');
@@ -957,12 +940,7 @@ impl<'a> Formatter<'a> {
         let last_end = members[members.len() - 1].1.span.end;
         let tail = self.apply_trailing_comma(node, true, self.scan_gap(last_end, close));
         let (_, last_content_end) = self.emit_gap_items(last_end, &tail, false, false);
-        if self.out.column() != 0 {
-            self.out.push('\n');
-        }
-        if self.has_blank_line(last_content_end, close) {
-            self.out.push('\n');
-        }
+        self.newline_and_blank(last_content_end, close);
         self.level -= 1;
         self.indent();
         self.out.push('}');
