@@ -182,6 +182,23 @@ fn multiline_block_comment_relative_indent() {
 }
 
 #[test]
+fn multiline_block_comment_crlf_normalized() {
+    let f = fmt(PRESERVE, 2, TC_PRESERVE);
+    // A CRLF on the first line of a multi-line block comment is normalized
+    // to LF.
+    assert_eq!(
+        f.format("[\n  /* first\r\n     second */\n  1\n]").unwrap(),
+        "[\n  /* first\n     second */\n  1\n]"
+    );
+    // A CRLF on a continuation line is normalized too.
+    assert_eq!(
+        f.format("[\n  /* first\n     second\r\n     third */\n  1\n]")
+            .unwrap(),
+        "[\n  /* first\n     second\n     third */\n  1\n]"
+    );
+}
+
+#[test]
 fn crlf_normalized_to_lf() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(

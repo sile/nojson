@@ -735,20 +735,21 @@ impl<'a> Formatter<'a> {
         let mut lines = raw.split('\n').peekable();
         let mut first = true;
         while let Some(line) = lines.next() {
+            // CRLF normalization: the `\r` of a CRLF precedes the `\n` that
+            // ended the line, so it is dropped on every line except the last
+            // (where it cannot be part of a CRLF). A lone `\r` inside the
+            // comment is comment content and is kept.
+            let line = if lines.peek().is_some() {
+                line.strip_suffix('\r').unwrap_or(line)
+            } else {
+                line
+            };
             if first {
                 self.out.push_str(line);
                 first = false;
                 continue;
             }
             self.out.push('\n');
-            // CRLF normalization: on non-final lines the `\r` precedes the
-            // `\n` that ended the line, so it is dropped. A lone trailing
-            // `\r` on the final line is kept as comment content.
-            let line = if lines.peek().is_some() {
-                line.strip_suffix('\r').unwrap_or(line)
-            } else {
-                line
-            };
             let lead = line.len() - line.trim_start_matches(' ').len();
             let adjusted = (lead as isize + delta).max(0) as usize;
             for _ in 0..adjusted {
