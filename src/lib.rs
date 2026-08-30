@@ -222,6 +222,7 @@ extern crate alloc;
 
 mod display_json;
 mod format;
+mod jsonc_format;
 mod kind;
 mod parse;
 mod parse_error;
@@ -233,6 +234,7 @@ use core::{fmt::Display, str::FromStr};
 
 pub use display_json::DisplayJson;
 pub use format::{JsonArrayFormatter, JsonFormatter, JsonObjectFormatter};
+pub use jsonc_format::{JsoncFormatter, JsoncLineBreaks, JsoncTrailingCommas};
 pub use kind::JsonValueKind;
 pub use parse::MAX_NESTING_DEPTH;
 pub use raw::RawJsonMember;
