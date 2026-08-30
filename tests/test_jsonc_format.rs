@@ -199,6 +199,18 @@ fn multiline_block_comment_crlf_normalized() {
 }
 
 #[test]
+fn multiline_block_comment_after_cr_comment_is_idempotent() {
+    let f = fmt(PRESERVE, 2, TC_PRESERVE);
+    // A lone `\r` inside a preceding comment is comment content; it must not
+    // be mistaken for a line start when the following multi-line block
+    // comment's continuation-line indentation is adjusted.
+    let input = "{\n  \"a\": /* k\r */ 1 /* m\r\n\tn */\n}";
+    let once = f.format(input).unwrap();
+    let twice = f.format(&once).unwrap();
+    assert_eq!(once, twice, "formatting is not idempotent: {once:?}");
+}
+
+#[test]
 fn crlf_normalized_to_lf() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(

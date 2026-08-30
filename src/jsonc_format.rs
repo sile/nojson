@@ -759,13 +759,15 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Byte column of `pos` within its input line.
+    /// Byte column of `pos` within its input line. A line starts after a `\n`
+    /// only: a `\r` inside a comment is comment content, not a line start.
+    /// This matches the output column tracking, which is also reset by `\n`
+    /// only, keeping the continuation-line adjustment idempotent.
     fn input_column(&self, pos: usize) -> usize {
         let text = self.text.as_bytes();
         let mut start = pos;
         while start > 0 {
-            let b = text[start - 1];
-            if b == b'\n' || b == b'\r' {
+            if text[start - 1] == b'\n' {
                 break;
             }
             start -= 1;
