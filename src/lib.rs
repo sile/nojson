@@ -271,7 +271,7 @@ pub use raw::{JsonParseError, RawJson, RawJsonOwned, RawJsonValue};
 /// # }
 /// ```
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Json<T>(#[allow(missing_docs)] pub T);
+pub struct Json<T>(pub T);
 
 impl<T: DisplayJson> Display for Json<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
