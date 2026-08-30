@@ -84,31 +84,3 @@ fn parse_error_reports_line_column_and_caret() {
     assert!(out.stderr.contains("4 |"), "stderr: {}", out.stderr);
     assert!(out.stderr.contains("^ here"), "stderr: {}", out.stderr);
 }
-
-#[test]
-fn jsonc_pretty_formats_object_multiline() {
-    let out = run_example("jsonc_pretty", r#"{"a":1,"b":2}"#);
-    assert!(out.success, "stderr: {}", out.stderr);
-    assert_eq!(out.stdout, "{\n  \"a\": 1,\n  \"b\": 2\n}\n");
-}
-
-#[test]
-fn jsonc_pretty_preserves_comments_on_own_lines() {
-    let out = run_example("jsonc_pretty", r#"{"a":1,/*c*/"b":2}"#);
-    assert!(out.success, "stderr: {}", out.stderr);
-    assert_eq!(out.stdout, "{\n  \"a\": 1,\n  /*c*/\n  \"b\": 2\n}\n");
-}
-
-#[test]
-fn jsonc_pretty_keeps_empty_containers_compact() {
-    let out = run_example("jsonc_pretty", r#"{"a":[],"b":{}}"#);
-    assert!(out.success, "stderr: {}", out.stderr);
-    assert_eq!(out.stdout, "{\n  \"a\": [],\n  \"b\": {}\n}\n");
-}
-
-#[test]
-fn jsonc_pretty_rejects_invalid_input() {
-    let out = run_example("jsonc_pretty", "{not valid}");
-    assert!(!out.success);
-    assert!(!out.stderr.is_empty());
-}

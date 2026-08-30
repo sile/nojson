@@ -223,6 +223,42 @@ fn main() -> Result<(), nojson::JsonParseError> {
 }
 ```
 
+### Configurable JSONC formatting
+
+Use [`JsoncFormatter`](https://docs.rs/nojson/latest/nojson/struct.JsoncFormatter.html)
+to reformat JSONC while preserving comments, scalar lexemes, and member order.
+The line-break policy, indentation width, and trailing-comma policy are chosen
+explicitly per call:
+
+```rust
+fn main() -> Result<(), nojson::JsonParseError> {
+    let formatter = nojson::JsoncFormatter {
+        indent_size: 2,
+        line_breaks: nojson::JsoncLineBreaks::Always,
+        trailing_commas: nojson::JsoncTrailingCommas::AlwaysMultiline,
+    };
+
+    let output = formatter.format(r#"{"name":"example",/* config */"tags":["a","b"]}"#)?;
+    assert_eq!(
+        output,
+        r#"{
+  "name": "example", /* config */
+  "tags": [
+    "a",
+    "b",
+  ],
+}"#
+    );
+    Ok(())
+}
+```
+
+This formatter is a convenience for common JSONC layouts: it guarantees that
+accepted input is re-parsable, that formatting is idempotent, and that comments
+are preserved, but it does not reproduce every possible arrangement of comments
+or whitespace. If the fixed rules do not fit, build a custom formatter with
+`RawJson::parse_jsonc`, `RawJsonValue`, and the comment byte ranges instead.
+
 ## Examples
 
 The [`examples/`](examples/) directory contains runnable demos:
@@ -230,20 +266,6 @@ The [`examples/`](examples/) directory contains runnable demos:
 - [`parse_error.rs`](examples/parse_error.rs) — reads JSON from stdin and
   prints parse errors with the offending line and a caret at the reported
   byte position (useful as a template for building friendly CLI diagnostics).
-- [`jsonc_pretty.rs`](examples/jsonc_pretty.rs) — reads JSONC from stdin and
-  pretty-prints it with 2-space indentation, preserving comments on their
-  own lines. A minimal demo of `RawJson::parse_jsonc` and `RawJsonValue`
-  traversal; for full-fidelity JSONC formatting, see
-  [`jcfmt`](https://crates.io/crates/jcfmt).
 - [`benchmark.rs`](examples/benchmark.rs) — internal microbenchmark for
   parse and format paths. Not part of the public API; run with
   `cargo run --release --example benchmark`.
-
-```console
-$ echo '{"a":1,/*c*/"b":2}' | cargo run --example jsonc_pretty
-{
-  "a": 1,
-  /*c*/
-  "b": 2
-}
-```

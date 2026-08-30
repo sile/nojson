@@ -212,6 +212,23 @@ let (json, comments) = nojson::RawJson::parse_jsonc(text)?;
 // re-emission, or preserving documentation.
 ```
 
+Configurable JSONC formatting:
+
+```rust
+let formatter = nojson::JsoncFormatter {
+    indent_size: 2,
+    line_breaks: nojson::JsoncLineBreaks::Preserve,
+    trailing_commas: nojson::JsoncTrailingCommas::Preserve,
+};
+let formatted: String = formatter.format(text)?;
+```
+
+`JsoncFormatter` reformats JSONC while preserving comments, scalar lexemes,
+and member order. It is a convenience for common layouts (re-parsable and
+idempotent, but not a full-fidelity pretty printer); for layouts the fixed
+rules do not fit, build a custom formatter from `RawJson::parse_jsonc`,
+`RawJsonValue`, the comment byte ranges, and the source text.
+
 Sub-tree extraction:
 
 ```rust
@@ -228,10 +245,6 @@ complete working pattern rather than a snippet:
 - `examples/parse_error.rs` — full template for turning a `JsonParseError`
   into a CLI-style diagnostic (line / column, offending line, caret) using
   `get_line_and_column_numbers` + `get_line`.
-- `examples/jsonc_pretty.rs` — `RawJson::parse_jsonc` + `RawJsonValue`
-  traversal for a JSONC pretty-printer that preserves comments. Simpler
-  than a full formatter (always multi-line, comments on their own lines);
-  if you need trailing-comment fidelity, point the user at `jcfmt`.
 
 ## Practical hints
 
