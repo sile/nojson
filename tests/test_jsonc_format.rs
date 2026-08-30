@@ -94,6 +94,44 @@ fn invalid_input_errors() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert!(f.format("{not valid}").is_err());
     assert!(f.format("").is_err());
+    // A document with only comments has no value.
+    assert!(f.format("// only a comment").is_err());
+    assert!(f.format("/* only a comment */").is_err());
+    // An unterminated block comment is invalid.
+    assert!(f.format("[1, /* unterminated").is_err());
+    // A trailing comment after a valid value is accepted.
+    assert!(f.format("[1] // done").is_ok());
+    // Nesting deeper than MAX_NESTING_DEPTH is rejected.
+    let depth = nojson::MAX_NESTING_DEPTH + 1;
+    let deep = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
+    assert!(f.format(&deep).is_err());
+}
+
+#[test]
+fn unicode_strings_and_keys_preserved() {
+    let f = fmt(PRESERVE, 2, TC_PRESERVE);
+    // Multi-byte scalar lexemes are re-emitted verbatim; byte spans stay on
+    // UTF-8 boundaries even next to comments.
+    assert_eq!(
+        f.format(r#"["日本語", "😀🚀"]"#).unwrap(),
+        r#"["日本語", "😀🚀"]"#
+    );
+    assert_eq!(
+        f.format("[\n  \"日本語\" // c\n]").unwrap(),
+        "[\n  \"日本語\" // c\n]"
+    );
+    assert_eq!(
+        f.format("{\n  \"名前\" /* k */: 1\n}").unwrap(),
+        "{\n  \"名前\" /* k */: 1\n}"
+    );
+    assert_eq!(
+        f.format(r#"{"名前"/* k */:1}"#).unwrap(),
+        r#"{"名前" /* k */: 1}"#
+    );
+    assert_eq!(
+        f.format("[\n  \"😀\",\n  /* a\n  b */\n  1\n]").unwrap(),
+        "[\n  \"😀\",\n  /* a\n  b */\n  1\n]"
+    );
 }
 
 #[test]
