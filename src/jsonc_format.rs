@@ -43,13 +43,13 @@ use crate::{JsonParseError, JsonValueKind, RawJson, RawJsonValue};
 ///
 /// ## Spacing and indentation
 ///
-/// In single-line containers, whitespace is normalized: no space directly
-/// inside `[`/`{` or before `]`/`}`, and one space after `,` and `:`. In
-/// multi-line containers, every element and member is placed on its own line,
-/// indented by `indent_size` spaces per nesting level (`indent_size: 0`
-/// disables indentation). `indent_size` has no effect on single-line
-/// containers, and a long single-line container is never wrapped onto
-/// multiple lines.
+/// In single-line containers, whitespace is normalized: one space after `,`
+/// and `:`, none directly inside `[`/`{` or before `]`/`}`, and comments set
+/// off by one space. In multi-line containers, every element and member is
+/// placed on its own line, indented by `indent_size` spaces per nesting
+/// level (`indent_size: 0` disables indentation). `indent_size` has no
+/// effect on single-line containers, and a long single-line container is
+/// never wrapped onto multiple lines.
 ///
 /// ```jsonc
 /// {"a":1,"b":2} -> {"a": 1, "b": 2}
@@ -61,8 +61,8 @@ use crate::{JsonParseError, JsonValueKind, RawJson, RawJsonValue};
 /// surrounding elements. A `//` comment ends its line, so whatever follows it
 /// moves to a new line; a space is added in front of it when the input had
 /// none. The body of a multi-line `/* */` comment is kept verbatim; only the
-/// indentation of its continuation lines is adjusted to the comment's new
-/// position.
+/// leading spaces of its continuation lines are adjusted to the comment's new
+/// column (a leftward move can collapse them to none).
 ///
 /// ```jsonc
 /// {"a" /* k */: 1} -> {"a" /* k */: 1}
@@ -621,6 +621,11 @@ impl<'a> Formatter<'a> {
 
     /// Returns `true` when the container has a comment in one of its own gaps
     /// (not nested inside a child value).
+    ///
+    /// Child spans and comments are both in source order, so each comment is
+    /// matched against at most one candidate child with a binary search
+    /// (`partition_point`); scanning every child per comment would be
+    /// quadratic in the number of children and comments.
     fn has_comment_in_gaps(&self, node: &Node) -> bool {
         let mut ci = self.comments.partition_point(|c| c.end <= node.span.start);
         while let Some(c) = self.comments.get(ci) {
@@ -628,10 +633,16 @@ impl<'a> Formatter<'a> {
                 break;
             }
             let in_child = match &node.children {
-                Children::Array(elems) => elems.iter().any(|e| e.span.contains(&c.start)),
-                Children::Object(members) => members
-                    .iter()
-                    .any(|(k, v)| k.span.contains(&c.start) || v.span.contains(&c.start)),
+                Children::Array(elems) => {
+                    let first = elems.partition_point(|e| e.span.end <= c.start);
+                    elems.get(first).is_some_and(|e| e.span.contains(&c.start))
+                }
+                Children::Object(members) => {
+                    let first = members.partition_point(|(_, v)| v.span.end <= c.start);
+                    members.get(first).is_some_and(|(k, v)| {
+                        k.span.contains(&c.start) || v.span.contains(&c.start)
+                    })
+                }
                 Children::Leaf => false,
             };
             if !in_child {
