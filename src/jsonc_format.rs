@@ -12,6 +12,81 @@ use crate::{JsonParseError, JsonValueKind, RawJson, RawJsonValue};
 /// that formatting is idempotent, and that comments, scalar lexemes, and
 /// member order are preserved.
 ///
+/// # Formatting rules
+///
+/// `format` re-emits the input with normalized whitespace and line breaks.
+/// How line breaks inside arrays and objects are chosen (`line_breaks`) and
+/// how trailing commas are handled (`trailing_commas`) are configured
+/// separately; see [`JsoncLineBreaks`] and [`JsoncTrailingCommas`]. The rules
+/// below apply to every combination of those settings.
+///
+/// ## Line-break characters
+///
+/// The output is LF-only. CRLF and a lone `\r` outside comments are converted
+/// to LF, and the output never ends with a line break. Consecutive blank
+/// lines collapse into one.
+///
+/// ```jsonc
+/// [
+///   1,
+///
+///
+///   2
+/// ]
+/// ->
+/// [
+///   1,
+///
+///   2
+/// ]
+/// ```
+///
+/// ## Spacing and indentation
+///
+/// In single-line containers, whitespace is normalized: no space directly
+/// inside `[`/`{` or before `]`/`}`, and one space after `,` and `:`. In
+/// multi-line containers, every element and member is placed on its own line,
+/// indented by `indent_size` spaces per nesting level (`indent_size: 0`
+/// disables indentation). `indent_size` has no effect on single-line
+/// containers, and a long single-line container is never wrapped onto
+/// multiple lines.
+///
+/// ```jsonc
+/// {"a":1,"b":2} -> {"a": 1, "b": 2}
+/// ```
+///
+/// ## Comments
+///
+/// Comments keep their body, their order, and their position relative to the
+/// surrounding elements. A `//` comment ends its line, so whatever follows it
+/// moves to a new line; a space is added in front of it when the input had
+/// none. The body of a multi-line `/* */` comment is kept verbatim; only the
+/// indentation of its continuation lines is adjusted to the comment's new
+/// position.
+///
+/// ```jsonc
+/// {"a" /* k */: 1} -> {"a" /* k */: 1}
+///
+/// [1// c
+/// ]
+/// ->
+/// [
+///   1 // c
+/// ]
+///
+/// [
+/// /* multi
+///    line */
+///   1
+/// ]
+/// ->
+/// [
+///   /* multi
+///      line */
+///   1
+/// ]
+/// ```
+///
 /// # Note
 ///
 /// This formatter is a convenience for common JSONC layouts, not a general
