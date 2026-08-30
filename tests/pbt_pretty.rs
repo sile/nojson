@@ -1,6 +1,6 @@
 //! Pretty-print roundtrip property tests for nojson, driven by noprop.
 //!
-//! `JsonFormatter::set_indent_size` / `set_spacing` route output
+//! `nojson::JsonFormatter::set_indent_size` / `set_spacing` route output
 //! through a separate code path (indentation and member separators)
 //! from the compact formatter exercised by `pbt_roundtrip.rs`. Every
 //! test picks a value, pretty-prints it under random settings, parses
@@ -15,7 +15,6 @@ mod pbt_harness;
 use std::cell::Cell;
 use std::collections::BTreeMap;
 
-use nojson::Json;
 use pbt_harness::{MAX_LEN, needs_escape, run, sample_len, sample_string_arbitrary, sample_vec};
 
 /// Sample a pretty-print setting pair: an indent size covering the
@@ -50,7 +49,7 @@ fn pretty_roundtrip_nested() -> noprop::TestResult {
             f.value(&v)
         })
         .to_string();
-        let parsed: Json<Vec<BTreeMap<String, Vec<i32>>>> = text.parse()?;
+        let parsed: nojson::Json<Vec<BTreeMap<String, Vec<i32>>>> = text.parse()?;
         assert_eq!(parsed.0, v);
         if spacing {
             spacing_cases.set(spacing_cases.get() + 1);
@@ -83,7 +82,7 @@ fn pretty_roundtrip_string() -> noprop::TestResult {
             f.value(&s)
         })
         .to_string();
-        let parsed: Json<String> = text.parse()?;
+        let parsed: nojson::Json<String> = text.parse()?;
         assert_eq!(parsed.0, s);
         if s.chars().any(needs_escape) {
             escape_cases.set(escape_cases.get() + 1);

@@ -103,7 +103,7 @@ impl RawJsonOwned {
     ///
     /// Panics if the closure produces JSON that cannot be re-parsed. In
     /// practice this happens when the formatter output nests deeper than
-    /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
+    /// [`MAX_NESTING_DEPTH`](crate::MAX_NESTING_DEPTH). Use [`RawJsonOwned::parse`] on the
     /// formatted string instead when the depth may exceed the limit.
     ///
     /// # Example
@@ -136,7 +136,7 @@ impl RawJsonOwned {
     ///
     /// Panics if the closure produces JSON that cannot be re-parsed. In
     /// practice this happens when the formatter output nests deeper than
-    /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
+    /// [`MAX_NESTING_DEPTH`](crate::MAX_NESTING_DEPTH). Use [`RawJsonOwned::parse`] on the
     /// formatted string instead when the depth may exceed the limit.
     ///
     /// # Example
@@ -165,7 +165,7 @@ impl RawJsonOwned {
     ///
     /// Panics if the closure produces JSON that cannot be re-parsed. In
     /// practice this happens when the formatter output nests deeper than
-    /// [`crate::MAX_NESTING_DEPTH`]. Use [`RawJsonOwned::parse`] on the
+    /// [`MAX_NESTING_DEPTH`](crate::MAX_NESTING_DEPTH). Use [`RawJsonOwned::parse`] on the
     /// formatted string instead when the depth may exceed the limit.
     ///
     /// # Example
@@ -202,7 +202,7 @@ impl RawJsonOwned {
     /// ```
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"name": "John", "age": 30}"#;
-    /// let json = nojson::RawJsonOwned::parse(text).unwrap();
+    /// let json = nojson::RawJsonOwned::parse(text)?;
     /// let value = json.value();
     /// # Ok(())
     /// # }
@@ -433,7 +433,7 @@ impl<'text> RawJson<'text> {
     /// ```
     /// # fn main() -> Result<(), nojson::JsonParseError> {
     /// let text = r#"{"name": "John", "age": 30}"#;
-    /// let json = nojson::RawJson::parse(text).unwrap();
+    /// let json = nojson::RawJson::parse(text)?;
     /// let value = json.value();
     /// # Ok(())
     /// # }
@@ -976,7 +976,7 @@ impl<'text, 'raw> RawJsonValue<'text, 'raw> {
             if v.entry().escaped {
                 Err(v.invalid("string requires unescaping"))
             } else {
-                // Safe to unwrap: we know it's a valid JSON string with quotes
+                // Safe to slice: we know it's a valid JSON string with quotes
                 let raw = v.as_raw_str();
                 Ok(&raw[1..raw.len() - 1])
             }

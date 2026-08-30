@@ -1,13 +1,11 @@
-use nojson::{JsonParseError, RawJson};
-
 #[test]
-fn parse_jsonc_line_comments() -> Result<(), JsonParseError> {
+fn parse_jsonc_line_comments() -> Result<(), nojson::JsonParseError> {
     let text = r#"{
         "name": "John", // This is a line comment
         "age": 30 // Another comment
     }"#;
 
-    let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
+    let (json, comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
 
     // Verify JSON parsing works correctly
     let name: String = json.value().to_member("name")?.required()?.try_into()?;
@@ -30,7 +28,7 @@ fn parse_jsonc_line_comments() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_jsonc_block_comments() -> Result<(), JsonParseError> {
+fn parse_jsonc_block_comments() -> Result<(), nojson::JsonParseError> {
     let text = r#"{
         /* This is a
            multi-line block comment */
@@ -38,7 +36,7 @@ fn parse_jsonc_block_comments() -> Result<(), JsonParseError> {
         "city": "New York" /* inline block comment */
     }"#;
 
-    let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
+    let (json, comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
 
     // Verify JSON parsing works correctly
     let name: String = json.value().to_member("name")?.required()?.try_into()?;
@@ -61,7 +59,7 @@ fn parse_jsonc_block_comments() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_jsonc_mixed_comments() -> Result<(), JsonParseError> {
+fn parse_jsonc_mixed_comments() -> Result<(), nojson::JsonParseError> {
     let text = r#"{
         // Line comment at start
         // Multiple '//' comments
@@ -79,7 +77,7 @@ fn parse_jsonc_mixed_comments() -> Result<(), JsonParseError> {
         /* Final block comment */
     }"#;
 
-    let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
+    let (json, comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
 
     // Verify JSON structure
     let users_array = json.value().to_member("users")?.required()?.to_array()?;
@@ -99,14 +97,14 @@ fn parse_jsonc_mixed_comments() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_jsonc_trailing_commas_object() -> Result<(), JsonParseError> {
+fn parse_jsonc_trailing_commas_object() -> Result<(), nojson::JsonParseError> {
     let text = r#"{
         "name": "John",
         "age": 30,
         "active": true,
     }"#;
 
-    let (json, _comment_ranges) = RawJson::parse_jsonc(text)?;
+    let (json, _comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
 
     // Verify JSON parsing works correctly with trailing comma
     let name: String = json.value().to_member("name")?.required()?.try_into()?;
@@ -122,7 +120,7 @@ fn parse_jsonc_trailing_commas_object() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_jsonc_trailing_commas_array() -> Result<(), JsonParseError> {
+fn parse_jsonc_trailing_commas_array() -> Result<(), nojson::JsonParseError> {
     let text = r#"{
         "fruits": [
             "apple",
@@ -132,7 +130,7 @@ fn parse_jsonc_trailing_commas_array() -> Result<(), JsonParseError> {
         "numbers": [1, 2, 3,]
     }"#;
 
-    let (json, _comment_ranges) = RawJson::parse_jsonc(text)?;
+    let (json, _comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
 
     // Verify array parsing with trailing commas
     let fruits_array = json.value().to_member("fruits")?.required()?.to_array()?;
@@ -151,7 +149,7 @@ fn parse_jsonc_trailing_commas_array() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_jsonc_trailing_commas_with_comments() -> Result<(), JsonParseError> {
+fn parse_jsonc_trailing_commas_with_comments() -> Result<(), nojson::JsonParseError> {
     let text = r#"{
         "config": {
             "debug": true, // Enable debug mode
@@ -163,7 +161,7 @@ fn parse_jsonc_trailing_commas_with_comments() -> Result<(), JsonParseError> {
         ], // End features
     }"#;
 
-    let (json, comment_ranges) = RawJson::parse_jsonc(text)?;
+    let (json, comment_ranges) = nojson::RawJson::parse_jsonc(text)?;
 
     // Verify parsing with both trailing commas and comments
     let debug: bool = json
@@ -241,7 +239,7 @@ fn parse_jsonc_abnormal_trailing_commas() {
     ];
 
     for (test_case, description) in test_cases {
-        let result = RawJson::parse_jsonc(test_case);
+        let result = nojson::RawJson::parse_jsonc(test_case);
         assert!(
             result.is_err(),
             "{} should fail to parse. Input: '{}'",

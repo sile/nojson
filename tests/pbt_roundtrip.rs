@@ -27,7 +27,6 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use nojson::Json;
 use pbt_harness::*;
 
 // --- Roundtrip tests -------------------------------------------------
@@ -36,7 +35,7 @@ use pbt_harness::*;
 fn roundtrip_bool() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_bool(ctx);
-        let parsed: Json<bool> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<bool> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -46,7 +45,7 @@ fn roundtrip_bool() -> noprop::TestResult {
 fn roundtrip_i8() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_i8(ctx);
-        let parsed: Json<i8> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<i8> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -56,7 +55,7 @@ fn roundtrip_i8() -> noprop::TestResult {
 fn roundtrip_i16() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_i16(ctx);
-        let parsed: Json<i16> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<i16> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -66,7 +65,7 @@ fn roundtrip_i16() -> noprop::TestResult {
 fn roundtrip_i32() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_i32(ctx);
-        let parsed: Json<i32> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<i32> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -76,7 +75,7 @@ fn roundtrip_i32() -> noprop::TestResult {
 fn roundtrip_i64() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_i64(ctx);
-        let parsed: Json<i64> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<i64> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -86,7 +85,7 @@ fn roundtrip_i64() -> noprop::TestResult {
 fn roundtrip_i128() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_i128(ctx);
-        let parsed: Json<i128> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<i128> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -96,7 +95,7 @@ fn roundtrip_i128() -> noprop::TestResult {
 fn roundtrip_u8() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_u8(ctx);
-        let parsed: Json<u8> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<u8> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -106,7 +105,7 @@ fn roundtrip_u8() -> noprop::TestResult {
 fn roundtrip_u16() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_u16(ctx);
-        let parsed: Json<u16> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<u16> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -116,7 +115,7 @@ fn roundtrip_u16() -> noprop::TestResult {
 fn roundtrip_u32() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_u32(ctx);
-        let parsed: Json<u32> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<u32> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -126,7 +125,7 @@ fn roundtrip_u32() -> noprop::TestResult {
 fn roundtrip_u64() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_u64(ctx);
-        let parsed: Json<u64> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<u64> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -136,7 +135,7 @@ fn roundtrip_u64() -> noprop::TestResult {
 fn roundtrip_u128() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_u128(ctx);
-        let parsed: Json<u128> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<u128> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -146,7 +145,7 @@ fn roundtrip_u128() -> noprop::TestResult {
 fn roundtrip_isize() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_isize(ctx);
-        let parsed: Json<isize> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<isize> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -156,7 +155,7 @@ fn roundtrip_isize() -> noprop::TestResult {
 fn roundtrip_usize() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_usize(ctx);
-        let parsed: Json<usize> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<usize> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -167,7 +166,7 @@ fn roundtrip_f32_finite() -> noprop::TestResult {
     run(|ctx| {
         // `sample_f32` already rejects non-finite draws internally.
         let v = noprop::sample_f32(ctx);
-        let parsed: Json<f32> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<f32> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -177,7 +176,7 @@ fn roundtrip_f32_finite() -> noprop::TestResult {
 fn roundtrip_f64_finite() -> noprop::TestResult {
     run(|ctx| {
         let v = noprop::sample_f64(ctx);
-        let parsed: Json<f64> = Json(v).to_string().parse()?;
+        let parsed: nojson::Json<f64> = nojson::Json(v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -188,7 +187,7 @@ fn roundtrip_string() -> noprop::TestResult {
     let escape_cases = Cell::new(0usize);
     run(|ctx| {
         let s = sample_string_arbitrary(ctx);
-        let parsed: Json<String> = Json(&s).to_string().parse()?;
+        let parsed: nojson::Json<String> = nojson::Json(&s).to_string().parse()?;
         assert_eq!(parsed.0, s);
         if s.chars().any(needs_escape) {
             escape_cases.set(escape_cases.get() + 1);
@@ -206,7 +205,7 @@ fn roundtrip_string() -> noprop::TestResult {
 fn roundtrip_string_with_non_ascii_followed_by_ascii() -> noprop::TestResult {
     run(|ctx| {
         let s = sample_string_mixed(ctx);
-        let parsed: Json<String> = Json(&s).to_string().parse()?;
+        let parsed: nojson::Json<String> = nojson::Json(&s).to_string().parse()?;
         assert_eq!(parsed.0, s);
         Ok(())
     })
@@ -216,7 +215,7 @@ fn roundtrip_string_with_non_ascii_followed_by_ascii() -> noprop::TestResult {
 fn roundtrip_char() -> noprop::TestResult {
     run(|ctx| {
         let c = sample_char_any(ctx);
-        let parsed: Json<char> = Json(c).to_string().parse()?;
+        let parsed: nojson::Json<char> = nojson::Json(c).to_string().parse()?;
         assert_eq!(parsed.0, c);
         Ok(())
     })
@@ -226,7 +225,7 @@ fn roundtrip_char() -> noprop::TestResult {
 fn roundtrip_option_i32() -> noprop::TestResult {
     run(|ctx| {
         let opt = sample_option(ctx, noprop::sample_i32);
-        let parsed: Json<Option<i32>> = Json(opt).to_string().parse()?;
+        let parsed: nojson::Json<Option<i32>> = nojson::Json(opt).to_string().parse()?;
         assert_eq!(parsed.0, opt);
         Ok(())
     })
@@ -236,7 +235,8 @@ fn roundtrip_option_i32() -> noprop::TestResult {
 fn roundtrip_option_string() -> noprop::TestResult {
     run(|ctx| {
         let opt = sample_option(ctx, sample_string_arbitrary);
-        let parsed: Json<Option<String>> = Json(opt.as_ref()).to_string().parse()?;
+        let parsed: nojson::Json<Option<String>> =
+            nojson::Json(opt.as_ref()).to_string().parse()?;
         assert_eq!(parsed.0, opt);
         Ok(())
     })
@@ -246,7 +246,7 @@ fn roundtrip_option_string() -> noprop::TestResult {
 fn roundtrip_vec_i32() -> noprop::TestResult {
     run(|ctx| {
         let v = sample_vec(ctx, noprop::sample_i32);
-        let parsed: Json<Vec<i32>> = Json(&v).to_string().parse()?;
+        let parsed: nojson::Json<Vec<i32>> = nojson::Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -256,7 +256,7 @@ fn roundtrip_vec_i32() -> noprop::TestResult {
 fn roundtrip_vec_string() -> noprop::TestResult {
     run(|ctx| {
         let v = sample_vec(ctx, sample_string_arbitrary);
-        let parsed: Json<Vec<String>> = Json(&v).to_string().parse()?;
+        let parsed: nojson::Json<Vec<String>> = nojson::Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -266,7 +266,7 @@ fn roundtrip_vec_string() -> noprop::TestResult {
 fn roundtrip_vec_option_i32() -> noprop::TestResult {
     run(|ctx| {
         let v = sample_vec(ctx, |ctx| sample_option(ctx, noprop::sample_i32));
-        let parsed: Json<Vec<Option<i32>>> = Json(&v).to_string().parse()?;
+        let parsed: nojson::Json<Vec<Option<i32>>> = nojson::Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -276,7 +276,7 @@ fn roundtrip_vec_option_i32() -> noprop::TestResult {
 fn roundtrip_nested_vec() -> noprop::TestResult {
     run(|ctx| {
         let v = sample_vec(ctx, |ctx| sample_vec(ctx, noprop::sample_i32));
-        let parsed: Json<Vec<Vec<i32>>> = Json(&v).to_string().parse()?;
+        let parsed: nojson::Json<Vec<Vec<i32>>> = nojson::Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -290,7 +290,7 @@ fn roundtrip_btreemap_string_i32() -> noprop::TestResult {
         for _ in 0..n {
             m.insert(sample_string_arbitrary(ctx), noprop::sample_i32(ctx));
         }
-        let parsed: Json<BTreeMap<String, i32>> = Json(&m).to_string().parse()?;
+        let parsed: nojson::Json<BTreeMap<String, i32>> = nojson::Json(&m).to_string().parse()?;
         assert_eq!(parsed.0, m);
         Ok(())
     })
@@ -306,7 +306,8 @@ fn roundtrip_btreemap_string_option_string() -> noprop::TestResult {
             let v = sample_option(ctx, sample_string_arbitrary);
             m.insert(k, v);
         }
-        let parsed: Json<BTreeMap<String, Option<String>>> = Json(&m).to_string().parse()?;
+        let parsed: nojson::Json<BTreeMap<String, Option<String>>> =
+            nojson::Json(&m).to_string().parse()?;
         assert_eq!(parsed.0, m);
         Ok(())
     })
@@ -322,7 +323,7 @@ fn roundtrip_array_fixed() -> noprop::TestResult {
             noprop::sample_i32(ctx),
             noprop::sample_i32(ctx),
         ];
-        let parsed: Json<[i32; 5]> = Json(arr).to_string().parse()?;
+        let parsed: nojson::Json<[i32; 5]> = nojson::Json(arr).to_string().parse()?;
         assert_eq!(parsed.0, arr);
         Ok(())
     })
@@ -334,7 +335,7 @@ fn roundtrip_array_fixed() -> noprop::TestResult {
 fn roundtrip_nonzero_i8() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_i8(ctx);
-        let parsed: Json<NonZeroI8> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroI8> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -344,7 +345,7 @@ fn roundtrip_nonzero_i8() -> noprop::TestResult {
 fn roundtrip_nonzero_u8() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_u8(ctx);
-        let parsed: Json<NonZeroU8> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroU8> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -354,7 +355,7 @@ fn roundtrip_nonzero_u8() -> noprop::TestResult {
 fn roundtrip_nonzero_i16() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_i16(ctx);
-        let parsed: Json<NonZeroI16> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroI16> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -364,7 +365,7 @@ fn roundtrip_nonzero_i16() -> noprop::TestResult {
 fn roundtrip_nonzero_u16() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_u16(ctx);
-        let parsed: Json<NonZeroU16> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroU16> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -374,7 +375,7 @@ fn roundtrip_nonzero_u16() -> noprop::TestResult {
 fn roundtrip_nonzero_i32() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_i32(ctx);
-        let parsed: Json<NonZeroI32> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroI32> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -384,7 +385,7 @@ fn roundtrip_nonzero_i32() -> noprop::TestResult {
 fn roundtrip_nonzero_u32() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_u32(ctx);
-        let parsed: Json<NonZeroU32> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroU32> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -394,7 +395,7 @@ fn roundtrip_nonzero_u32() -> noprop::TestResult {
 fn roundtrip_nonzero_i64() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_i64(ctx);
-        let parsed: Json<NonZeroI64> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroI64> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -404,7 +405,7 @@ fn roundtrip_nonzero_i64() -> noprop::TestResult {
 fn roundtrip_nonzero_u64() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_u64(ctx);
-        let parsed: Json<NonZeroU64> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroU64> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -414,7 +415,7 @@ fn roundtrip_nonzero_u64() -> noprop::TestResult {
 fn roundtrip_nonzero_i128() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_i128(ctx);
-        let parsed: Json<NonZeroI128> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroI128> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -424,7 +425,7 @@ fn roundtrip_nonzero_i128() -> noprop::TestResult {
 fn roundtrip_nonzero_u128() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_u128(ctx);
-        let parsed: Json<NonZeroU128> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroU128> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -434,7 +435,7 @@ fn roundtrip_nonzero_u128() -> noprop::TestResult {
 fn roundtrip_nonzero_isize() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_isize(ctx);
-        let parsed: Json<NonZeroIsize> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroIsize> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -444,7 +445,7 @@ fn roundtrip_nonzero_isize() -> noprop::TestResult {
 fn roundtrip_nonzero_usize() -> noprop::TestResult {
     run(|ctx| {
         let nz = sample_non_zero_usize(ctx);
-        let parsed: Json<NonZeroUsize> = Json(nz).to_string().parse()?;
+        let parsed: nojson::Json<NonZeroUsize> = nojson::Json(nz).to_string().parse()?;
         assert_eq!(parsed.0, nz);
         Ok(())
     })
@@ -457,7 +458,7 @@ fn roundtrip_box_i32() -> noprop::TestResult {
     run(|ctx| {
         let n = noprop::sample_i32(ctx);
         let b = Box::new(n);
-        let parsed: Json<i32> = Json(&b).to_string().parse()?;
+        let parsed: nojson::Json<i32> = nojson::Json(&b).to_string().parse()?;
         assert_eq!(parsed.0, n);
         Ok(())
     })
@@ -468,7 +469,7 @@ fn roundtrip_rc_string() -> noprop::TestResult {
     run(|ctx| {
         let s = sample_string_arbitrary(ctx);
         let r = Rc::new(s.clone());
-        let parsed: Json<Rc<String>> = Json(&r).to_string().parse()?;
+        let parsed: nojson::Json<Rc<String>> = nojson::Json(&r).to_string().parse()?;
         assert_eq!(parsed.0.as_ref(), &s);
         Ok(())
     })
@@ -479,7 +480,7 @@ fn roundtrip_arc_string() -> noprop::TestResult {
     run(|ctx| {
         let s = sample_string_arbitrary(ctx);
         let a = Arc::new(s.clone());
-        let parsed: Json<Arc<String>> = Json(&a).to_string().parse()?;
+        let parsed: nojson::Json<Arc<String>> = nojson::Json(&a).to_string().parse()?;
         assert_eq!(parsed.0.as_ref(), &s);
         Ok(())
     })
@@ -491,7 +492,7 @@ fn roundtrip_arc_string() -> noprop::TestResult {
 fn roundtrip_vecdeque_i32() -> noprop::TestResult {
     run(|ctx| {
         let v: VecDeque<i32> = sample_vec(ctx, noprop::sample_i32).into();
-        let parsed: Json<VecDeque<i32>> = Json(&v).to_string().parse()?;
+        let parsed: nojson::Json<VecDeque<i32>> = nojson::Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -505,7 +506,7 @@ fn roundtrip_btreeset_i32() -> noprop::TestResult {
         for _ in 0..n {
             s.insert(noprop::sample_i32(ctx));
         }
-        let parsed: Json<BTreeSet<i32>> = Json(&s).to_string().parse()?;
+        let parsed: nojson::Json<BTreeSet<i32>> = nojson::Json(&s).to_string().parse()?;
         assert_eq!(parsed.0, s);
         Ok(())
     })
@@ -522,7 +523,7 @@ fn roundtrip_hashmap_string_i32() -> noprop::TestResult {
         for _ in 0..n {
             m.insert(sample_string_arbitrary(ctx), noprop::sample_i32(ctx));
         }
-        let parsed: Json<HashMap<String, i32>> = Json(&m).to_string().parse()?;
+        let parsed: nojson::Json<HashMap<String, i32>> = nojson::Json(&m).to_string().parse()?;
         assert_eq!(parsed.0, m);
         Ok(())
     })
@@ -537,7 +538,7 @@ fn roundtrip_hashset_i32() -> noprop::TestResult {
         for _ in 0..n {
             s.insert(noprop::sample_i32(ctx));
         }
-        let parsed: Json<HashSet<i32>> = Json(&s).to_string().parse()?;
+        let parsed: nojson::Json<HashSet<i32>> = nojson::Json(&s).to_string().parse()?;
         assert_eq!(parsed.0, s);
         Ok(())
     })
@@ -549,7 +550,7 @@ fn roundtrip_pathbuf() -> noprop::TestResult {
     run(|ctx| {
         let s = sample_string_arbitrary(ctx);
         let p = PathBuf::from(&s);
-        let parsed: Json<PathBuf> = Json(&p).to_string().parse()?;
+        let parsed: nojson::Json<PathBuf> = nojson::Json(&p).to_string().parse()?;
         assert_eq!(parsed.0, p);
         Ok(())
     })
@@ -567,7 +568,7 @@ fn roundtrip_ipv4addr() -> noprop::TestResult {
             noprop::sample_u8(ctx),
             noprop::sample_u8(ctx),
         );
-        let parsed: Json<Ipv4Addr> = Json(ip).to_string().parse()?;
+        let parsed: nojson::Json<Ipv4Addr> = nojson::Json(ip).to_string().parse()?;
         assert_eq!(parsed.0, ip);
         Ok(())
     })
@@ -587,7 +588,7 @@ fn roundtrip_ipv6addr() -> noprop::TestResult {
             noprop::sample_u16(ctx),
             noprop::sample_u16(ctx),
         );
-        let parsed: Json<Ipv6Addr> = Json(ip).to_string().parse()?;
+        let parsed: nojson::Json<Ipv6Addr> = nojson::Json(ip).to_string().parse()?;
         assert_eq!(parsed.0, ip);
         Ok(())
     })
@@ -603,7 +604,7 @@ fn roundtrip_ipaddr_v4() -> noprop::TestResult {
             noprop::sample_u8(ctx),
             noprop::sample_u8(ctx),
         ));
-        let parsed: Json<IpAddr> = Json(ip).to_string().parse()?;
+        let parsed: nojson::Json<IpAddr> = nojson::Json(ip).to_string().parse()?;
         assert_eq!(parsed.0, ip);
         Ok(())
     })
@@ -622,7 +623,7 @@ fn roundtrip_socketaddr_v4() -> noprop::TestResult {
             ),
             noprop::sample_u16(ctx),
         );
-        let parsed: Json<SocketAddrV4> = Json(addr).to_string().parse()?;
+        let parsed: nojson::Json<SocketAddrV4> = nojson::Json(addr).to_string().parse()?;
         assert_eq!(parsed.0, addr);
         Ok(())
     })
@@ -647,7 +648,7 @@ fn roundtrip_socketaddr_v6() -> noprop::TestResult {
             0,
             0,
         );
-        let parsed: Json<SocketAddrV6> = Json(addr).to_string().parse()?;
+        let parsed: nojson::Json<SocketAddrV6> = nojson::Json(addr).to_string().parse()?;
         assert_eq!(parsed.0, addr);
         Ok(())
     })
@@ -666,7 +667,7 @@ fn roundtrip_socketaddr() -> noprop::TestResult {
             ),
             noprop::sample_u16(ctx),
         ));
-        let parsed: Json<SocketAddr> = Json(addr).to_string().parse()?;
+        let parsed: nojson::Json<SocketAddr> = nojson::Json(addr).to_string().parse()?;
         assert_eq!(parsed.0, addr);
         Ok(())
     })
@@ -677,7 +678,7 @@ fn roundtrip_socketaddr() -> noprop::TestResult {
 #[test]
 fn roundtrip_unit() -> noprop::TestResult {
     run(|_ctx| {
-        let parsed: Json<()> = Json(()).to_string().parse()?;
+        let parsed: nojson::Json<()> = nojson::Json(()).to_string().parse()?;
         assert_eq!(parsed.0, ());
         Ok(())
     })
@@ -696,7 +697,8 @@ fn roundtrip_vec_btreemap() -> noprop::TestResult {
             }
             m
         });
-        let parsed: Json<Vec<BTreeMap<String, i32>>> = Json(&v).to_string().parse()?;
+        let parsed: nojson::Json<Vec<BTreeMap<String, i32>>> =
+            nojson::Json(&v).to_string().parse()?;
         assert_eq!(parsed.0, v);
         Ok(())
     })
@@ -712,7 +714,8 @@ fn roundtrip_btreemap_vec() -> noprop::TestResult {
             let v = sample_vec(ctx, noprop::sample_i32);
             m.insert(k, v);
         }
-        let parsed: Json<BTreeMap<String, Vec<i32>>> = Json(&m).to_string().parse()?;
+        let parsed: nojson::Json<BTreeMap<String, Vec<i32>>> =
+            nojson::Json(&m).to_string().parse()?;
         assert_eq!(parsed.0, m);
         Ok(())
     })

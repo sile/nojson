@@ -83,7 +83,7 @@ fn gen_ascii_with_escapes(len: usize, interval: usize) -> String {
         if i > 0 && i % interval == 0 {
             body.push_str(r#"\""#);
         } else {
-            body.push(chars.next().unwrap());
+            body.push(chars.next().expect("infallible: cycle iterator never ends"));
         }
     }
     format!(r#""{body}""#)
@@ -291,7 +291,7 @@ fn bench_parse(repeats: usize) -> Vec<Row> {
             let bytes = input.len();
             let ns = best_of(repeats, || {
                 measure_one(|| {
-                    let _ = nojson::RawJson::parse(input).unwrap();
+                    let _ = nojson::RawJson::parse(input).expect("generated input must parse");
                 })
             });
             Row {
@@ -307,7 +307,7 @@ fn bench_parse(repeats: usize) -> Vec<Row> {
     let bytes = jsonc.len();
     let ns = best_of(repeats, || {
         measure_one(|| {
-            let _ = nojson::RawJson::parse_jsonc(&jsonc).unwrap();
+            let _ = nojson::RawJson::parse_jsonc(&jsonc).expect("generated input must parse");
         })
     });
     rows.push(Row {

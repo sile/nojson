@@ -17,7 +17,9 @@ pub(crate) fn skip_plain_ascii_bytes(s: &[u8]) -> usize {
 
     // Process 8 bytes at a time
     while i + 8 <= s.len() {
-        let chunk: [u8; 8] = s[i..i + 8].try_into().unwrap();
+        let chunk: [u8; 8] = s[i..i + 8]
+            .try_into()
+            .expect("infallible: 8-byte slice guaranteed by the loop condition");
         let w = u64::from_ne_bytes(chunk);
 
         if is_all_plain_ascii(w) {
@@ -50,7 +52,9 @@ pub(crate) fn skip_non_ascii_bytes(s: &[u8]) -> usize {
 
     // Process 8 bytes at a time: all non-ASCII bytes have bit 7 set
     while i + 8 <= s.len() {
-        let chunk: [u8; 8] = s[i..i + 8].try_into().unwrap();
+        let chunk: [u8; 8] = s[i..i + 8]
+            .try_into()
+            .expect("infallible: 8-byte slice guaranteed by the loop condition");
         let w = u64::from_ne_bytes(chunk);
         if w & MASK_80 == MASK_80 {
             i += 8;
@@ -87,7 +91,9 @@ pub(crate) fn skip_ascii_digits(s: &[u8]) -> usize {
 
     // Process 8 bytes at a time.
     while i + 8 <= s.len() {
-        let chunk: [u8; 8] = s[i..i + 8].try_into().unwrap();
+        let chunk: [u8; 8] = s[i..i + 8]
+            .try_into()
+            .expect("infallible: 8-byte slice guaranteed by the loop condition");
         let w = u64::from_ne_bytes(chunk);
 
         if is_all_ascii_digits(w) {

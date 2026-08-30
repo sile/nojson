@@ -1,11 +1,9 @@
 use std::{borrow::Cow, collections::BTreeMap};
 
-use nojson::{Json, JsonParseError, JsonValueKind, RawJson, RawJsonValue};
-
 macro_rules! assert_parse_error_matches {
     ($text:expr, $error_pattern:pat) => {{
         let text = $text;
-        let e = RawJson::parse(text).expect_err("expected parsing to fail");
+        let e = nojson::RawJson::parse(text).expect_err("expected parsing to fail");
         assert!(matches!(e, $error_pattern), "text={text}, error={e:?}");
         e
     }};
@@ -15,14 +13,14 @@ macro_rules! assert_parse_error_matches {
 fn parse_empty_text() {
     assert_parse_error_matches!(
         "",
-        JsonParseError::UnexpectedEos {
+        nojson::JsonParseError::UnexpectedEos {
             kind: None,
             position: 0
         }
     );
     assert_parse_error_matches!(
         "    ",
-        JsonParseError::UnexpectedEos {
+        nojson::JsonParseError::UnexpectedEos {
             kind: None,
             position: 4
         }
@@ -30,31 +28,31 @@ fn parse_empty_text() {
 }
 
 #[test]
-fn parse_nulls() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(" null ")?;
+fn parse_nulls() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(" null ")?;
     let value = json.value();
-    assert_eq!(value.kind(), JsonValueKind::Null);
+    assert_eq!(value.kind(), nojson::JsonValueKind::Null);
     assert_eq!(value.as_raw_str(), "null");
     assert_eq!(value.position(), 1);
 
     assert_parse_error_matches!(
         "nuL",
-        JsonParseError::UnexpectedValueChar {
-            kind: Some(JsonValueKind::Null),
+        nojson::JsonParseError::UnexpectedValueChar {
+            kind: Some(nojson::JsonValueKind::Null),
             position: 2
         }
     );
     assert_parse_error_matches!(
         "nul",
-        JsonParseError::UnexpectedEos {
-            kind: Some(JsonValueKind::Null),
+        nojson::JsonParseError::UnexpectedEos {
+            kind: Some(nojson::JsonValueKind::Null),
             position: 3
         }
     );
     assert_parse_error_matches!(
         "nulla",
-        JsonParseError::UnexpectedTrailingChar {
-            kind: JsonValueKind::Null,
+        nojson::JsonParseError::UnexpectedTrailingChar {
+            kind: nojson::JsonValueKind::Null,
             position: 4
         }
     );
@@ -63,37 +61,37 @@ fn parse_nulls() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_bools() -> Result<(), JsonParseError> {
-    let json = RawJson::parse("true")?;
+fn parse_bools() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse("true")?;
     let value = json.value();
-    assert_eq!(value.kind(), JsonValueKind::Boolean);
+    assert_eq!(value.kind(), nojson::JsonValueKind::Boolean);
     assert_eq!(value.as_raw_str(), "true");
     assert_eq!(value.position(), 0);
 
-    let json = RawJson::parse(" false ")?;
+    let json = nojson::RawJson::parse(" false ")?;
     let value = json.value();
-    assert_eq!(value.kind(), JsonValueKind::Boolean);
+    assert_eq!(value.kind(), nojson::JsonValueKind::Boolean);
     assert_eq!(value.as_raw_str(), "false");
     assert_eq!(value.position(), 1);
 
     assert_parse_error_matches!(
         "false true",
-        JsonParseError::UnexpectedTrailingChar {
-            kind: JsonValueKind::Boolean,
+        nojson::JsonParseError::UnexpectedTrailingChar {
+            kind: nojson::JsonValueKind::Boolean,
             position: 6
         }
     );
     assert_parse_error_matches!(
         "fale",
-        JsonParseError::UnexpectedValueChar {
-            kind: Some(JsonValueKind::Boolean),
+        nojson::JsonParseError::UnexpectedValueChar {
+            kind: Some(nojson::JsonValueKind::Boolean),
             position: 3
         }
     );
     assert_parse_error_matches!(
         "tr",
-        JsonParseError::UnexpectedEos {
-            kind: Some(JsonValueKind::Boolean),
+        nojson::JsonParseError::UnexpectedEos {
+            kind: Some(nojson::JsonValueKind::Boolean),
             position: 2
         }
     );
@@ -102,12 +100,12 @@ fn parse_bools() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_numbers() -> Result<(), JsonParseError> {
+fn parse_numbers() -> Result<(), nojson::JsonParseError> {
     // Integers.
     for text in ["0", "-12", "123"] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueKind::Integer);
+        assert_eq!(value.kind(), nojson::JsonValueKind::Integer);
         assert_eq!(value.as_raw_str(), text);
         assert_eq!(value.position(), 0);
     }
@@ -117,9 +115,9 @@ fn parse_numbers() -> Result<(), JsonParseError> {
     for text in [
         "12.3", "12.3e4", "12.3e-4", "-0.3e+4", "12E034", "0.123", "0e10", "-0.5",
     ] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueKind::Float);
+        assert_eq!(value.kind(), nojson::JsonValueKind::Float);
         assert_eq!(value.as_raw_str(), text);
         assert_eq!(value.position(), 0);
     }
@@ -131,8 +129,8 @@ fn parse_numbers() -> Result<(), JsonParseError> {
     for (text, position) in [("--1", 1), ("0123", 1), ("00", 1), ("-0123", 2)] {
         let e = assert_parse_error_matches!(
             text,
-            JsonParseError::UnexpectedValueChar {
-                kind: Some(JsonValueKind::Integer),
+            nojson::JsonParseError::UnexpectedValueChar {
+                kind: Some(nojson::JsonValueKind::Integer),
                 ..
             }
         );
@@ -143,8 +141,8 @@ fn parse_numbers() -> Result<(), JsonParseError> {
     for (text, position) in [("1..2", 2), ("1ee2", 2), ("1e+-3", 3)] {
         let e = assert_parse_error_matches!(
             text,
-            JsonParseError::UnexpectedValueChar {
-                kind: Some(JsonValueKind::Float),
+            nojson::JsonParseError::UnexpectedValueChar {
+                kind: Some(nojson::JsonValueKind::Float),
                 ..
             }
         );
@@ -155,7 +153,7 @@ fn parse_numbers() -> Result<(), JsonParseError> {
     for text in ["e123", "+2", ".123"] {
         assert_parse_error_matches!(
             text,
-            JsonParseError::UnexpectedValueChar {
+            nojson::JsonParseError::UnexpectedValueChar {
                 kind: None,
                 position: 0
             }
@@ -167,8 +165,8 @@ fn parse_numbers() -> Result<(), JsonParseError> {
         let (text, position) = ("123.4.5", 5);
         let e = assert_parse_error_matches!(
             text,
-            JsonParseError::UnexpectedTrailingChar {
-                kind: JsonValueKind::Float | JsonValueKind::Integer,
+            nojson::JsonParseError::UnexpectedTrailingChar {
+                kind: nojson::JsonValueKind::Float | nojson::JsonValueKind::Integer,
                 ..
             }
         );
@@ -177,27 +175,27 @@ fn parse_numbers() -> Result<(), JsonParseError> {
 
     // Unexpected EOS.
     for text in ["123.", "-", "123e", "123e-"] {
-        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
+        assert_parse_error_matches!(text, nojson::JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
 }
 
 #[test]
-fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
+fn try_into_float_rejects_non_finite() -> Result<(), nojson::JsonParseError> {
     // RFC 8259 §6 lets implementations set range limits. `f64::from_str`
-    // silently returns `INFINITY` for out-of-range literals, and `DisplayJson
+    // silently returns `INFINITY` for out-of-range literals, and `nojson::DisplayJson
     // for f64` then re-serialises that as `null` — a two-step silent data
     // loss. Reject at conversion time instead.
     for text in ["1e400", "-1e400"] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let result: Result<f64, _> = json.value().try_into();
         let e = result.expect_err("out-of-range f64 must be rejected");
         assert!(
             matches!(
                 e,
-                JsonParseError::InvalidValue {
-                    kind: JsonValueKind::Float,
+                nojson::JsonParseError::InvalidValue {
+                    kind: nojson::JsonValueKind::Float,
                     position: 0,
                     ..
                 }
@@ -210,14 +208,14 @@ fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
         );
     }
     for text in ["3.5e40", "-3.5e40"] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let result: Result<f32, _> = json.value().try_into();
         let e = result.expect_err("out-of-range f32 must be rejected");
         assert!(
             matches!(
                 e,
-                JsonParseError::InvalidValue {
-                    kind: JsonValueKind::Float,
+                nojson::JsonParseError::InvalidValue {
+                    kind: nojson::JsonValueKind::Float,
                     position: 0,
                     ..
                 }
@@ -235,14 +233,14 @@ fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
     // the error stays `Integer` because the parser classified the source.
     {
         let big64 = format!("1{}", "0".repeat(309)); // ~10^309, overflows f64
-        let json = RawJson::parse(&big64)?;
+        let json = nojson::RawJson::parse(&big64)?;
         let e = <f64 as TryFrom<_>>::try_from(json.value())
             .expect_err("out-of-range integer literal must be rejected for f64");
         assert!(
             matches!(
                 e,
-                JsonParseError::InvalidValue {
-                    kind: JsonValueKind::Integer,
+                nojson::JsonParseError::InvalidValue {
+                    kind: nojson::JsonValueKind::Integer,
                     position: 0,
                     ..
                 }
@@ -251,14 +249,14 @@ fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
         );
 
         let big32 = format!("1{}", "0".repeat(39)); // ~10^39, overflows f32
-        let json = RawJson::parse(&big32)?;
+        let json = nojson::RawJson::parse(&big32)?;
         let e = <f32 as TryFrom<_>>::try_from(json.value())
             .expect_err("out-of-range integer literal must be rejected for f32");
         assert!(
             matches!(
                 e,
-                JsonParseError::InvalidValue {
-                    kind: JsonValueKind::Integer,
+                nojson::JsonParseError::InvalidValue {
+                    kind: nojson::JsonValueKind::Integer,
                     position: 0,
                     ..
                 }
@@ -271,7 +269,7 @@ fn try_into_float_rejects_non_finite() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_strings() -> Result<(), JsonParseError> {
+fn parse_strings() -> Result<(), nojson::JsonParseError> {
     // Non-escaped strings.
     for (text, unescaped) in [
         (r#" "" "#, ""),
@@ -279,9 +277,9 @@ fn parse_strings() -> Result<(), JsonParseError> {
         (r#" "あa" "#, "あa"),
         (r#" "日本語x" "#, "日本語x"),
     ] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueKind::String);
+        assert_eq!(value.kind(), nojson::JsonValueKind::String);
         assert_eq!(value.as_raw_str(), text.trim());
         assert_eq!(value.position(), 1);
         assert!(matches!(
@@ -297,9 +295,9 @@ fn parse_strings() -> Result<(), JsonParseError> {
         (r#" "\n\\a\r\nb\b\"\fc" "#, "\n\\a\r\nb\u{8}\"\u{c}c"),
         (r#" "ab\uF20ac" "#, "ab\u{f20a}c"),
     ] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueKind::String);
+        assert_eq!(value.kind(), nojson::JsonValueKind::String);
         assert_eq!(value.as_raw_str(), text.trim());
         assert_eq!(value.position(), 1);
         assert!(matches!(value.to_unquoted_string_str(), Ok(Cow::Owned(_))));
@@ -310,8 +308,8 @@ fn parse_strings() -> Result<(), JsonParseError> {
     for (text, error_position) in [(r#" "ab\xc" "#, 5), (r#" "ab\uXyz0c" "#, 6)] {
         let e = assert_parse_error_matches!(
             text,
-            JsonParseError::UnexpectedValueChar {
-                kind: Some(JsonValueKind::String),
+            nojson::JsonParseError::UnexpectedValueChar {
+                kind: Some(nojson::JsonValueKind::String),
                 ..
             }
         );
@@ -327,14 +325,14 @@ fn parse_strings() -> Result<(), JsonParseError> {
         r#" "ab\u01"#,
         r#" "ab\u012"#,
     ] {
-        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
+        assert_parse_error_matches!(text, nojson::JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
 }
 
 #[test]
-fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
+fn parse_surrogate_pairs() -> Result<(), nojson::JsonParseError> {
     // RFC 8259 §7: BMP-external code points may be written as a UTF-16
     // surrogate pair `\uXXXX\uXXXX`.
     for (text, unescaped) in [
@@ -346,9 +344,9 @@ fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
         (r#" "\uD834\uDD1E\uD83D\uDE00" "#, "\u{1D11E}\u{1F600}"),
         (r#" "\uD83D\ude00" "#, "\u{1F600}"), // mixed case hex
     ] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueKind::String);
+        assert_eq!(value.kind(), nojson::JsonValueKind::String);
         assert_eq!(value.as_raw_str(), text.trim());
         assert!(matches!(value.to_unquoted_string_str(), Ok(Cow::Owned(_))));
         assert_eq!(value.to_unquoted_string_str()?, unescaped);
@@ -362,7 +360,7 @@ fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
         (r#" "\uE000" "#, "\u{E000}"), // just above the surrogate range
         (r#" "\uFFFD" "#, "\u{FFFD}"), // REPLACEMENT CHARACTER
     ] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let value = json.value();
         assert_eq!(value.to_unquoted_string_str()?, unescaped);
     }
@@ -383,8 +381,8 @@ fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
     ] {
         let e = assert_parse_error_matches!(
             text,
-            JsonParseError::UnexpectedValueChar {
-                kind: Some(JsonValueKind::String),
+            nojson::JsonParseError::UnexpectedValueChar {
+                kind: Some(nojson::JsonValueKind::String),
                 ..
             }
         );
@@ -399,19 +397,19 @@ fn parse_surrogate_pairs() -> Result<(), JsonParseError> {
         r#" "\uD834\u00"#,
         r#" "\uD834\u000"#,
     ] {
-        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
+        assert_parse_error_matches!(text, nojson::JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
 }
 
 #[test]
-fn parse_surrogate_pair_in_object_key() -> Result<(), JsonParseError> {
+fn parse_surrogate_pair_in_object_key() -> Result<(), nojson::JsonParseError> {
     // A surrogate pair in an object key must be composed by `unquote`
     // before it is compared against the caller-supplied name in
     // `find_member_by_name`.
     let text = r#"{"\uD834\uDD1E": 1}"#;
-    let json = RawJson::parse(text)?;
+    let json = nojson::RawJson::parse(text)?;
     let value = json.value().to_member("\u{1D11E}")?.required()?;
     let n: u32 = value.try_into()?;
     assert_eq!(n, 1);
@@ -419,7 +417,7 @@ fn parse_surrogate_pair_in_object_key() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn parse_arrays() -> Result<(), JsonParseError> {
+fn parse_arrays() -> Result<(), nojson::JsonParseError> {
     // Arrays.
     for text in [
         "[]",
@@ -427,9 +425,9 @@ fn parse_arrays() -> Result<(), JsonParseError> {
         "[1  ,null, \"foo\"  ]",
         "[ 1, [[ 2 ], 3,null ],false]",
     ] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueKind::Array);
+        assert_eq!(value.kind(), nojson::JsonValueKind::Array);
         assert_eq!(value.as_raw_str(), text);
         assert_eq!(value.position(), 0);
     }
@@ -438,8 +436,8 @@ fn parse_arrays() -> Result<(), JsonParseError> {
     for (text, position) in [("[,]", 1), ("[1,2,]", 5)] {
         let e = assert_parse_error_matches!(
             text,
-            JsonParseError::UnexpectedValueChar {
-                kind: Some(JsonValueKind::Array),
+            nojson::JsonParseError::UnexpectedValueChar {
+                kind: Some(nojson::JsonValueKind::Array),
                 ..
             }
         );
@@ -449,7 +447,7 @@ fn parse_arrays() -> Result<(), JsonParseError> {
     // Unmatched ']'.
     assert_parse_error_matches!(
         "]",
-        JsonParseError::UnexpectedValueChar {
+        nojson::JsonParseError::UnexpectedValueChar {
             kind: None,
             position: 0
         }
@@ -457,30 +455,30 @@ fn parse_arrays() -> Result<(), JsonParseError> {
 
     assert_parse_error_matches!(
         "[1,2]]",
-        JsonParseError::UnexpectedTrailingChar {
-            kind: JsonValueKind::Array,
+        nojson::JsonParseError::UnexpectedTrailingChar {
+            kind: nojson::JsonValueKind::Array,
             position: 5
         }
     );
 
     assert_parse_error_matches!(
         r#"{"foo":[]]}"#,
-        JsonParseError::UnexpectedValueChar {
-            kind: Some(JsonValueKind::Object),
+        nojson::JsonParseError::UnexpectedValueChar {
+            kind: Some(nojson::JsonValueKind::Object),
             position: 9,
         }
     );
 
     // Unexpected EOS.
     for text in ["[", "[1,2", "[1,2,"] {
-        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
+        assert_parse_error_matches!(text, nojson::JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
 }
 
 #[test]
-fn parse_objects() -> Result<(), JsonParseError> {
+fn parse_objects() -> Result<(), nojson::JsonParseError> {
     // Objects.
     for text in [
         "{}",
@@ -488,9 +486,9 @@ fn parse_objects() -> Result<(), JsonParseError> {
         r#"{"foo":1  ,"null": null, "foo" :"bar" }"#,
         r#"{"foo": {}, "bar":[{"a":null}]}"#,
     ] {
-        let json = RawJson::parse(text)?;
+        let json = nojson::RawJson::parse(text)?;
         let value = json.value();
-        assert_eq!(value.kind(), JsonValueKind::Object);
+        assert_eq!(value.kind(), nojson::JsonValueKind::Object);
         assert_eq!(value.as_raw_str(), text);
         assert_eq!(value.position(), 0);
     }
@@ -504,8 +502,8 @@ fn parse_objects() -> Result<(), JsonParseError> {
     ] {
         let e = assert_parse_error_matches!(
             text,
-            JsonParseError::UnexpectedValueChar {
-                kind: Some(JsonValueKind::Object),
+            nojson::JsonParseError::UnexpectedValueChar {
+                kind: Some(nojson::JsonValueKind::Object),
                 ..
             }
         );
@@ -515,7 +513,7 @@ fn parse_objects() -> Result<(), JsonParseError> {
     // Unmatched '}'.
     assert_parse_error_matches!(
         "}",
-        JsonParseError::UnexpectedValueChar {
+        nojson::JsonParseError::UnexpectedValueChar {
             kind: None,
             position: 0
         }
@@ -523,23 +521,23 @@ fn parse_objects() -> Result<(), JsonParseError> {
 
     assert_parse_error_matches!(
         r#"{"1":2}}"#,
-        JsonParseError::UnexpectedTrailingChar {
-            kind: JsonValueKind::Object,
+        nojson::JsonParseError::UnexpectedTrailingChar {
+            kind: nojson::JsonValueKind::Object,
             position: 7
         }
     );
 
     assert_parse_error_matches!(
         "[{}}]",
-        JsonParseError::UnexpectedValueChar {
-            kind: Some(JsonValueKind::Array),
+        nojson::JsonParseError::UnexpectedValueChar {
+            kind: Some(nojson::JsonValueKind::Array),
             position: 3
         }
     );
 
     // Unexpected EOS.
     for text in ["{", r#"{"1" "#, r#"{"1": "#, r#"{"1": 2"#] {
-        assert_parse_error_matches!(text, JsonParseError::UnexpectedEos { .. });
+        assert_parse_error_matches!(text, nojson::JsonParseError::UnexpectedEos { .. });
     }
 
     Ok(())
@@ -553,7 +551,7 @@ fn error_context() {
   "ba"
 }
 "#;
-    let e = assert_parse_error_matches!(text, JsonParseError::UnexpectedValueChar { .. });
+    let e = assert_parse_error_matches!(text, nojson::JsonParseError::UnexpectedValueChar { .. });
     assert_eq!(e.get_line(text), Some(r#"  "ba""#));
     assert_eq!(
         e.get_line_and_column_numbers(text)
@@ -564,7 +562,7 @@ fn error_context() {
     // Test for unexpected EOS case
     let text_eof = r#"[
 "foo"#;
-    let e = assert_parse_error_matches!(text_eof, JsonParseError::UnexpectedEos { .. });
+    let e = assert_parse_error_matches!(text_eof, nojson::JsonParseError::UnexpectedEos { .. });
     assert_eq!(e.get_line(text_eof), Some(r#""foo"#));
     assert_eq!(
         e.get_line_and_column_numbers(text_eof)
@@ -574,16 +572,16 @@ fn error_context() {
 }
 
 #[test]
-fn to_member_required() -> Result<(), JsonParseError> {
+fn to_member_required() -> Result<(), nojson::JsonParseError> {
     struct Person {
         name: String,
         age: u32,
     }
 
-    impl<'text, 'raw> TryFrom<RawJsonValue<'text, 'raw>> for Person {
-        type Error = JsonParseError;
+    impl<'text, 'raw> TryFrom<nojson::RawJsonValue<'text, 'raw>> for Person {
+        type Error = nojson::JsonParseError;
 
-        fn try_from(value: RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
+        fn try_from(value: nojson::RawJsonValue<'text, 'raw>) -> Result<Self, Self::Error> {
             let name = value.to_member("name")?.required()?;
             let age = value.to_member("age")?.required()?;
             Ok(Person {
@@ -593,7 +591,7 @@ fn to_member_required() -> Result<(), JsonParseError> {
         }
     }
 
-    let person: Json<Person> = r#"{"name":"Alice","age":30}"#.parse()?;
+    let person: nojson::Json<Person> = r#"{"name":"Alice","age":30}"#.parse()?;
     assert_eq!(person.0.name, "Alice");
     assert_eq!(person.0.age, 30);
 
@@ -601,8 +599,8 @@ fn to_member_required() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn to_member_optional() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(r#"{"name":"Alice","age":30}"#)?;
+fn to_member_optional() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"name":"Alice","age":30}"#)?;
     let value = json.value();
 
     let name: String = value
@@ -619,8 +617,8 @@ fn to_member_optional() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn required_member_missing() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(r#"{"name":"Alice"}"#)?;
+fn required_member_missing() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"name":"Alice"}"#)?;
     let e = json
         .value()
         .to_member("age")?
@@ -628,8 +626,8 @@ fn required_member_missing() -> Result<(), JsonParseError> {
         .expect_err("required member should be missing");
     assert!(matches!(
         e,
-        JsonParseError::InvalidValue {
-            kind: JsonValueKind::Object,
+        nojson::JsonParseError::InvalidValue {
+            kind: nojson::JsonValueKind::Object,
             position: 0,
             ..
         }
@@ -642,8 +640,8 @@ fn required_member_missing() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn member_access_requires_object() -> Result<(), JsonParseError> {
-    let json = RawJson::parse("null")?;
+fn member_access_requires_object() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse("null")?;
 
     let e = json
         .value()
@@ -651,8 +649,8 @@ fn member_access_requires_object() -> Result<(), JsonParseError> {
         .expect_err("non-object should fail");
     assert!(matches!(
         e,
-        JsonParseError::InvalidValue {
-            kind: JsonValueKind::Null,
+        nojson::JsonParseError::InvalidValue {
+            kind: nojson::JsonValueKind::Null,
             position: 0,
             ..
         }
@@ -666,8 +664,8 @@ fn member_access_requires_object() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn to_member_optional_try_from() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(r#"{"n":42}"#)?;
+fn to_member_optional_try_from() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"n":42}"#)?;
     let value = json.value();
 
     let n1: Option<u64> = value.to_member("n")?.map(u64::try_from)?;
@@ -691,8 +689,8 @@ fn to_member_optional_try_from() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn to_path_member_success_required() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(r#"{"a":{"b":{"c":42}}}"#)?;
+fn to_path_member_success_required() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"a":{"b":{"c":42}}}"#)?;
     let value = json.value();
 
     let c: u64 = value
@@ -705,8 +703,8 @@ fn to_path_member_success_required() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn to_path_member_final_missing_optional() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(r#"{"a":{"b":{}}}"#)?;
+fn to_path_member_final_missing_optional() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"a":{"b":{}}}"#)?;
     let value = json.value();
 
     let missing = value.to_path_member(&["a", "b", "c"])?.optional();
@@ -716,16 +714,16 @@ fn to_path_member_final_missing_optional() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn to_path_member_empty_path_error() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(r#"{"a":1}"#)?;
+fn to_path_member_empty_path_error() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"a":1}"#)?;
     let e = json
         .value()
         .to_path_member(&[])
         .expect_err("empty path should fail");
     assert!(matches!(
         e,
-        JsonParseError::InvalidValue {
-            kind: JsonValueKind::Object,
+        nojson::JsonParseError::InvalidValue {
+            kind: nojson::JsonValueKind::Object,
             position: 0,
             ..
         }
@@ -739,16 +737,16 @@ fn to_path_member_empty_path_error() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn to_path_member_intermediate_missing_error() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(r#"{"a":{}}"#)?;
+fn to_path_member_intermediate_missing_error() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"a":{}}"#)?;
     let e = json
         .value()
         .to_path_member(&["a", "b", "c"])
         .expect_err("intermediate missing should fail");
     assert!(matches!(
         e,
-        JsonParseError::InvalidValue {
-            kind: JsonValueKind::Object,
+        nojson::JsonParseError::InvalidValue {
+            kind: nojson::JsonValueKind::Object,
             ..
         }
     ));
@@ -761,16 +759,16 @@ fn to_path_member_intermediate_missing_error() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn to_path_member_intermediate_not_object_error() -> Result<(), JsonParseError> {
-    let json = RawJson::parse(r#"{"a":1}"#)?;
+fn to_path_member_intermediate_not_object_error() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse(r#"{"a":1}"#)?;
     let e = json
         .value()
         .to_path_member(&["a", "b"])
         .expect_err("non-object intermediate should fail");
     assert!(matches!(
         e,
-        JsonParseError::InvalidValue {
-            kind: JsonValueKind::Integer,
+        nojson::JsonParseError::InvalidValue {
+            kind: nojson::JsonValueKind::Integer,
             ..
         }
     ));
@@ -783,16 +781,16 @@ fn to_path_member_intermediate_not_object_error() -> Result<(), JsonParseError> 
 }
 
 #[test]
-fn to_path_member_root_not_object_error() -> Result<(), JsonParseError> {
-    let json = RawJson::parse("null")?;
+fn to_path_member_root_not_object_error() -> Result<(), nojson::JsonParseError> {
+    let json = nojson::RawJson::parse("null")?;
     let e = json
         .value()
         .to_path_member(&["x"])
         .expect_err("root non-object should fail");
     assert!(matches!(
         e,
-        JsonParseError::InvalidValue {
-            kind: JsonValueKind::Null,
+        nojson::JsonParseError::InvalidValue {
+            kind: nojson::JsonValueKind::Null,
             position: 0,
             ..
         }
@@ -807,21 +805,27 @@ fn to_path_member_root_not_object_error() -> Result<(), JsonParseError> {
 
 #[test]
 fn parse_std_types() {
-    assert_eq!("-1".parse().ok(), Some(Json(-1i8)));
-    assert_eq!("\"a\"".parse().ok(), Some(Json("a".to_owned())));
-    assert_eq!("123".parse().ok(), Some(Json(123u32)));
-    assert_eq!("3.45".parse().ok(), Some(Json(3.45f64)));
-    assert_eq!("true".parse().ok(), Some(Json(true)));
-    assert_eq!("false".parse().ok(), Some(Json(false)));
-    assert_eq!("null".parse().ok(), Some(Json(())));
-    assert_eq!("null".parse::<Json<Option<bool>>>().ok(), Some(Json(None)));
-    assert_eq!("true".parse().ok(), Some(Json(Some(true))));
-    assert_eq!("[]".parse().ok(), Some(Json::<[usize; 0]>([])));
-    assert_eq!("[1,2,3]".parse().ok(), Some(Json(vec![1, 2, 3])));
-    assert_eq!("[[1],[2],[3]]".parse().ok(), Some(Json([[1], [2], [3]])));
+    assert_eq!("-1".parse().ok(), Some(nojson::Json(-1i8)));
+    assert_eq!("\"a\"".parse().ok(), Some(nojson::Json("a".to_owned())));
+    assert_eq!("123".parse().ok(), Some(nojson::Json(123u32)));
+    assert_eq!("3.45".parse().ok(), Some(nojson::Json(3.45f64)));
+    assert_eq!("true".parse().ok(), Some(nojson::Json(true)));
+    assert_eq!("false".parse().ok(), Some(nojson::Json(false)));
+    assert_eq!("null".parse().ok(), Some(nojson::Json(())));
+    assert_eq!(
+        "null".parse::<nojson::Json<Option<bool>>>().ok(),
+        Some(nojson::Json(None))
+    );
+    assert_eq!("true".parse().ok(), Some(nojson::Json(Some(true))));
+    assert_eq!("[]".parse().ok(), Some(nojson::Json::<[usize; 0]>([])));
+    assert_eq!("[1,2,3]".parse().ok(), Some(nojson::Json(vec![1, 2, 3])));
+    assert_eq!(
+        "[[1],[2],[3]]".parse().ok(),
+        Some(nojson::Json([[1], [2], [3]]))
+    );
     assert_eq!(
         r#"{"1":1,"2":null,"3":3}"#.parse().ok(),
-        Some(Json(
+        Some(nojson::Json(
             [(1, Some(1)), (2, None), (3, Some(3))]
                 .into_iter()
                 .collect::<BTreeMap<_, _>>()
@@ -831,22 +835,22 @@ fn parse_std_types() {
 
 #[test]
 fn get_value_by_position() {
-    let json = RawJson::parse(r#"{"1":1,"2":null,"3":3}"#).expect("ok");
+    let json = nojson::RawJson::parse(r#"{"1":1,"2":null,"3":3}"#).expect("ok");
 
     let value = json.get_value_by_position(2).expect("some");
-    assert_eq!(value.kind(), JsonValueKind::String);
+    assert_eq!(value.kind(), nojson::JsonValueKind::String);
     assert_eq!(value.position(), 1);
     assert_eq!(value.as_raw_str(), r#""1""#);
 
     let value = json.get_value_by_position(13).expect("some");
-    assert_eq!(value.kind(), JsonValueKind::Null);
+    assert_eq!(value.kind(), nojson::JsonValueKind::Null);
     assert_eq!(value.position(), 11);
 }
 
 #[test]
 fn value_parent() {
     let text = r#"{"1":1,"2":[null],"3":3}"#;
-    let json = RawJson::parse(text).expect("ok");
+    let json = nojson::RawJson::parse(text).expect("ok");
     let value = json.get_value_by_position(13).expect("some");
     assert_eq!(value.as_raw_str(), "null");
 
@@ -889,22 +893,26 @@ fn nested_objects(depth: usize) -> String {
 }
 
 #[test]
-fn parse_nesting_at_limit_succeeds() -> Result<(), JsonParseError> {
+fn parse_nesting_at_limit_succeeds() -> Result<(), nojson::JsonParseError> {
     let arr = nested_arrays(nojson::MAX_NESTING_DEPTH);
-    let value = RawJson::parse(&arr)?;
-    assert_eq!(value.value().kind(), JsonValueKind::Array);
+    let value = nojson::RawJson::parse(&arr)?;
+    assert_eq!(value.value().kind(), nojson::JsonValueKind::Array);
 
     let obj = nested_objects(nojson::MAX_NESTING_DEPTH);
-    let value = RawJson::parse(&obj)?;
-    assert_eq!(value.value().kind(), JsonValueKind::Object);
+    let value = nojson::RawJson::parse(&obj)?;
+    assert_eq!(value.value().kind(), nojson::JsonValueKind::Object);
     Ok(())
 }
 
-fn assert_nesting_too_deep(e: &JsonParseError, expected_kind: JsonValueKind, expected_pos: usize) {
+fn assert_nesting_too_deep(
+    e: &nojson::JsonParseError,
+    expected_kind: nojson::JsonValueKind,
+    expected_pos: usize,
+) {
     // The depth-limit rejection uses `InvalidValue` with a string error
     // carrying "nesting depth exceeded".
     assert!(
-        matches!(e, JsonParseError::InvalidValue { .. }),
+        matches!(e, nojson::JsonParseError::InvalidValue { .. }),
         "expected InvalidValue, got {e:?}"
     );
     assert_eq!(e.kind(), Some(expected_kind), "error: {e:?}");
@@ -927,14 +935,18 @@ fn assert_nesting_too_deep(e: &JsonParseError, expected_kind: JsonValueKind, exp
 fn parse_nesting_over_limit_errors() {
     let arr = nested_arrays(nojson::MAX_NESTING_DEPTH + 1);
     // The offending '[' sits at index MAX_NESTING_DEPTH (0-indexed).
-    let e = RawJson::parse(&arr).expect_err("over-limit array must fail");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, nojson::MAX_NESTING_DEPTH);
+    let e = nojson::RawJson::parse(&arr).expect_err("over-limit array must fail");
+    assert_nesting_too_deep(&e, nojson::JsonValueKind::Array, nojson::MAX_NESTING_DEPTH);
 
     let obj = nested_objects(nojson::MAX_NESTING_DEPTH + 1);
     // Each object level in `nested_objects` is `{"k":` (5 bytes), so the
     // outermost over-limit '{' sits at byte position MAX_NESTING_DEPTH * 5.
-    let e = RawJson::parse(&obj).expect_err("over-limit object must fail");
-    assert_nesting_too_deep(&e, JsonValueKind::Object, nojson::MAX_NESTING_DEPTH * 5);
+    let e = nojson::RawJson::parse(&obj).expect_err("over-limit object must fail");
+    assert_nesting_too_deep(
+        &e,
+        nojson::JsonValueKind::Object,
+        nojson::MAX_NESTING_DEPTH * 5,
+    );
 }
 
 #[test]
@@ -950,8 +962,12 @@ fn parse_nesting_over_limit_jsonc_with_comments_errors() {
     for _ in 0..(nojson::MAX_NESTING_DEPTH + 1) {
         text.push(']');
     }
-    let e = RawJson::parse_jsonc(&text).expect_err("over-limit JSONC must fail");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, nojson::MAX_NESTING_DEPTH * 6 + 5);
+    let e = nojson::RawJson::parse_jsonc(&text).expect_err("over-limit JSONC must fail");
+    assert_nesting_too_deep(
+        &e,
+        nojson::JsonValueKind::Array,
+        nojson::MAX_NESTING_DEPTH * 6 + 5,
+    );
 }
 
 #[test]
@@ -968,15 +984,24 @@ fn parse_nesting_over_limit_jsonc_object_with_comments_errors() {
     for _ in 0..(nojson::MAX_NESTING_DEPTH + 1) {
         text.push('}');
     }
-    let e = RawJson::parse_jsonc(&text).expect_err("over-limit JSONC object must fail");
-    assert_nesting_too_deep(&e, JsonValueKind::Object, nojson::MAX_NESTING_DEPTH * 10);
+    let e = nojson::RawJson::parse_jsonc(&text).expect_err("over-limit JSONC object must fail");
+    assert_nesting_too_deep(
+        &e,
+        nojson::JsonValueKind::Object,
+        nojson::MAX_NESTING_DEPTH * 10,
+    );
 }
 
-fn assert_all_entry_points_reject(text: &str, expected_kind: JsonValueKind, expected_pos: usize) {
-    let e = RawJson::parse(text).expect_err("RawJson::parse should reject");
+fn assert_all_entry_points_reject(
+    text: &str,
+    expected_kind: nojson::JsonValueKind,
+    expected_pos: usize,
+) {
+    let e = nojson::RawJson::parse(text).expect_err("nojson::RawJson::parse should reject");
     assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
-    let e = RawJson::parse_jsonc(text).expect_err("RawJson::parse_jsonc should reject");
+    let e =
+        nojson::RawJson::parse_jsonc(text).expect_err("nojson::RawJson::parse_jsonc should reject");
     assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
     let e = nojson::RawJsonOwned::parse(text).expect_err("RawJsonOwned::parse should reject");
@@ -991,11 +1016,11 @@ fn assert_all_entry_points_reject(text: &str, expected_kind: JsonValueKind, expe
         .expect_err("RawJsonOwned::from_str should reject");
     assert_nesting_too_deep(&e, expected_kind, expected_pos);
 
-    // `Json::<T>::from_str` rejects at parse time before `TryFrom` runs, so
+    // `nojson::Json::<T>::from_str` rejects at parse time before `TryFrom` runs, so
     // the placeholder `T` never matters here.
     let e = text
-        .parse::<Json<Vec<()>>>()
-        .expect_err("Json::<T>::from_str should reject");
+        .parse::<nojson::Json<Vec<()>>>()
+        .expect_err("nojson::Json::<T>::from_str should reject");
     assert_nesting_too_deep(&e, expected_kind, expected_pos);
 }
 
@@ -1006,16 +1031,24 @@ fn parse_nesting_over_limit_all_entry_points() {
     // roots (kind symmetry — one wrapper's decrement bug would be masked if
     // only Array were checked).
     let arr = nested_arrays(nojson::MAX_NESTING_DEPTH + 1);
-    assert_all_entry_points_reject(&arr, JsonValueKind::Array, nojson::MAX_NESTING_DEPTH);
+    assert_all_entry_points_reject(
+        &arr,
+        nojson::JsonValueKind::Array,
+        nojson::MAX_NESTING_DEPTH,
+    );
 
     // Each object level in `nested_objects` is `{"k":` (5 bytes), so the
     // outermost over-limit '{' sits at MAX_NESTING_DEPTH * 5.
     let obj = nested_objects(nojson::MAX_NESTING_DEPTH + 1);
-    assert_all_entry_points_reject(&obj, JsonValueKind::Object, nojson::MAX_NESTING_DEPTH * 5);
+    assert_all_entry_points_reject(
+        &obj,
+        nojson::JsonValueKind::Object,
+        nojson::MAX_NESTING_DEPTH * 5,
+    );
 }
 
 #[test]
-fn parse_nesting_siblings_at_limit_succeed() -> Result<(), JsonParseError> {
+fn parse_nesting_siblings_at_limit_succeed() -> Result<(), nojson::JsonParseError> {
     // Depth is a shared counter: closing a container must free a slot so
     // sibling containers can each reach the limit independently. If
     // `parse_array` / `parse_object` forgot to decrement after finishing,
@@ -1023,12 +1056,12 @@ fn parse_nesting_siblings_at_limit_succeed() -> Result<(), JsonParseError> {
     // total depth at any point is only `MAX_NESTING_DEPTH`.
     let inner = nested_arrays(nojson::MAX_NESTING_DEPTH - 1);
     let text = format!("[{inner},{inner}]");
-    RawJson::parse(&text)?;
+    nojson::RawJson::parse(&text)?;
     Ok(())
 }
 
 #[test]
-fn parse_nesting_at_limit_jsonc_with_comments_succeed() -> Result<(), JsonParseError> {
+fn parse_nesting_at_limit_jsonc_with_comments_succeed() -> Result<(), nojson::JsonParseError> {
     // JSONC's `skip_whitespaces_and_comments` runs at each container open, so
     // interleaving comments with 128-deep nesting exercises depth counting
     // through the comment-skip path (a plain-JSON at-limit test does not).
@@ -1039,19 +1072,19 @@ fn parse_nesting_at_limit_jsonc_with_comments_succeed() -> Result<(), JsonParseE
     for _ in 0..nojson::MAX_NESTING_DEPTH {
         text.push(']');
     }
-    let (_, comments) = RawJson::parse_jsonc(&text)?;
+    let (_, comments) = nojson::RawJson::parse_jsonc(&text)?;
     assert_eq!(comments.len(), nojson::MAX_NESTING_DEPTH);
     Ok(())
 }
 
 #[test]
-fn parse_nesting_object_siblings_at_limit_succeed() -> Result<(), JsonParseError> {
+fn parse_nesting_object_siblings_at_limit_succeed() -> Result<(), nojson::JsonParseError> {
     // Object version of the sibling test. `parse_array` and `parse_object`
     // are independent wrappers, so a decrement bug can slip into just one of
     // them without the Array-only sibling test noticing.
     let inner = nested_objects(nojson::MAX_NESTING_DEPTH - 1);
     let text = format!(r#"{{"a":{inner},"b":{inner}}}"#);
-    RawJson::parse(&text)?;
+    nojson::RawJson::parse(&text)?;
     Ok(())
 }
 
@@ -1137,6 +1170,10 @@ fn parse_nesting_mixed_over_limit_errors() {
         text.push('}');
     }
     // `{"k":` is 5 bytes; the first `[` sits at MAX_NESTING_DEPTH * 5.
-    let e = RawJson::parse(&text).expect_err("mixed over-limit nesting must fail");
-    assert_nesting_too_deep(&e, JsonValueKind::Array, nojson::MAX_NESTING_DEPTH * 5);
+    let e = nojson::RawJson::parse(&text).expect_err("mixed over-limit nesting must fail");
+    assert_nesting_too_deep(
+        &e,
+        nojson::JsonValueKind::Array,
+        nojson::MAX_NESTING_DEPTH * 5,
+    );
 }

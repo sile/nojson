@@ -20,7 +20,6 @@ mod pbt_harness;
 use core::ops::Range;
 use std::cell::Cell;
 
-use nojson::{JsonValueKind, JsoncFormatter, JsoncLineBreaks, JsoncTrailingCommas, RawJson};
 use pbt_harness::{MAX_LEN, run, sample_string_ascii_plain};
 
 // --- JSONC document generator -----------------------------------------
@@ -231,22 +230,25 @@ fn sample_document(ctx: &mut noprop::TestCaseContext) -> String {
 /// Pre-order traversal comparing the kind of every value and the raw lexeme
 /// of every scalar (including object keys). Container spans are compared by
 /// kind only: their whitespace is normalized by the formatter.
-fn value_signature(text: &str) -> Vec<(JsonValueKind, Option<String>)> {
-    let (json, _) = RawJson::parse_jsonc(text).expect("input must be valid JSONC");
-    fn walk(v: nojson::RawJsonValue<'_, '_>, out: &mut Vec<(JsonValueKind, Option<String>)>) {
+fn value_signature(text: &str) -> Vec<(nojson::JsonValueKind, Option<String>)> {
+    let (json, _) = nojson::RawJson::parse_jsonc(text).expect("input must be valid JSONC");
+    fn walk(
+        v: nojson::RawJsonValue<'_, '_>,
+        out: &mut Vec<(nojson::JsonValueKind, Option<String>)>,
+    ) {
         match v.kind() {
-            JsonValueKind::Array | JsonValueKind::Object => {
+            nojson::JsonValueKind::Array | nojson::JsonValueKind::Object => {
                 out.push((v.kind(), None));
             }
             _ => out.push((v.kind(), Some(v.as_raw_str().to_string()))),
         }
         match v.kind() {
-            JsonValueKind::Array => {
+            nojson::JsonValueKind::Array => {
                 for e in v.to_array().expect("array") {
                     walk(e, out);
                 }
             }
-            JsonValueKind::Object => {
+            nojson::JsonValueKind::Object => {
                 for (k, val) in v.to_object().expect("object") {
                     walk(k, out);
                     walk(val, out);
@@ -262,7 +264,7 @@ fn value_signature(text: &str) -> Vec<(JsonValueKind, Option<String>)> {
 
 /// Comment bodies in source order.
 fn comment_bodies(text: &str) -> Vec<String> {
-    let (_, comments) = RawJson::parse_jsonc(text).expect("input must be valid JSONC");
+    let (_, comments) = nojson::RawJson::parse_jsonc(text).expect("input must be valid JSONC");
     comments
         .iter()
         .map(|r| text[r.clone()].to_string())
@@ -315,21 +317,24 @@ fn jsonc_format_preserves_structure_and_is_idempotent() -> noprop::TestResult {
         let input = sample_document(ctx);
         let input_comments = comment_bodies(&input);
         let input_signature = value_signature(&input);
-        for line_breaks in [JsoncLineBreaks::Preserve, JsoncLineBreaks::Always] {
+        for line_breaks in [
+            nojson::JsoncLineBreaks::Preserve,
+            nojson::JsoncLineBreaks::Always,
+        ] {
             for commas in [
-                JsoncTrailingCommas::Preserve,
-                JsoncTrailingCommas::AlwaysMultiline,
-                JsoncTrailingCommas::Never,
+                nojson::JsoncTrailingCommas::Preserve,
+                nojson::JsoncTrailingCommas::AlwaysMultiline,
+                nojson::JsoncTrailingCommas::Never,
             ] {
                 for indent in [0usize, 2, 4] {
-                    let formatter = JsoncFormatter {
+                    let formatter = nojson::JsoncFormatter {
                         indent_size: indent,
                         line_breaks,
                         trailing_commas: commas,
                     };
                     let output = formatter.format(&input).expect("format must succeed");
                     let (_, out_comments) =
-                        RawJson::parse_jsonc(&output).expect("output must be re-parsable");
+                        nojson::RawJson::parse_jsonc(&output).expect("output must be re-parsable");
                     let again = formatter.format(&output).expect("second format");
                     assert_eq!(output, again, "formatting is not idempotent for {input:?}");
                     assert_eq!(

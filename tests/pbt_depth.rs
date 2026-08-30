@@ -4,7 +4,7 @@
 //!
 //! - depths in `1..=MAX_NESTING_DEPTH` parse successfully;
 //! - depths in `MAX_NESTING_DEPTH + 1..=2 * MAX_NESTING_DEPTH` are rejected
-//!   with `JsonParseError::InvalidValue` whose message contains
+//!   with `nojson::JsonParseError::InvalidValue` whose message contains
 //!   `"nesting depth exceeded"`.
 //!
 //! Complements the boundary-value unit tests in `test_parse.rs` by covering
@@ -16,7 +16,6 @@
 #[expect(dead_code, reason = "roundtrip-only helpers are unused here")]
 mod pbt_harness;
 
-use nojson::{JsonParseError, JsonValueKind, RawJson};
 use pbt_harness::run;
 
 const MAX_TEST_DEPTH: usize = nojson::MAX_NESTING_DEPTH * 2;
@@ -45,8 +44,8 @@ fn nested_objects(depth: usize) -> String {
     s
 }
 
-fn assert_depth_property(depth: usize, expected_kind: JsonValueKind, text: &str) {
-    match RawJson::parse(text) {
+fn assert_depth_property(depth: usize, expected_kind: nojson::JsonValueKind, text: &str) {
+    match nojson::RawJson::parse(text) {
         Ok(_) => assert!(
             depth <= nojson::MAX_NESTING_DEPTH,
             "depth {depth}: parse unexpectedly succeeded past the cap",
@@ -57,7 +56,7 @@ fn assert_depth_property(depth: usize, expected_kind: JsonValueKind, text: &str)
                 "depth {depth}: parse unexpectedly failed: {e:?}",
             );
             assert!(
-                matches!(e, JsonParseError::InvalidValue { .. }),
+                matches!(e, nojson::JsonParseError::InvalidValue { .. }),
                 "depth {depth}: expected InvalidValue, got {e:?}",
             );
             assert_eq!(e.kind(), Some(expected_kind), "depth {depth}");
@@ -75,7 +74,7 @@ fn depth_property_arrays() -> noprop::TestResult {
     run(|ctx| {
         let depth = noprop::sample_usize_in(ctx, 1..=MAX_TEST_DEPTH);
         let text = nested_arrays(depth);
-        assert_depth_property(depth, JsonValueKind::Array, &text);
+        assert_depth_property(depth, nojson::JsonValueKind::Array, &text);
         Ok(())
     })
 }
@@ -85,7 +84,7 @@ fn depth_property_objects() -> noprop::TestResult {
     run(|ctx| {
         let depth = noprop::sample_usize_in(ctx, 1..=MAX_TEST_DEPTH);
         let text = nested_objects(depth);
-        assert_depth_property(depth, JsonValueKind::Object, &text);
+        assert_depth_property(depth, nojson::JsonValueKind::Object, &text);
         Ok(())
     })
 }

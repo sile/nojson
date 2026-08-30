@@ -28,8 +28,6 @@ use std::io::{self, Read};
 use std::num::NonZeroUsize;
 use std::process::ExitCode;
 
-use nojson::{JsonParseError, RawJson};
-
 fn main() -> ExitCode {
     let mut text = String::new();
     if let Err(e) = io::stdin().read_to_string(&mut text) {
@@ -37,7 +35,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    match RawJson::parse(&text) {
+    match nojson::RawJson::parse(&text) {
         Ok(_) => {
             println!("valid JSON");
             ExitCode::SUCCESS
@@ -49,7 +47,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn format_error(text: &str, error: &JsonParseError) -> String {
+fn format_error(text: &str, error: &nojson::JsonParseError) -> String {
     let (line_num, column) = error
         .get_line_and_column_numbers(text)
         .unwrap_or((NonZeroUsize::MIN, NonZeroUsize::MIN));

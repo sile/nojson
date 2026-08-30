@@ -1,35 +1,36 @@
 use std::{borrow::Cow, collections::BTreeMap, fmt::Write as _};
 
-use nojson::{DisplayJson, Json, JsonFormatter, JsonParseError, json};
-
 #[test]
 fn float() {
-    assert_eq!(json(|f| f.value(1.23f32)).to_string(), "1.23");
-    assert_eq!(json(|f| f.value(1.23f64)).to_string(), "1.23");
+    assert_eq!(nojson::json(|f| f.value(1.23f32)).to_string(), "1.23");
+    assert_eq!(nojson::json(|f| f.value(1.23f64)).to_string(), "1.23");
 
-    assert_eq!(json(|f| f.value(f32::NAN)).to_string(), "null");
-    assert_eq!(json(|f| f.value(f64::NAN)).to_string(), "null");
-    assert_eq!(json(|f| f.value(f32::INFINITY)).to_string(), "null");
-    assert_eq!(json(|f| f.value(f64::INFINITY)).to_string(), "null");
+    assert_eq!(nojson::json(|f| f.value(f32::NAN)).to_string(), "null");
+    assert_eq!(nojson::json(|f| f.value(f64::NAN)).to_string(), "null");
+    assert_eq!(nojson::json(|f| f.value(f32::INFINITY)).to_string(), "null");
+    assert_eq!(nojson::json(|f| f.value(f64::INFINITY)).to_string(), "null");
 }
 
 #[test]
 fn string() {
     assert_eq!(
-        json(|f| f.value(Cow::Borrowed("foo"))).to_string(),
+        nojson::json(|f| f.value(Cow::Borrowed("foo"))).to_string(),
         "\"foo\""
     );
 }
 
 #[test]
 fn array() {
-    assert_eq!(Json([1, 2, 3]).to_string(), "[1,2,3]");
-    assert_eq!(Json([Some(1), None, Some(3)]).to_string(), "[1,null,3]");
+    assert_eq!(nojson::Json([1, 2, 3]).to_string(), "[1,2,3]");
+    assert_eq!(
+        nojson::Json([Some(1), None, Some(3)]).to_string(),
+        "[1,null,3]"
+    );
 
     assert_eq!(
         format!(
             "\n{}",
-            json(|f| {
+            nojson::json(|f| {
                 f.set_indent_size(2);
                 f.set_spacing(true);
                 f.value([1, 2, 3])
@@ -46,7 +47,7 @@ fn array() {
     assert_eq!(
         format!(
             "\n{}",
-            json(|f| {
+            nojson::json(|f| {
                 f.set_indent_size(2);
                 f.set_spacing(true);
                 f.value([vec![1], vec![2, 3]])
@@ -66,12 +67,12 @@ fn array() {
     assert_eq!(
         format!(
             "\n{}",
-            json(|f| {
+            nojson::json(|f| {
                 f.set_indent_size(2);
                 f.set_spacing(true);
                 f.value([
-                    &vec![1] as &dyn DisplayJson,
-                    &json(|f| {
+                    &vec![1] as &dyn nojson::DisplayJson,
+                    &nojson::json(|f| {
                         f.set_indent_size(0);
                         f.value(vec![2, 3])
                     }),
@@ -94,11 +95,11 @@ fn object() {
         .into_iter()
         .collect::<BTreeMap<_, _>>();
     assert_eq!(
-        Json(&object).to_string(),
+        nojson::Json(&object).to_string(),
         r#"{"1":null,"2":"foo","3":"ba\nr"}"#
     );
     assert_eq!(
-        json(|f| {
+        nojson::json(|f| {
             f.set_spacing(true);
             f.value(&object)
         })
@@ -108,7 +109,7 @@ fn object() {
     assert_eq!(
         format!(
             "\n{}",
-            json(|f| {
+            nojson::json(|f| {
                 f.set_indent_size(2);
                 f.set_spacing(true);
                 f.value(&object)
@@ -124,7 +125,7 @@ fn object() {
     assert_eq!(
         format!(
             "\n{}",
-            json(|f| {
+            nojson::json(|f| {
                 f.set_indent_size(2);
                 f.set_spacing(true);
                 f.value([&object])
@@ -152,7 +153,7 @@ fn raw_json() {
 }
 
 #[test]
-fn raw_json_owned_object() -> Result<(), JsonParseError> {
+fn raw_json_owned_object() -> Result<(), nojson::JsonParseError> {
     let raw = nojson::RawJsonOwned::object(|f| {
         f.member("name", "Alice")?;
         f.member("age", 30)
@@ -165,7 +166,7 @@ fn raw_json_owned_object() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn raw_json_owned_json() -> Result<(), JsonParseError> {
+fn raw_json_owned_json() -> Result<(), nojson::JsonParseError> {
     let raw = nojson::RawJsonOwned::json(|f| f.value([1, 2, 3]));
     assert_eq!(raw.to_string(), "[1,2,3]");
 
@@ -175,7 +176,7 @@ fn raw_json_owned_json() -> Result<(), JsonParseError> {
 }
 
 #[test]
-fn raw_json_owned_array() -> Result<(), JsonParseError> {
+fn raw_json_owned_array() -> Result<(), nojson::JsonParseError> {
     let raw = nojson::RawJsonOwned::array(|f| {
         f.element("Alice")?;
         f.element(30)
@@ -217,7 +218,7 @@ fn set_indent_size_max_does_not_panic_when_formatting() {
             }
         }
     }
-    let output = json(|f| {
+    let output = nojson::json(|f| {
         f.set_indent_size(usize::MAX);
         f.array(|f| f.element(1))
     });
@@ -243,8 +244,8 @@ fn deep_nesting_crossing_u16_width_does_not_panic() {
     }
 
     struct Nested(u32);
-    impl DisplayJson for Nested {
-        fn fmt(&self, f: &mut JsonFormatter<'_, '_>) -> core::fmt::Result {
+    impl nojson::DisplayJson for Nested {
+        fn fmt(&self, f: &mut nojson::JsonFormatter<'_, '_>) -> core::fmt::Result {
             if self.0 == 0 {
                 f.value(0)
             } else {
@@ -253,9 +254,9 @@ fn deep_nesting_crossing_u16_width_does_not_panic() {
         }
     }
 
-    let output = json(|f| {
+    let output = nojson::json(|f| {
         f.set_indent_size(128);
         f.value(Nested(513))
     });
-    write!(DiscardingWriter, "{output}").unwrap();
+    write!(DiscardingWriter, "{output}").expect("writing to DiscardingWriter cannot fail");
 }

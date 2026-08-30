@@ -1,52 +1,81 @@
-use nojson::{JsoncFormatter, JsoncLineBreaks, JsoncTrailingCommas};
-
-fn fmt(line_breaks: JsoncLineBreaks, indent: usize, commas: JsoncTrailingCommas) -> JsoncFormatter {
-    JsoncFormatter {
+fn fmt(
+    line_breaks: nojson::JsoncLineBreaks,
+    indent: usize,
+    commas: nojson::JsoncTrailingCommas,
+) -> nojson::JsoncFormatter {
+    nojson::JsoncFormatter {
         indent_size: indent,
         line_breaks,
         trailing_commas: commas,
     }
 }
 
-const PRESERVE: JsoncLineBreaks = JsoncLineBreaks::Preserve;
-const ALWAYS: JsoncLineBreaks = JsoncLineBreaks::Always;
-const TC_PRESERVE: JsoncTrailingCommas = JsoncTrailingCommas::Preserve;
-const TC_ALWAYS: JsoncTrailingCommas = JsoncTrailingCommas::AlwaysMultiline;
-const TC_NEVER: JsoncTrailingCommas = JsoncTrailingCommas::Never;
+const PRESERVE: nojson::JsoncLineBreaks = nojson::JsoncLineBreaks::Preserve;
+const ALWAYS: nojson::JsoncLineBreaks = nojson::JsoncLineBreaks::Always;
+const TC_PRESERVE: nojson::JsoncTrailingCommas = nojson::JsoncTrailingCommas::Preserve;
+const TC_ALWAYS: nojson::JsoncTrailingCommas = nojson::JsoncTrailingCommas::AlwaysMultiline;
+const TC_NEVER: nojson::JsoncTrailingCommas = nojson::JsoncTrailingCommas::Never;
 
 #[test]
 fn basic_single_line() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
-    assert_eq!(f.format(r#"[1, 2, 3]"#).unwrap(), "[1, 2, 3]");
-    assert_eq!(f.format(r#"[ 1,2 ,3]"#).unwrap(), "[1, 2, 3]");
-    assert_eq!(f.format(r#"{"a":1,"b":2}"#).unwrap(), r#"{"a": 1, "b": 2}"#);
-    assert_eq!(f.format(r#"[]"#).unwrap(), "[]");
-    assert_eq!(f.format(r#"{}"#).unwrap(), "{}");
-    assert_eq!(f.format(r#"[ ]"#).unwrap(), "[]");
-    assert_eq!(f.format(r#"42"#).unwrap(), "42");
-    assert_eq!(f.format(r#""hi""#).unwrap(), r#""hi""#);
+    assert_eq!(
+        f.format(r#"[1, 2, 3]"#).expect("format must succeed"),
+        "[1, 2, 3]"
+    );
+    assert_eq!(
+        f.format(r#"[ 1,2 ,3]"#).expect("format must succeed"),
+        "[1, 2, 3]"
+    );
+    assert_eq!(
+        f.format(r#"{"a":1,"b":2}"#).expect("format must succeed"),
+        r#"{"a": 1, "b": 2}"#
+    );
+    assert_eq!(f.format(r#"[]"#).expect("format must succeed"), "[]");
+    assert_eq!(f.format(r#"{}"#).expect("format must succeed"), "{}");
+    assert_eq!(f.format(r#"[ ]"#).expect("format must succeed"), "[]");
+    assert_eq!(f.format(r#"42"#).expect("format must succeed"), "42");
+    assert_eq!(f.format(r#""hi""#).expect("format must succeed"), r#""hi""#);
 }
 
 #[test]
 fn single_line_comment_only() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
-    assert_eq!(f.format(r#"[/* c */]"#).unwrap(), "[ /* c */ ]");
-    assert_eq!(f.format(r#"{ /* c */ }"#).unwrap(), "{ /* c */ }");
+    assert_eq!(
+        f.format(r#"[/* c */]"#).expect("format must succeed"),
+        "[ /* c */ ]"
+    );
+    assert_eq!(
+        f.format(r#"{ /* c */ }"#).expect("format must succeed"),
+        "{ /* c */ }"
+    );
 }
 
 #[test]
 fn single_line_with_comments() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
-    assert_eq!(f.format(r#"[/* a */1, 2]"#).unwrap(), "[ /* a */ 1, 2]");
-    assert_eq!(f.format(r#"[1 /* a */, 2]"#).unwrap(), "[1 /* a */, 2]");
-    assert_eq!(f.format(r#"[1, /* a */ 2]"#).unwrap(), "[1, /* a */ 2]");
-    assert_eq!(f.format(r#"[1, 2 /* a */]"#).unwrap(), "[1, 2 /* a */]");
     assert_eq!(
-        f.format(r#"{"a"/* k */:1}"#).unwrap(),
+        f.format(r#"[/* a */1, 2]"#).expect("format must succeed"),
+        "[ /* a */ 1, 2]"
+    );
+    assert_eq!(
+        f.format(r#"[1 /* a */, 2]"#).expect("format must succeed"),
+        "[1 /* a */, 2]"
+    );
+    assert_eq!(
+        f.format(r#"[1, /* a */ 2]"#).expect("format must succeed"),
+        "[1, /* a */ 2]"
+    );
+    assert_eq!(
+        f.format(r#"[1, 2 /* a */]"#).expect("format must succeed"),
+        "[1, 2 /* a */]"
+    );
+    assert_eq!(
+        f.format(r#"{"a"/* k */:1}"#).expect("format must succeed"),
         r#"{"a" /* k */: 1}"#
     );
     assert_eq!(
-        f.format(r#"{"a":/* v */1}"#).unwrap(),
+        f.format(r#"{"a":/* v */1}"#).expect("format must succeed"),
         r#"{"a": /* v */ 1}"#
     );
 }
@@ -55,36 +84,51 @@ fn single_line_with_comments() {
 fn preserve_multiline() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(
-        f.format("{\n  \"a\": 1,\n  \"b\": 2\n}").unwrap(),
+        f.format("{\n  \"a\": 1,\n  \"b\": 2\n}")
+            .expect("format must succeed"),
         "{\n  \"a\": 1,\n  \"b\": 2\n}"
     );
-    assert_eq!(f.format("[1,\n 2]").unwrap(), "[\n  1,\n  2\n]");
+    assert_eq!(
+        f.format("[1,\n 2]").expect("format must succeed"),
+        "[\n  1,\n  2\n]"
+    );
 }
 
 #[test]
 fn always_multiline() {
     let f = fmt(ALWAYS, 2, TC_NEVER);
-    assert_eq!(f.format("[1, 2]").unwrap(), "[\n  1,\n  2\n]");
-    assert_eq!(f.format("[]").unwrap(), "[]");
-    assert_eq!(f.format("{}").unwrap(), "{}");
+    assert_eq!(
+        f.format("[1, 2]").expect("format must succeed"),
+        "[\n  1,\n  2\n]"
+    );
+    assert_eq!(f.format("[]").expect("format must succeed"), "[]");
+    assert_eq!(f.format("{}").expect("format must succeed"), "{}");
 }
 
 #[test]
 fn trailing_commas() {
     assert_eq!(
-        fmt(PRESERVE, 2, TC_PRESERVE).format("[1, 2,]").unwrap(),
+        fmt(PRESERVE, 2, TC_PRESERVE)
+            .format("[1, 2,]")
+            .expect("format must succeed"),
         "[1, 2,]"
     );
     assert_eq!(
-        fmt(PRESERVE, 2, TC_ALWAYS).format("[1, 2,]").unwrap(),
+        fmt(PRESERVE, 2, TC_ALWAYS)
+            .format("[1, 2,]")
+            .expect("format must succeed"),
         "[1, 2]"
     );
     assert_eq!(
-        fmt(ALWAYS, 2, TC_ALWAYS).format("[1, 2]").unwrap(),
+        fmt(ALWAYS, 2, TC_ALWAYS)
+            .format("[1, 2]")
+            .expect("format must succeed"),
         "[\n  1,\n  2,\n]"
     );
     assert_eq!(
-        fmt(ALWAYS, 2, TC_NEVER).format("[1, 2,]").unwrap(),
+        fmt(ALWAYS, 2, TC_NEVER)
+            .format("[1, 2,]")
+            .expect("format must succeed"),
         "[\n  1,\n  2\n]"
     );
 }
@@ -113,23 +157,28 @@ fn unicode_strings_and_keys_preserved() {
     // Multi-byte scalar lexemes are re-emitted verbatim; byte spans stay on
     // UTF-8 boundaries even next to comments.
     assert_eq!(
-        f.format(r#"["日本語", "😀🚀"]"#).unwrap(),
+        f.format(r#"["日本語", "😀🚀"]"#)
+            .expect("format must succeed"),
         r#"["日本語", "😀🚀"]"#
     );
     assert_eq!(
-        f.format("[\n  \"日本語\" // c\n]").unwrap(),
+        f.format("[\n  \"日本語\" // c\n]")
+            .expect("format must succeed"),
         "[\n  \"日本語\" // c\n]"
     );
     assert_eq!(
-        f.format("{\n  \"名前\" /* k */: 1\n}").unwrap(),
+        f.format("{\n  \"名前\" /* k */: 1\n}")
+            .expect("format must succeed"),
         "{\n  \"名前\" /* k */: 1\n}"
     );
     assert_eq!(
-        f.format(r#"{"名前"/* k */:1}"#).unwrap(),
+        f.format(r#"{"名前"/* k */:1}"#)
+            .expect("format must succeed"),
         r#"{"名前" /* k */: 1}"#
     );
     assert_eq!(
-        f.format("[\n  \"😀\",\n  /* a\n  b */\n  1\n]").unwrap(),
+        f.format("[\n  \"😀\",\n  /* a\n  b */\n  1\n]")
+            .expect("format must succeed"),
         "[\n  \"😀\",\n  /* a\n  b */\n  1\n]"
     );
 }
@@ -138,7 +187,7 @@ fn unicode_strings_and_keys_preserved() {
 fn preserve_single_line_siblings() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     let input = "{\n  \"left\": [\n    1,\n    2\n  ],\n  \"right\": [3, 4], \"nested\": {\"items\": [5, 6]}\n}";
-    let out = f.format(input).unwrap();
+    let out = f.format(input).expect("format must succeed");
     assert_eq!(
         out,
         "{\n  \"left\": [\n    1,\n    2\n  ],\n  \"right\": [3, 4],\n  \"nested\": {\"items\": [5, 6]}\n}"
@@ -150,13 +199,15 @@ fn empty_containers_stay_single_line() {
     // Always: empty [] / {} stay single-line even beside multi-line siblings.
     let f = fmt(ALWAYS, 2, TC_ALWAYS);
     assert_eq!(
-        f.format("{\n  \"a\": [],\n  \"b\": [1, 2]\n}").unwrap(),
+        f.format("{\n  \"a\": [],\n  \"b\": [1, 2]\n}")
+            .expect("format must succeed"),
         "{\n  \"a\": [],\n  \"b\": [\n    1,\n    2,\n  ],\n}"
     );
     // Preserve: single-line containers stay single-line beside multi-line ones.
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(
-        f.format("{\n  \"a\": [],\n  \"b\": [1,\n 2]\n}").unwrap(),
+        f.format("{\n  \"a\": [],\n  \"b\": [1,\n 2]\n}")
+            .expect("format must succeed"),
         "{\n  \"a\": [],\n  \"b\": [\n    1,\n    2\n  ]\n}"
     );
 }
@@ -170,7 +221,7 @@ fn line_comments_force_multiline() {
             r#"["a" // c
 ]"#
         )
-        .unwrap(),
+        .expect("format must succeed"),
         "[\n  \"a\" // c\n]"
     );
     assert_eq!(
@@ -178,7 +229,7 @@ fn line_comments_force_multiline() {
             r#"{"a": 1, // c
 "b": 2}"#
         )
-        .unwrap(),
+        .expect("format must succeed"),
         "{\n  \"a\": 1, // c\n  \"b\": 2\n}"
     );
 }
@@ -192,7 +243,7 @@ fn line_comment_before_comma() {
             r#"["a" // c
 , "b"]"#
         )
-        .unwrap(),
+        .expect("format must succeed"),
         "[\n  \"a\" // c\n  ,\n  \"b\"\n]"
     );
 }
@@ -200,9 +251,14 @@ fn line_comment_before_comma() {
 #[test]
 fn comment_only_multiline() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
-    assert_eq!(f.format("[\n  /* c */\n]").unwrap(), "[\n  /* c */\n]");
     assert_eq!(
-        fmt(ALWAYS, 2, TC_NEVER).format("[/* c */]").unwrap(),
+        f.format("[\n  /* c */\n]").expect("format must succeed"),
+        "[\n  /* c */\n]"
+    );
+    assert_eq!(
+        fmt(ALWAYS, 2, TC_NEVER)
+            .format("[/* c */]")
+            .expect("format must succeed"),
         "[\n  /* c */\n]"
     );
 }
@@ -214,7 +270,7 @@ fn multiline_block_comment_relative_indent() {
     // gains the same two spaces.
     let input = "[\n/* multi\n   line */\n  1\n]";
     assert_eq!(
-        f.format(input).unwrap(),
+        f.format(input).expect("format must succeed"),
         "[\n  /* multi\n     line */\n  1\n]"
     );
 }
@@ -225,13 +281,14 @@ fn multiline_block_comment_crlf_normalized() {
     // A CRLF on the first line of a multi-line block comment is normalized
     // to LF.
     assert_eq!(
-        f.format("[\n  /* first\r\n     second */\n  1\n]").unwrap(),
+        f.format("[\n  /* first\r\n     second */\n  1\n]")
+            .expect("format must succeed"),
         "[\n  /* first\n     second */\n  1\n]"
     );
     // A CRLF on a continuation line is normalized too.
     assert_eq!(
         f.format("[\n  /* first\n     second\r\n     third */\n  1\n]")
-            .unwrap(),
+            .expect("format must succeed"),
         "[\n  /* first\n     second\n     third */\n  1\n]"
     );
 }
@@ -243,8 +300,8 @@ fn multiline_block_comment_after_cr_comment_is_idempotent() {
     // be mistaken for a line start when the following multi-line block
     // comment's continuation-line indentation is adjusted.
     let input = "{\n  \"a\": /* k\r */ 1 /* m\r\n\tn */\n}";
-    let once = f.format(input).unwrap();
-    let twice = f.format(&once).unwrap();
+    let once = f.format(input).expect("format must succeed");
+    let twice = f.format(&once).expect("format must succeed");
     assert_eq!(once, twice, "formatting is not idempotent: {once:?}");
 }
 
@@ -253,7 +310,7 @@ fn crlf_normalized_to_lf() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(
         f.format("{\r\n  \"a\": 1,\r\n  // c\r\n  \"b\": 2\r\n}\r\n")
-            .unwrap(),
+            .expect("format must succeed"),
         "{\n  \"a\": 1,\n  // c\n  \"b\": 2\n}"
     );
 }
@@ -263,7 +320,10 @@ fn lone_cr_outside_comments() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     // A lone `\r` outside comments is a line break: the container becomes
     // multiline and the output uses LF.
-    assert_eq!(f.format("[1,\r2]").unwrap(), "[\n  1,\n  2\n]");
+    assert_eq!(
+        f.format("[1,\r2]").expect("format must succeed"),
+        "[\n  1,\n  2\n]"
+    );
 }
 
 #[test]
@@ -273,12 +333,14 @@ fn lone_cr_inside_comment_kept() {
     // the container multiline by itself... here a newline makes it multiline
     // and the `\r` is preserved in the comment body.
     assert_eq!(
-        f.format("[\n  // a\rb\n  1\n]").unwrap(),
+        f.format("[\n  // a\rb\n  1\n]")
+            .expect("format must succeed"),
         "[\n  // a\rb\n  1\n]"
     );
     // A lone `\r` inside a block comment is preserved too.
     assert_eq!(
-        f.format("[\n  /* a\rb */\n  1\n]").unwrap(),
+        f.format("[\n  /* a\rb */\n  1\n]")
+            .expect("format must succeed"),
         "[\n  /* a\rb */\n  1\n]"
     );
 }
@@ -287,7 +349,8 @@ fn lone_cr_inside_comment_kept() {
 fn blank_lines_collapse_to_one() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(
-        f.format("[\n  1,\n\n\n  2\n]").unwrap(),
+        f.format("[\n  1,\n\n\n  2\n]")
+            .expect("format must succeed"),
         "[\n  1,\n\n  2\n]"
     );
 }
@@ -296,7 +359,8 @@ fn blank_lines_collapse_to_one() {
 fn comment_body_punctuation_ignored() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(
-        f.format("[1, /* , : [ ] { } */ 2]").unwrap(),
+        f.format("[1, /* , : [ ] { } */ 2]")
+            .expect("format must succeed"),
         "[1, /* , : [ ] { } */ 2]"
     );
 }
@@ -306,12 +370,13 @@ fn key_colon_comments_multiline() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(
         f.format("{\n  \"a\" /* k */: 1,\n  \"b\": /* v */ 2\n}")
-            .unwrap(),
+            .expect("format must succeed"),
         "{\n  \"a\" /* k */: 1,\n  \"b\": /* v */ 2\n}"
     );
     // Line comment before the colon: the colon moves to the next line.
     assert_eq!(
-        f.format("{\n  \"a\" // k\n: 1\n}").unwrap(),
+        f.format("{\n  \"a\" // k\n: 1\n}")
+            .expect("format must succeed"),
         "{\n  \"a\" // k\n  : 1\n}"
     );
 }
@@ -320,11 +385,12 @@ fn key_colon_comments_multiline() {
 fn root_comments() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     assert_eq!(
-        f.format("// before\n{\"a\": 1}\n// after").unwrap(),
+        f.format("// before\n{\"a\": 1}\n// after")
+            .expect("format must succeed"),
         "// before\n{\"a\": 1}\n// after"
     );
     assert_eq!(
-        f.format("/* c */ {\"a\": 1}").unwrap(),
+        f.format("/* c */ {\"a\": 1}").expect("format must succeed"),
         "/* c */ {\"a\": 1}"
     );
 }
@@ -338,12 +404,13 @@ fn always_multiline_trailing_comma_with_comment() {
             r#"["a" // c
 ]"#
         )
-        .unwrap(),
+        .expect("format must succeed"),
         "[\n  \"a\", // c\n]"
     );
     // ... and before comments on their own lines near the closing delimiter.
     assert_eq!(
-        f.format("[\n  \"a\"\n  // c\n]").unwrap(),
+        f.format("[\n  \"a\"\n  // c\n]")
+            .expect("format must succeed"),
         "[\n  \"a\",\n  // c\n]"
     );
 }
@@ -352,7 +419,7 @@ fn always_multiline_trailing_comma_with_comment() {
 fn no_trailing_lf() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
     for input in ["{}", "{\n  \"a\": 1\n}", "// c\n[]"] {
-        let out = f.format(input).unwrap();
+        let out = f.format(input).expect("format must succeed");
         assert!(!out.ends_with('\n'), "output ends with LF: {out:?}");
     }
 }
@@ -360,13 +427,19 @@ fn no_trailing_lf() {
 #[test]
 fn indent_zero() {
     let f = fmt(PRESERVE, 0, TC_NEVER);
-    assert_eq!(f.format("[\n  1,\n  2\n]").unwrap(), "[\n1,\n2\n]");
+    assert_eq!(
+        f.format("[\n  1,\n  2\n]").expect("format must succeed"),
+        "[\n1,\n2\n]"
+    );
 }
 
 #[test]
 fn indent_four() {
     let f = fmt(PRESERVE, 4, TC_NEVER);
-    assert_eq!(f.format("{\n  \"a\": 1\n}").unwrap(), "{\n    \"a\": 1\n}");
+    assert_eq!(
+        f.format("{\n  \"a\": 1\n}").expect("format must succeed"),
+        "{\n    \"a\": 1\n}"
+    );
 }
 
 #[test]
