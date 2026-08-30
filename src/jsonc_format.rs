@@ -38,8 +38,14 @@ pub enum JsoncLineBreaks {
     /// Keep each array and object on a single line or on multiple lines
     /// according to whether the input had a physical line break inside it.
     ///
-    /// A multi-line container also expands its ancestor and sibling
-    /// containers; the children of a sibling container are left as-is.
+    /// Layout is decided from the input alone: a single-line container stays
+    /// single-line even when a sibling container is multi-line. A multi-line
+    /// child also keeps its ancestor containers multi-line, because its line
+    /// break lies inside their span.
+    ///
+    /// The examples below assume
+    /// [`JsoncTrailingCommas::Preserve`](JsoncTrailingCommas::Preserve) and an
+    /// indent size of 2.
     ///
     /// # Examples
     ///
@@ -47,10 +53,13 @@ pub enum JsoncLineBreaks {
     /// // single-line input stays single-line
     /// [1, 2] -> [1, 2]
     ///
+    /// // empty containers stay single-line
+    /// [] -> []
+    /// {} -> {}
+    ///
     /// // multi-line input stays multi-line
     /// [
-    ///   1,
-    ///   2
+    /// 1, 2
     /// ]
     /// ->
     /// [
@@ -58,7 +67,15 @@ pub enum JsoncLineBreaks {
     ///   2
     /// ]
     ///
-    /// // a multi-line array expands its sibling containers, but not their children
+    /// // single-line siblings of a multi-line container stay single-line
+    /// {
+    ///   "left": [
+    ///     1,
+    ///     2
+    ///   ],
+    ///   "right": [3, 4], "nested": {"items": [5, 6]}
+    /// }
+    /// ->
     /// {
     ///   "left": [
     ///     1,
@@ -67,24 +84,14 @@ pub enum JsoncLineBreaks {
     ///   "right": [3, 4],
     ///   "nested": {"items": [5, 6]}
     /// }
-    /// ->
-    /// {
-    ///   "left": [
-    ///     1,
-    ///     2
-    ///   ],
-    ///   "right": [
-    ///     3,
-    ///     4
-    ///   ],
-    ///   "nested": {
-    ///     "items": [5, 6]
-    ///   }
-    /// }
     /// ```
     Preserve,
     /// Put every array and object that contains an element, a member, or a
     /// comment onto multiple lines. Truly empty `[]` and `{}` stay single-line.
+    ///
+    /// The examples below assume
+    /// [`JsoncTrailingCommas::Preserve`](JsoncTrailingCommas::Preserve) and an
+    /// indent size of 2.
     ///
     /// # Examples
     ///
@@ -100,6 +107,13 @@ pub enum JsoncLineBreaks {
     /// // empty containers stay single-line
     /// [] -> []
     /// {} -> {}
+    ///
+    /// // comment-only containers are expanded, not treated as empty
+    /// [/* c */]
+    /// ->
+    /// [
+    ///   /* c */
+    /// ]
     /// ```
     Always,
 }
@@ -110,6 +124,10 @@ pub enum JsoncTrailingCommas {
     /// Keep a trailing comma from the input in place, including its position
     /// relative to any trailing comments (the input order of the comma and
     /// the comments is not swapped).
+    ///
+    /// The examples below assume
+    /// [`JsoncLineBreaks::Preserve`](JsoncLineBreaks::Preserve) and an indent
+    /// size of 2.
     ///
     /// # Examples
     ///
@@ -123,6 +141,10 @@ pub enum JsoncTrailingCommas {
     /// Add a trailing comma to multi-line containers that contain at least
     /// one element or member; remove it from single-line containers. Empty
     /// and comment-only containers get no trailing comma.
+    ///
+    /// The examples below assume
+    /// [`JsoncLineBreaks::Preserve`](JsoncLineBreaks::Preserve) and an indent
+    /// size of 2.
     ///
     /// # Examples
     ///
@@ -143,6 +165,10 @@ pub enum JsoncTrailingCommas {
     /// ```
     AlwaysMultiline,
     /// Remove trailing commas from arrays and objects.
+    ///
+    /// The examples below assume
+    /// [`JsoncLineBreaks::Preserve`](JsoncLineBreaks::Preserve) and an indent
+    /// size of 2.
     ///
     /// # Examples
     ///
@@ -199,7 +225,7 @@ impl JsoncFormatter {
         let root = json.value();
         let root_span = root.position()..root.position() + root.as_raw_str().len();
 
-        let mut tree = build_node(root);
+        let tree = build_node(root);
         let mut fmt = Formatter {
             text,
             comments: &comments,
@@ -207,7 +233,6 @@ impl JsoncFormatter {
             out: Out::default(),
             level: 0,
         };
-        fmt.compute_upml(&mut tree);
 
         let first_after_root = comments.partition_point(|c| c.end <= root_span.start);
         let leading: Vec<Item> = comments[..first_after_root]
@@ -224,7 +249,7 @@ impl JsoncFormatter {
         } else if fmt.out.column() != 0 {
             fmt.out.push(' ');
         }
-        fmt.emit_value(&tree, false);
+        fmt.emit_value(&tree);
 
         let trailing: Vec<Item> = comments[first_after_root..]
             .iter()
@@ -245,9 +270,6 @@ struct Node {
     kind: JsonValueKind,
     span: Range<usize>,
     children: Children,
-    /// `true` when the value or any descendant container is initially
-    /// multi-line (ancestor closure of the initial line-break decision).
-    upml: bool,
 }
 
 enum Children {
@@ -276,7 +298,6 @@ fn build_node(value: RawJsonValue<'_, '_>) -> Node {
         kind,
         span,
         children,
-        upml: false,
     }
 }
 
@@ -341,10 +362,6 @@ struct Formatter<'a> {
 }
 
 impl<'a> Formatter<'a> {
-    fn is_container(kind: JsonValueKind) -> bool {
-        matches!(kind, JsonValueKind::Array | JsonValueKind::Object)
-    }
-
     /// Returns `true` when `node` (a container) is multi-line in the input
     /// according to the configured line-break policy.
     fn initial_multiline(&self, node: &Node) -> bool {
@@ -361,54 +378,13 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Computes `upml` bottom-up: a container is `upml` when it is initially
-    /// multi-line or has a descendant container that is.
-    fn compute_upml(&mut self, node: &mut Node) {
-        let initial = self.initial_multiline(node);
-        let mut child_upml = false;
-        match &mut node.children {
-            Children::Array(elems) => {
-                for e in elems.iter_mut() {
-                    if Self::is_container(e.kind) {
-                        self.compute_upml(e);
-                        child_upml |= e.upml;
-                    }
-                }
-            }
-            Children::Object(members) => {
-                for (_, v) in members.iter_mut() {
-                    if Self::is_container(v.kind) {
-                        self.compute_upml(v);
-                        child_upml |= v.upml;
-                    }
-                }
-            }
-            Children::Leaf => {}
-        }
-        node.upml = initial || child_upml;
-    }
-
-    /// Returns `true` when the container has at least one container child that
-    /// is `upml`. Multi-line status propagates to all sibling containers.
-    fn group_activated(&self, node: &Node) -> bool {
-        match &node.children {
-            Children::Array(elems) => elems.iter().any(|e| Self::is_container(e.kind) && e.upml),
-            Children::Object(members) => members
-                .iter()
-                .any(|(_, v)| Self::is_container(v.kind) && v.upml),
-            Children::Leaf => false,
-        }
-    }
-
-    fn emit_value(&mut self, node: &Node, parent_activated: bool) {
+    fn emit_value(&mut self, node: &Node) {
         match node.kind {
             JsonValueKind::Array | JsonValueKind::Object => {
-                let multiline = node.upml || parent_activated;
-                if multiline {
-                    let group = self.group_activated(node);
+                if self.initial_multiline(node) {
                     match &node.children {
-                        Children::Array(_) => self.emit_multiline_array(node, group),
-                        Children::Object(_) => self.emit_multiline_object(node, group),
+                        Children::Array(_) => self.emit_multiline_array(node),
+                        Children::Object(_) => self.emit_multiline_object(node),
                         Children::Leaf => unreachable!(),
                     }
                 } else {
@@ -764,7 +740,7 @@ impl<'a> Formatter<'a> {
 
     // --- Multi-line emission -----------------------------------------
 
-    fn emit_multiline_array(&mut self, node: &Node, group_activated: bool) {
+    fn emit_multiline_array(&mut self, node: &Node) {
         let elems = match &node.children {
             Children::Array(elems) => elems,
             _ => unreachable!(),
@@ -808,7 +784,7 @@ impl<'a> Formatter<'a> {
                 self.out.push('\n');
             }
             self.indent();
-            self.emit_value(e, group_activated);
+            self.emit_value(e);
         }
 
         let last_end = elems[elems.len() - 1].span.end;
@@ -825,7 +801,7 @@ impl<'a> Formatter<'a> {
         self.out.push(']');
     }
 
-    fn emit_multiline_object(&mut self, node: &Node, group_activated: bool) {
+    fn emit_multiline_object(&mut self, node: &Node) {
         let members = match &node.children {
             Children::Object(members) => members,
             _ => unreachable!(),
@@ -886,7 +862,7 @@ impl<'a> Formatter<'a> {
             } else if self.out.column() != 0 {
                 self.out.push(' ');
             }
-            self.emit_value(v, group_activated);
+            self.emit_value(v);
         }
 
         let last_end = members[members.len() - 1].1.span.end;
@@ -962,7 +938,7 @@ impl<'a> Formatter<'a> {
             } else if !head.is_empty() {
                 self.out.push(' ');
             }
-            self.emit_value(e, false);
+            self.emit_value(e);
         }
 
         let last_end = elems[elems.len() - 1].span.end;
@@ -1042,7 +1018,7 @@ impl<'a> Formatter<'a> {
                 }
             }
             self.out.push(' ');
-            self.emit_value(v, false);
+            self.emit_value(v);
         }
 
         let last_end = members[members.len() - 1].1.span.end;

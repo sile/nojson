@@ -97,13 +97,29 @@ fn invalid_input_errors() {
 }
 
 #[test]
-fn comment_propagation_example() {
+fn preserve_single_line_siblings() {
     let f = fmt(PRESERVE, 2, TC_PRESERVE);
-    let input = "{\n  \"left\": [\n    1,\n    2\n  ],\n  \"right\": [3, 4],\n  \"nested\": {\"items\": [5, 6]}\n}";
+    let input = "{\n  \"left\": [\n    1,\n    2\n  ],\n  \"right\": [3, 4], \"nested\": {\"items\": [5, 6]}\n}";
     let out = f.format(input).unwrap();
     assert_eq!(
         out,
-        "{\n  \"left\": [\n    1,\n    2\n  ],\n  \"right\": [\n    3,\n    4\n  ],\n  \"nested\": {\n    \"items\": [5, 6]\n  }\n}"
+        "{\n  \"left\": [\n    1,\n    2\n  ],\n  \"right\": [3, 4],\n  \"nested\": {\"items\": [5, 6]}\n}"
+    );
+}
+
+#[test]
+fn empty_containers_stay_single_line() {
+    // Always: empty [] / {} stay single-line even beside multi-line siblings.
+    let f = fmt(ALWAYS, 2, TC_ALWAYS);
+    assert_eq!(
+        f.format("{\n  \"a\": [],\n  \"b\": [1, 2]\n}").unwrap(),
+        "{\n  \"a\": [],\n  \"b\": [\n    1,\n    2,\n  ],\n}"
+    );
+    // Preserve: single-line containers stay single-line beside multi-line ones.
+    let f = fmt(PRESERVE, 2, TC_PRESERVE);
+    assert_eq!(
+        f.format("{\n  \"a\": [],\n  \"b\": [1,\n 2]\n}").unwrap(),
+        "{\n  \"a\": [],\n  \"b\": [\n    1,\n    2\n  ]\n}"
     );
 }
 
