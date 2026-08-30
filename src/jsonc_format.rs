@@ -843,9 +843,8 @@ impl<'a> Formatter<'a> {
     // --- Multi-line emission -----------------------------------------
 
     fn emit_multiline_array(&mut self, node: &Node) {
-        let elems = match &node.children {
-            Children::Array(elems) => elems,
-            _ => unreachable!(),
+        let Children::Array(elems) = &node.children else {
+            unreachable!()
         };
         let open = node.span.start;
         let close = node.span.end - 1;
@@ -889,9 +888,8 @@ impl<'a> Formatter<'a> {
     }
 
     fn emit_multiline_object(&mut self, node: &Node) {
-        let members = match &node.children {
-            Children::Object(members) => members,
-            _ => unreachable!(),
+        let Children::Object(members) = &node.children else {
+            unreachable!()
         };
         let open = node.span.start;
         let close = node.span.end - 1;
@@ -957,9 +955,8 @@ impl<'a> Formatter<'a> {
     }
 
     fn emit_single_line_array(&mut self, node: &Node) {
-        let elems = match &node.children {
-            Children::Array(elems) => elems,
-            _ => unreachable!(),
+        let Children::Array(elems) = &node.children else {
+            unreachable!()
         };
         let open = node.span.start;
         let close = node.span.end - 1;
@@ -1024,9 +1021,8 @@ impl<'a> Formatter<'a> {
     }
 
     fn emit_single_line_object(&mut self, node: &Node) {
-        let members = match &node.children {
-            Children::Object(members) => members,
-            _ => unreachable!(),
+        let Children::Object(members) = &node.children else {
+            unreachable!()
         };
         let open = node.span.start;
         let close = node.span.end - 1;
