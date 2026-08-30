@@ -20,7 +20,7 @@ Unlike [`serde`](https://crates.io/crates/serde), which typically requires one-t
 - **Flexible formatting options** including pretty-printing with customizable indentation
 - **Low-level access** to the JSON structure when needed
 - **High-level conveniences** for common JSON operations
-- **JSONC support** - Parse JSON with comments (`//`, `/* */`) and trailing commas
+- **JSONC support** - Parse and format JSON with comments (`//`, `/* */`) and trailing commas
 
 ## Core Design Principles
 

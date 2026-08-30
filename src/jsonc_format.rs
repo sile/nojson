@@ -1,16 +1,4 @@
-//! A configurable formatter for JSONC (JSON with comments and trailing commas).
-//!
-//! [`JsoncFormatter`] reformats a JSONC document while preserving comments,
-//! scalar lexemes, and member order, normalizing whitespace, line breaks, and
-//! trailing commas according to the configured settings.
-//!
-//! The formatter is a convenience for common JSONC layouts: it guarantees that
-//! accepted input is re-parsable, that formatting is idempotent, and that
-//! comments are preserved. It does not reproduce every possible arrangement of
-//! comments or whitespace; for layouts the fixed rules do not fit, use
-//! [`RawJson::parse_jsonc`](crate::RawJson::parse_jsonc), [`RawJsonValue`]
-//! (crate::RawJsonValue), and the comment byte ranges to build a custom
-//! formatter instead.
+//! Configurable JSONC formatting ([`JsoncFormatter`]).
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -20,8 +8,20 @@ use crate::{JsonParseError, JsonValueKind, RawJson, RawJsonValue};
 
 /// Settings for the JSONC formatter.
 ///
-/// All three fields must be chosen explicitly by the caller; there is no
-/// [`Default`] implementation so that no layout policy is silently preferred.
+/// [`JsoncFormatter::format`] guarantees that accepted input is re-parsable,
+/// that formatting is idempotent, and that comments, scalar lexemes, and
+/// member order are preserved.
+///
+/// # Note
+///
+/// This formatter is a convenience for common JSONC layouts, not a general
+/// pretty printer: it does not reproduce every possible arrangement of
+/// comments or whitespace. If the fixed rules do not fit a layout, build a
+/// custom formatter with [`RawJson::parse_jsonc`](crate::RawJson::parse_jsonc),
+/// [`RawJsonValue`](crate::RawJsonValue), the original source text, and the
+/// comment byte ranges instead.
+// No `Default` impl: all three fields must be chosen explicitly by the caller
+// so that no layout policy is silently preferred.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JsoncFormatter {
     /// Number of ASCII spaces emitted per indentation level.
@@ -37,22 +37,128 @@ pub struct JsoncFormatter {
 pub enum JsoncLineBreaks {
     /// Keep each array and object on a single line or on multiple lines
     /// according to whether the input had a physical line break inside it.
+    ///
+    /// A multi-line container also expands its ancestor and sibling
+    /// containers; the children of a sibling container are left as-is.
+    ///
+    /// # Examples
+    ///
+    /// ```jsonc
+    /// // single-line input stays single-line
+    /// [1, 2] -> [1, 2]
+    ///
+    /// // multi-line input stays multi-line
+    /// [
+    ///   1,
+    ///   2
+    /// ]
+    /// ->
+    /// [
+    ///   1,
+    ///   2
+    /// ]
+    ///
+    /// // a multi-line array expands its sibling containers, but not their children
+    /// {
+    ///   "left": [
+    ///     1,
+    ///     2
+    ///   ],
+    ///   "right": [3, 4],
+    ///   "nested": {"items": [5, 6]}
+    /// }
+    /// ->
+    /// {
+    ///   "left": [
+    ///     1,
+    ///     2
+    ///   ],
+    ///   "right": [
+    ///     3,
+    ///     4
+    ///   ],
+    ///   "nested": {
+    ///     "items": [5, 6]
+    ///   }
+    /// }
+    /// ```
     Preserve,
     /// Put every array and object that contains an element, a member, or a
     /// comment onto multiple lines. Truly empty `[]` and `{}` stay single-line.
+    ///
+    /// # Examples
+    ///
+    /// ```jsonc
+    /// // containers with content are expanded
+    /// [1, 2]
+    /// ->
+    /// [
+    ///   1,
+    ///   2
+    /// ]
+    ///
+    /// // empty containers stay single-line
+    /// [] -> []
+    /// {} -> {}
+    /// ```
     Always,
 }
 
 /// Trailing-comma policy, applied identically to arrays and objects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JsoncTrailingCommas {
-    /// Keep the presence (and position) of a trailing comma from the input.
+    /// Keep a trailing comma from the input in place, including its position
+    /// relative to any trailing comments (the input order of the comma and
+    /// the comments is not swapped).
+    ///
+    /// # Examples
+    ///
+    /// ```jsonc
+    /// [1, 2]          -> [1, 2]
+    /// [1, 2,]         -> [1, 2,]
+    /// [1, 2, /* c */] -> [1, 2, /* c */]  // comma before the comment
+    /// [1, 2 /* c */,] -> [1, 2 /* c */,]  // comma after the comment
+    /// ```
     Preserve,
-    /// Add a trailing comma to multi-line containers that contain at least one
-    /// element or member; remove it from single-line containers. Empty and
-    /// comment-only containers get no trailing comma.
+    /// Add a trailing comma to multi-line containers that contain at least
+    /// one element or member; remove it from single-line containers. Empty
+    /// and comment-only containers get no trailing comma.
+    ///
+    /// # Examples
+    ///
+    /// ```jsonc
+    /// // multi-line container: comma is added
+    /// [
+    ///   1,
+    ///   2
+    /// ]
+    /// ->
+    /// [
+    ///   1,
+    ///   2,
+    /// ]
+    ///
+    /// // single-line container: comma is removed
+    /// [1, 2,] -> [1, 2]
+    /// ```
     AlwaysMultiline,
     /// Remove trailing commas from arrays and objects.
+    ///
+    /// # Examples
+    ///
+    /// ```jsonc
+    /// [1, 2,] -> [1, 2]
+    ///
+    /// [
+    ///   1,
+    ///   2,
+    /// ]
+    /// ->
+    /// [
+    ///   1,
+    ///   2
+    /// ]
+    /// ```
     Never,
 }
 
