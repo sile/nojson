@@ -7,14 +7,17 @@
 //! - re-parseability of the output,
 //! - idempotency (formatting the output again yields the same string),
 //! - preservation of the value tree (kinds, scalar lexemes, order),
-//! - preservation of comments (order and body),
-//! - LF-only output (no `\r` survives).
+//! - preservation of comments (order and body, up to the documented CRLF and
+//!   continuation-line indentation normalization),
+//! - no `\r` outside comments (CRLF becomes LF; a lone `\r` inside a comment
+//!   is comment content and is kept).
 
 // The suite only draws a subset of the shared harness; the roundtrip-only
 // helpers (NonZero, mixed strings, ...) are dead code in this crate.
 #[expect(dead_code, reason = "roundtrip-only helpers are unused here")]
 mod pbt_harness;
 
+use core::ops::Range;
 use std::cell::Cell;
 
 use nojson::{JsonValueKind, JsoncFormatter, JsoncLineBreaks, JsoncTrailingCommas, RawJson};
@@ -35,14 +38,20 @@ fn sample_ws(ctx: &mut noprop::TestCaseContext) -> &'static str {
 }
 
 /// A comment body. Line comments must be followed by a newline to stay valid;
-/// the caller decides where the newline goes. Block comments are single-line
-/// so their body is preserved verbatim by the formatter.
+/// the caller decides where the newline goes. Block comments may span two
+/// lines, and either comment kind may carry a `\r`: for a line comment it is
+/// the CR of its terminating CRLF, for a block comment it is either the CR of
+/// a CRLF or a lone `\r` (comment content).
 fn sample_comment(ctx: &mut noprop::TestCaseContext) -> String {
     let text = noprop::sample_choice(ctx, &["a", "b", "c, : [ ] { }", "config"]);
+    let trailing_cr = if noprop::sample_bool(ctx) { "\r" } else { "" };
     if noprop::sample_bool(ctx) {
-        format!("// {text}")
+        format!("// {text}{trailing_cr}")
+    } else if noprop::sample_bool(ctx) {
+        format!("/* {text}{trailing_cr} */")
     } else {
-        format!("/* {text} */")
+        let lead = noprop::sample_choice(ctx, &["", " ", "  ", "\t"]);
+        format!("/* {text}{trailing_cr}\n{lead}{text} */")
     }
 }
 
@@ -260,12 +269,46 @@ fn comment_bodies(text: &str) -> Vec<String> {
         .collect()
 }
 
+/// Normalizes a comment body the way the formatter does, so input and output
+/// bodies can be compared: the `\r` of a CRLF is dropped, a line comment's
+/// trailing `\r` (the CR of its terminating CRLF) is dropped, and the leading
+/// spaces of a block comment's continuation lines are ignored (the formatter
+/// adjusts them to the comment's new column). A lone `\r` elsewhere in a
+/// comment is content and is kept.
+fn normalize_comment_body(body: &str) -> String {
+    let normalized = body.replace("\r\n", "\n");
+    let normalized = match normalized.strip_suffix('\r') {
+        Some(stripped) => stripped.to_string(),
+        None => normalized,
+    };
+    normalized
+        .lines()
+        .map(|line| line.trim_start_matches(' '))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// The bytes of `text` outside comment ranges; used to check that no `\r`
+/// survives outside comments.
+fn non_comment_text(text: &str, comments: &[Range<usize>]) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut p = 0;
+    for c in comments {
+        out.push_str(&text[p..c.start]);
+        p = c.end;
+    }
+    out.push_str(&text[p..]);
+    out
+}
+
 // --- Properties -------------------------------------------------------
 
 #[test]
 fn jsonc_format_preserves_structure_and_is_idempotent() -> noprop::TestResult {
     let comment_cases = Cell::new(0usize);
     let crlf_cases = Cell::new(0usize);
+    let multiline_block_cases = Cell::new(0usize);
+    let cr_in_comment_cases = Cell::new(0usize);
     let blank_line_cases = Cell::new(0usize);
     let trailing_comma_cases = Cell::new(0usize);
     run(|ctx| {
@@ -285,7 +328,8 @@ fn jsonc_format_preserves_structure_and_is_idempotent() -> noprop::TestResult {
                         trailing_commas: commas,
                     };
                     let output = formatter.format(&input).expect("format must succeed");
-                    RawJson::parse_jsonc(&output).expect("output must be re-parsable");
+                    let (_, out_comments) =
+                        RawJson::parse_jsonc(&output).expect("output must be re-parsable");
                     let again = formatter.format(&output).expect("second format");
                     assert_eq!(output, again, "formatting is not idempotent for {input:?}");
                     assert_eq!(
@@ -293,12 +337,25 @@ fn jsonc_format_preserves_structure_and_is_idempotent() -> noprop::TestResult {
                         input_signature,
                         "value tree changed for {input:?}"
                     );
+                    let out_bodies: Vec<String> = out_comments
+                        .iter()
+                        .map(|r| output[r.clone()].to_string())
+                        .collect();
                     assert_eq!(
-                        comment_bodies(&output),
-                        input_comments,
+                        out_bodies
+                            .iter()
+                            .map(|c| normalize_comment_body(c))
+                            .collect::<Vec<_>>(),
+                        input_comments
+                            .iter()
+                            .map(|c| normalize_comment_body(c))
+                            .collect::<Vec<_>>(),
                         "comments changed for {input:?}"
                     );
-                    assert!(!output.contains('\r'), "output contains a CR for {input:?}");
+                    assert!(
+                        !non_comment_text(&output, &out_comments).contains('\r'),
+                        "output contains a CR outside comments for {input:?}"
+                    );
                 }
             }
         }
@@ -307,6 +364,12 @@ fn jsonc_format_preserves_structure_and_is_idempotent() -> noprop::TestResult {
         }
         if input.contains("\r\n") {
             crlf_cases.set(crlf_cases.get() + 1);
+        }
+        if input_comments.iter().any(|c| c.contains('\n')) {
+            multiline_block_cases.set(multiline_block_cases.get() + 1);
+        }
+        if input_comments.iter().any(|c| c.contains('\r')) {
+            cr_in_comment_cases.set(cr_in_comment_cases.get() + 1);
         }
         if input.contains("\n\n") || input.contains("\r\r") || input.contains("\r\n\r\n") {
             blank_line_cases.set(blank_line_cases.get() + 1);
@@ -320,6 +383,14 @@ fn jsonc_format_preserves_structure_and_is_idempotent() -> noprop::TestResult {
     })?;
     assert!(comment_cases.get() > 0, "no case generated a comment");
     assert!(crlf_cases.get() > 0, "no case generated CRLF");
+    assert!(
+        multiline_block_cases.get() > 0,
+        "no case generated a multi-line block comment"
+    );
+    assert!(
+        cr_in_comment_cases.get() > 0,
+        "no case generated a CR inside a comment"
+    );
     assert!(blank_line_cases.get() > 0, "no case generated a blank line");
     assert!(
         trailing_comma_cases.get() > 0,
