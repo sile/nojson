@@ -181,6 +181,44 @@ fn parse_positive_number(text: &str) -> Result<u32, nojson::JsonParseError> {
 }
 ```
 
+### Cross-referencing Validations
+
+Some validations need to compare a value against *another* value in the same
+document — for example, checking that a `"default"` names one of the declared
+`"routes"`. `RawJsonValue::root()` lets any node walk back to the document
+root, so a reference whose target is already defined (it appears earlier in
+the document) can be validated in a single pass. (Names are read with
+`as_string_str()`, which borrows and so assumes no escapes; use
+`to_unquoted_string_str()` if names may be escaped.)
+
+```rust
+fn main() -> Result<(), nojson::JsonParseError> {
+    let text = r#"{"routes": [{"name": "home"}, {"name": "about"}], "default": "home"}"#;
+    let json = nojson::RawJson::parse(text)?;
+    let root = json.value();
+
+    let default_name = root.to_member("default")?.required()?.as_string_str()?;
+    let mut known = false;
+    for route in root.to_member("routes")?.required()?.to_array()? {
+        if route.to_member("name")?.required()?.as_string_str()? == default_name {
+            known = true;
+            break;
+        }
+    }
+
+    if !known {
+        return Err(root.to_member("default")?.required()?.invalid(format!("no route named {:?}", default_name)));
+    }
+    Ok(())
+}
+```
+
+When a reference may point forward (the target can appear *after* it), one pass
+cannot resolve it: `RawJsonValue` is `Copy`, so hold the handle to the
+referring value, collect everything first, then cross-check — the error still
+lands on the reference. That two-pass form and its rationale are in the crate
+docs ([`RawJsonValue::root()`](https://docs.rs/nojson/latest/nojson/struct.RawJsonValue.html#method.root)).
+
 ### Error Handling with Context
 
 Rich error information helps with debugging:
