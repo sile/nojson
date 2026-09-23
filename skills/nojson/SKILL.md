@@ -85,7 +85,9 @@ actual API shape and usage patterns, not generic JSON background.
   `f.set_indent_size(n)` + `f.set_spacing(true)`. Settings apply to the current
   depth and deeper; inner `nojson::json(|f| …)` can override locally.
 - `RawJsonValue` is `Copy`; most traversal methods consume `self` by value on
-  purpose — pass it around freely.
+  purpose — pass it around freely. This is what lets you hold a handle to the
+  *referring* value across a document scan and call `invalid()` on it later, so
+  a cross-reference error points at the reference (not the target).
 - `RawJsonValue::index()` is stable within one `RawJson`. Cache it and re-fetch
   with `get_value_by_index` for O(1) access after validation.
 - The parser rejects inputs whose nesting steps past `MAX_NESTING_DEPTH`
@@ -190,6 +192,49 @@ if n == 0 {
     return Err(v.invalid("must be positive"));
 }
 ```
+
+Validating one value against another in the same document:
+
+```rust
+// `root()` walks any node back to the document root. When the target is
+// already defined (it appears earlier), validate in a single pass with it.
+// (`as_string_str()` borrows and so assumes no escapes; use
+// `to_unquoted_string_str()` if the compared strings may be escaped.)
+let root = json.value();
+let default_name = root.to_member("default")?.required()?.as_string_str()?;
+let known = root.to_member("routes")?.required()?.to_array()?.any(|route| {
+    route.to_member("name").ok()
+        .and_then(|m| m.required().ok())
+        .and_then(|v| v.as_string_str().ok())
+        .is_some_and(|name| name == default_name)
+});
+if !known {
+    return Err(root.to_member("default")?.required()?
+        .invalid(format!("no route named {:?}", default_name)));
+}
+```
+
+When a reference may point forward (the target can appear *after* it), one pass
+cannot resolve it. `RawJsonValue` is `Copy`, so keep the handle to the
+*referring* value, collect everything first, then cross-check — this keeps the
+error on the reference, not the target:
+
+```rust
+let root = json.value();
+let mut names = Vec::new();
+for route in root.to_member("routes")?.required()?.to_array()? {
+    names.push(route.to_member("name")?.required()?.as_string_str()?);
+}
+let default_value = root.to_member("default")?.required()?; // Copy: survives the loop
+let default_name = default_value.as_string_str()?;
+if !names.contains(&default_name) {
+    return Err(default_value.invalid(format!("no route named {:?}", default_name)));
+}
+```
+
+Choose the single-pass form when every reference target is already defined by
+the time you reach it (no intermediate state); use the two-pass form as soon as
+a reference may point forward.
 
 Error reporting with line / column:
 

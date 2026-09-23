@@ -173,6 +173,72 @@
 //! }
 //! ```
 //!
+//! ### Cross-referencing Validations
+//!
+//! Some validations need to compare a value against *another* value in the same
+//! document — for example, checking that a `"default"` names one of the declared
+//! `"routes"`. [`RawJsonValue::root()`] lets any node walk back to the document
+//! root, so a reference whose target is already defined (it appears earlier in
+//! the document) can be validated in a single pass. (The names are read with
+//! [`RawJsonValue::as_string_str()`], which borrows and so assumes no escapes;
+//! use [`RawJsonValue::to_unquoted_string_str()`] if names may be escaped.)
+//!
+//! ```
+//! # fn main() -> Result<(), nojson::JsonParseError> {
+//! let text = r#"{"routes": [{"name": "home"}, {"name": "about"}], "default": "home"}"#;
+//! let json = nojson::RawJson::parse(text)?;
+//! let root = json.value();
+//!
+//! let default_name = root.to_member("default")?.required()?.as_string_str()?;
+//! let mut known = false;
+//! for route in root.to_member("routes")?.required()?.to_array()? {
+//!     if route.to_member("name")?.required()?.as_string_str()? == default_name {
+//!         known = true;
+//!         break;
+//!     }
+//! }
+//!
+//! if !known {
+//!     return Err(root.to_member("default")?.required()?.invalid(format!("no route named {:?}", default_name)));
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! When the reference may point forward (the target can appear *after* it), a
+//! single pass cannot resolve it. [`RawJsonValue`] is `Copy`, so keep the handle
+//! to the referring value and resolve after the whole document has been read —
+//! that way the error is still reported at the referring position, not at the
+//! target:
+//!
+//! ```
+//! # fn main() -> Result<(), nojson::JsonParseError> {
+//! let text = r#"{"default": "about", "routes": [{"name": "home"}, {"name": "about"}]}"#;
+//! let json = nojson::RawJson::parse(text)?;
+//! let root = json.value();
+//!
+//! // First pass: collect every declared name, and remember where `default` is.
+//! let mut names = Vec::new();
+//! for route in root.to_member("routes")?.required()?.to_array()? {
+//!     names.push(route.to_member("name")?.required()?.as_string_str()?);
+//! }
+//! // `RawJsonValue` is `Copy`, so holding the handle does not borrow `names`.
+//! let default_value = root.to_member("default")?.required()?;
+//! let default_name = default_value.as_string_str()?;
+//!
+//! // Second pass: cross-check once everything is known.
+//! if !names.contains(&default_name) {
+//!     return Err(default_value.invalid(format!("no route named {:?}", default_name)));
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Prefer the single-pass form when references only point backward: it avoids
+//! holding intermediate state. Reach for the second form as soon as a reference
+//! may point forward, and keep the referring [`RawJsonValue`] around so the error
+//! lands on the reference rather than on the target.
+//!
 //! ### Error Handling with Context
 //!
 //! Rich error information helps with debugging:
